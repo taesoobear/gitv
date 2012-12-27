@@ -1,0 +1,525 @@
+#!/usr/bin/lua
+package.path = package.path .. ";"..os.getenv('HOME').."/bin/?.lua"
+require("mylib")
+ 
+-- order doesn't matter
+g_etagsSrc={ "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
+g_vimSrc={"%.wrl$", "%.lua$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_cache_folder='/tmp/'
+
+function git_top()
+	return string.lines(os.capture('git rev-parse --show-toplevel', true))[1]
+end
+git_tools={}
+
+function git_tools.pull(path)
+	if os.isFileExist(path..'/.git/HEAD') then
+		local remotes=array.filter(function (a) return string.len(a)>1 end, string.lines(git_tools.capture('cd "'..path..'";git remote',true)))
+		if arg[2] then
+			remotes=array.filter(function (a) return select(1,string.find(a,arg[2])) end, remotes)
+		end
+		local curr_branch=array.filter(function (a) return string.sub(a,1,1)=='*' end ,  string.lines(git_tools.capture('cd "'..path..'";git branch',true)))[1]
+		curr_branch=string.sub(curr_branch,2)
+		for k,v in ipairs(remotes) do
+
+			print(v)
+			local cmd='cd "'..path..'";git pull '..v..curr_branch
+			print('> '..cmd)
+			git_tools.execute(cmd)
+		end
+	else
+		print(path..'/.git/HEAD' .." doesn't exist")
+	end
+end
+function git_tools.fetch(path)
+	if os.isFileExist(path..'/.git/HEAD') then
+		local remotes=array.filter(function (a) return string.len(a)>1 end, string.lines(git_tools.capture('cd "'..path..'";git remote',true)))
+		if arg[2] then
+			remotes=array.filter(function (a) return select(1,string.find(a,arg[2])) end, remotes)
+		end
+		local curr_branch=array.filter(function (a) return string.sub(a,1,1)=='*' end ,  string.lines(git_tools.capture('cd "'..path..'";git branch',true)))[1]
+		curr_branch=string.sub(curr_branch,2)
+		for k,v in ipairs(remotes) do
+
+			print(v)
+			local cmd='cd "'..path..'";git fetch '..v..curr_branch
+			print('> '..cmd)
+			git_tools.execute(cmd)
+		end
+	end
+end
+function git_tools.tokenize_cmd(cmd)
+	local tokens=string.tokenize(cmd, ';')
+	for i=1,#tokens do
+		if string.sub(tokens[i],1,3)=="cd " then
+			tokens[i]=string.gsub(tokens[i], '/','\\')
+		end
+	end
+	return tokens
+end
+function git_tools.capture(cmd, isRaw)
+	if os.isWindows() then
+		local tokens=git_tools.tokenize_cmd(cmd)
+		createBatchFile('_temp.bat', tokens, true)
+		return os.capture('_temp.bat', isRaw)	
+	else
+		return os.capture(cmd, isRaw)
+	end
+end
+function git_tools.execute(cmd)
+	if os.isWindows() then
+		local tokens=git_tools.tokenize_cmd(cmd)
+		createBatchFile('_temp.bat', tokens, true)
+		--os.execute('type _temp.bat')
+		return os.execute('_temp.bat')	
+	else
+		return os.execute(cmd)
+	end
+end
+function git_tools.commit(path,force)
+	if os.isFileExist(path..'/.git/HEAD') then
+		local ignorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plot%.', 'OgreFltkConsole.exe', 'console.xml', 'OgreFltkConsoleJIT.exe','optimizelog'}
+		-- git-svn or git is used as opposed to the plain svn
+		local status= string.lines(git_tools.capture('cd "'..path..'";git status -s .', true))
+		--print('stat=',status[2])
+		local untracked={}
+		for il, line in ipairs(status) do
+			local s,e,c=string.find(line, "%?%? (.+)")
+			if s then
+				untracked[#untracked+1]=c
+			end
+		end
+		if #untracked>=1 then
+			print('Untracked files:')
+			for i,v in ipairs(untracked) do print(v) end
+			print('Do you want to add these untracked files to git repository? (YES/edit/[no])')
+			local cmd=''
+			for i, v in ipairs(untracked) do 
+				cmd=cmd.. 'git add "'..v..'"\n'
+			end
+			local ioread
+			if force then
+				ioread='no'
+			else
+				ioread=io.read('*line')
+			end
+			if string.sub(ioread,1,3)=="YES" then
+				execute('cd "'..path..'"', cmd)
+				print('\n Added '..#untracked..' files')
+			elseif string.sub(ioread,1,4)=="edit" then
+				createBatchFile("gitscript.bat", {'cd "'..path..'"',cmd})
+				execute('vim gitscript.bat')
+				if os.isUnix() then
+					execute('sh gitscript.bat')
+				else
+					os.execute('gitscript')
+				end
+			else
+				print('\n ignoring untract files')
+			end
+			print('\n\n-----------------------')
+		end
+		status= string.lines( git_tools.capture('cd "'..path..'";git status .', true))
+		local modified={}
+		for il, line in ipairs(status) do
+			local s,e,c=string.find(line, '#%s+modified:%s+(.+)')
+			if not c then
+				s,e,c=string.find(line, '#%s+new file:%s+(.+)')
+			end
+			if not c then
+				s,e,c=string.find(line, '#%s+renamed:%s+(.+)')
+			end
+			if c then 
+				if not string.isMatched(os.filename(c), ignorePattern) then
+					print(c) 
+					modified[#modified+1]=c
+				end
+			end
+		end
+		if #modified>=1 then
+			print('Do you want to commit these files to git repository? (yes/no)')
+			local ioread
+			if force then
+				ioread='yes'
+			else
+				ioread=io.read('*line')
+			end
+			if string.sub(ioread,1,3)=="yes" or string.sub(ioread,1,1)=='y' then
+				local msg=string.sub(ioread,4)
+				if msg=='' then
+					msg='(no msg)'
+				end
+				for im, m in ipairs(modified) do
+					git_tools.execute('cd "'..path..'";git add "'..m..'"')
+				end
+				git_tools.execute('cd "'..path..'";git commit -m "'..msg..'"')
+				if path~="n" then
+					if useGitSVN then
+						print('Do you want to commit these files to SVN server? (yes/no)')
+						local ioread=io.read('*line')
+						if string.sub(ioread,1,3)=='yes' then
+							os.execute('cd "'..path..'";git svn dcommit')
+						end
+					end
+				end
+				print('\n\n-----------------------')
+				
+				for im, m in ipairs(modified) do
+					print('"'..m..'" added')
+				end
+				git_tools.execute('cd "'..path..'";git status . -s')
+			end
+		else
+			print('No locally modified files\n')
+			git_tools.execute('cd "'..path..'";git status . -s')
+			if useGitSVN then
+				os.execute('cd "'..path..'";git diff refs/remotes/git-svn')
+				print('Do you want to commit to SVN server? (yes/no)')
+				local ioread=io.read('*line')
+				if string.sub(ioread,1,3)=='yes' then
+					os.execute('cd "'..path..'";git svn dcommit')
+				end
+			end
+		end
+	end
+end
+function git_tools.push(path)
+	if os.isFileExist(path..'/.git/HEAD') then
+		local remotes=array.filter(function (a) return string.len(a)>1 end, string.lines(git_tools.capture('cd "'..path..'";git remote',true)))
+		if arg[2] then
+			remotes=array.filter(function (a) return select(1,string.find(a,arg[2])) end, remotes)
+		end
+		local curr_branch=array.filter(function (a) return string.sub(a,1,1)=='*' end ,  string.lines(git_tools.capture('cd "'..path..'";git branch',true)))[1]
+		curr_branch=string.sub(curr_branch,2)
+		for k,v in ipairs(remotes) do
+			local cmd='cd "'..path..'";git push '..v..curr_branch
+			print('> '..cmd)
+			git_tools.execute(cmd)
+		end
+	end
+end
+
+function getHashTbl(list, conversionFcn)
+	if conversionFcn==nil then
+		conversionFcn=function (v) return v end
+	end
+
+	local hcache={}
+	for i,v in ipairs(list) do
+		hcache[conversionFcn(v)]=true
+	end
+	return hcache
+end
+function interactiveChoose(fn, fromHistory)
+	local index=1
+	local function loadHistory(currDir)
+		local hcache={_list={}}
+		local history={}
+		if os.isFileExist(g_cache_folder..'cache_hist.txt') then
+			history= table.fromstring(util.readFile(g_cache_folder..'cache_hist.txt'))
+			hcache=getHashTbl(history, 
+			function (v) 
+				v[1]=os.absoluteToRelativePath(v[1], currDir)
+				return v[1]
+			end
+			)
+			local fncache=getHashTbl(fn, 
+			function (v)
+				return v[1]
+			end
+			)
+				
+			hcache._list={}
+			for i,v in ipairs(history) do
+				if fncache[v[1]] then
+					hcache._list[#hcache._list+1]=v
+				end
+			end
+		end
+		return history, hcache
+	end
+	local currDir=os.currentDirectory()
+	local history, hcache=loadHistory(currDir)
+	if #fn==0 then
+		print('Choose from History:')
+		fn=history
+		hcache._list=fn
+	end
+	-- reorder fn based on history
+	local nhist=#hcache._list
+	do
+		local fn2={}
+		local c=1
+		for i,v in ipairs(hcache._list) do
+			fn2[#fn2+1]=v
+		end
+		for i,v in ipairs(fn) do
+			if not hcache[v[1]] then 
+				fn2[#fn2+1]=v
+			end
+		end
+		fn=fn2
+	end
+
+	while #fn>1 do
+		-- start file choose interface
+		print('--------------------------------------------------------------')
+		local c=1
+		for i,v in ipairs(fn) do
+			if c==1 and c<=nhist then
+				print(v[1], "("..tostring(c).." - default)") 
+			else
+				print(v[1], "("..tostring(c)..")") 
+			end
+			if c==nhist then
+				print('--------------------------------------------------------------')
+			end
+			c=c+1
+			if c>20 then
+				print('... not displaying more candidates') 
+				break
+			end
+		end
+		print('Enter file shortcut (shown on the right) or keyword to further refine the search:')
+		local cmd=io.read('*line')
+		index=tonumber(cmd) 
+
+		if cmd=="" then 
+			if fromHistory or nhist~=0 then
+				index=1
+				break
+			else
+				return nil 
+			end
+		elseif index==nil then 
+			-- refine search
+			local refinedFn={}
+			for i,v in ipairs(fn) do
+				local idx=string.findLastOf(string.upper(v[1]), string.upper(cmd))
+				if idx~=nil then
+					array.pushBack(refinedFn, v)
+				end
+			end
+			fn=refinedFn
+			index=1
+			if #fn==0 then return nil end
+		else
+			break
+		end
+	end
+	do -- add to history
+		if #fn==0 then return nil end
+		local chosenFile=fn[index][1]
+		if not history then history=loadHistory() end
+		local max_num_hist=10
+		history=array.filter(function (x) return x[1]~=chosenFile end, history)
+		chosenFile=os.relativeToAbsolutePath(chosenFile, currDir)
+		history={{chosenFile}, unpack(history)}
+		history[max_num_hist+1]=nil
+		util.writeFile(g_cache_folder..'cache_hist.txt', table.tostring(history))
+	end
+
+	return fn[index]
+end
+function findFileFromGit(key, ...)
+	local fn
+	do
+		local str=os.capture('git ls-files ../..', true)
+		local files=string.lines(str)
+		fn={}
+		local keys={key,...}
+		for ifile, file in ipairs(files) do
+			if select(1,string.find(file, "%.lua$")) 
+				or select(1,string.find(file, "%.c$")) 
+				or select(1,string.find(file, "%.h$")) 
+				or select(1,string.find(file, "%.hpp$")) 
+				or select(1,string.find(file, "%.txt$")) 
+				or select(1,string.find(file, "%.inl$")) 
+				or select(1,string.find(file, "%.cpp$")) then
+				for ikey,key in ipairs(keys) do
+					if select(1,string.find(string.upper(file), string.upper(key))) then
+						fn[#fn+1]={file}
+						break
+					end
+				end
+			end
+		end
+	end
+	return interactiveChoose(fn, fromHistory)
+end
+
+function lsFiles(option)
+	local cpt
+	if option=='-l' then	
+		cpt=os.capture('git ls-files .', true)
+	else
+		cpt=os.capture('git ls-files `git rev-parse --show-toplevel`', true)
+	end
+
+	local files=string.lines(cpt)
+	local files=array.sub(files,1,-2)
+	table.sort(files, function(f1,f2)
+		local _, count1 = string.gsub(f1, "/", "")
+		local _, count2 = string.gsub(f2, "/", "")
+		--local lf1, p2=os.processFileName(f1)
+		--local lf2, p2=os.processFileName(f2)
+		--return count1*1000+#lf1<count2*1000+#lf2
+		return count1<count2
+	end)
+	return files
+end
+function choose(keys)
+	local option
+	if keys[1]=='-l' then
+		option='-l'
+		keys=table.isubset(keys,2)
+	end
+	local files=lsFiles(option)
+
+	local fn={}
+	for ifile, file in ipairs(files) do
+		if string.isMatched(file,g_vimSrc)  then
+			local filename=os.filename(file)
+			for ikey,key in ipairs(keys) do
+				if select(1,string.find(string.upper(filename), string.upper(key))) then
+					fn[#fn+1]={file}
+					break
+				end
+			end
+		end
+	end
+	local chosen=interactiveChoose(fn)
+	return chosen
+end
+-- main: 
+if arg[1] then
+	if arg[1]=="vi" then
+		local keys=array.sub(arg,2)
+		local chosen=choose(keys)
+		if chosen then
+			os.execute('vim "'..chosen[1]..'"')
+		end
+	elseif arg[1]=="gedit" then
+		local keys=array.sub(arg,2)
+		local chosen=choose(keys)
+		if chosen then
+			os.execute('gedit "'..chosen[1]..'"&')
+		end
+	elseif arg[1]=="gvim" then
+		local keys=array.sub(arg,2)
+		local chosen=choose(keys)
+		if chosen then
+			local function serverLaunched()
+				local servers=string.tokenize(os.capture('vim --serverlist',true), "\n")
+				local out=array.filter(function (x) return fn~="GVIM" end,servers)
+				if #out==1 then
+					return false
+				end
+				return true
+			end
+
+			if not serverLaunched() then
+				-- launch gvim
+				os.execute('gvim -f&')
+			end
+
+			while(true) do
+				if serverLaunched() then
+					break
+				end
+			end
+
+			os.execute('gvim --remote-silent "'..chosen[1]..'"')
+		end
+	elseif arg[1]=="choose" then
+		local keys=array.sub(arg,2)
+		local chosen=choose(keys)
+		if chosen then
+			util.writeFile(g_cache_folder..'chosen', chosen[1] )
+		end
+	elseif arg[1]=="find" then
+		local keys=array.sub(arg,2)
+		local files=lsFiles()
+		local fn={}
+		for ifile, file in ipairs(files) do
+			local passed=true
+			for j=1,#keys do
+				if not select(1,string.find(string.upper(file), string.upper(keys[j]))) then
+					passed=false
+				end
+			end
+			if passed then
+				print(file)
+			end
+		end
+	elseif arg[1]=="print" then
+		local keys=array.sub(arg,2)
+		local chosen=choose(keys)
+		if chosen then
+			os.execute('vim -c ":hardcopy" -c ":q" "'..chosen[1]..'"')
+			os.execute('nautilus ~/PDF')
+		end
+	elseif arg[1]=='pull' then
+		git_tools.pull(git_top())
+	elseif arg[1]=='push' then
+		git_tools.push(git_top())
+	elseif arg[1]=='commit' then
+		git_tools.commit(git_top())
+	elseif arg[1]=='fetch' then
+		git_tools.fetch(git_top())
+	elseif arg[1]=="etags" then
+		local isSourceCode=function(str)
+			return string.isMatched(str,g_etagsSrc)
+		end
+
+		local files=array.filter(isSourceCode,lsFiles())
+		if arg[2]=='.' then
+			files=array.filter(function (f) local s=string.find(f, '^%.%.') return not s end, files)
+			--printTable(files)
+		end
+		util.writeFile(g_cache_folder..'gitvsrclist', table.concat(files,'\n'))
+		local cmd='etags --extra=+f --langmap=c++:.inl.h.hpp.c.cpp.cc.cxx -L '..g_cache_folder..'gitvsrclist'
+		print(cmd)
+		os.execute(cmd)
+	elseif arg[1]=='grep' then
+		execute('cd `git rev-parse --show-toplevel`', 'git grep '..table.concat(array.sub(arg,2), ' '))
+	elseif arg[1]=='ls' then
+		local files=lsFiles()
+		for i,f in ipairs(files) do print (f) end
+	elseif arg[1]=='clear-hist' then
+		os.execute('rm '..g_cache_folder..'cache_hist.txt')
+	end
+else
+	print('usage: ')
+	print('vim: open a file in the git repository whose name contains the keyword. When no keyword is given, history will be shown.')
+	print('\tgitv vi [option] keyword')
+	print('\tor')
+	print('\tgitv vi [option]\n')
+	print('\tpossible options: -l (search only subdirectories of the current directory.)\n')
+	print('gvim:')
+	print('\tgitv gvim [option] keyword\n')
+	print('gedit:')
+	print('\tgitv gedit keyword')
+	print('choose: write choosen file name to '..g_cache_folder..'chosen')
+	print('\tgitv choose keyword\n')
+	print('clear-hist: clear history')
+	print('\tgitv clear-hist\n')
+	print('choose: write choosen file name to /tmp/chosen')
+	print('\tgitv choose keyword')
+	print('pull: pull the current branch from all remotes')
+	print('\tgitv pull\n')
+	print('fetch: fetch the current branch from all remotes')
+	print('\tgitv fetch\n')
+	print('push: push the current branch to all remotes')
+	print('\tgitv push\n')
+	print('commit: interactively commit the current branch')
+	print('\tgitv commit\n')
+	print('find:')
+	print('\tgitv find keyword\n')
+	print('grep: unlike git grep, entire repository (not limited to the current directory) will be searched.')
+	print('\tgitv grep [option] keyword\n')
+	print('etags: generate TAGS for all tracked files in the current folder recursively')
+	print('\tgitv etags .\n')
+	print('etags: generate TAGS for all tracked files in the git repository')
+	print('\tgitv etags\n')
+end
