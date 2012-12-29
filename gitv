@@ -313,8 +313,10 @@ function interactiveChoose(fn, fromHistory)
 		if not history then history=loadHistory() end
 		local max_num_hist=10
 		history=array.filter(function (x) return x[1]~=chosenFile end, history)
-		chosenFile=os.relativeToAbsolutePath(chosenFile, currDir)
 		history={{chosenFile}, unpack(history)}
+		for i =1, #history do
+			history[i]={os.relativeToAbsolutePath(history[i][1], currDir)}
+		end
 		history[max_num_hist+1]=nil
 		util.writeFile(g_cache_folder..'cache_hist.txt', table.tostring(history))
 	end
@@ -488,6 +490,10 @@ if arg[1] then
 		for i,f in ipairs(files) do print (f) end
 	elseif arg[1]=='clear-hist' then
 		os.execute('rm '..g_cache_folder..'cache_hist.txt')
+	elseif arg[1]=='cmd' then
+		local cmd={go=os.openFolder} 
+		local fn=cmd[arg[2]]
+		if arg[3] then fn(arg[3]) end
 	end
 else
 	print('usage: ')

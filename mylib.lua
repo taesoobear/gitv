@@ -49,6 +49,28 @@ function os.VI_path()
 	end
 end	
 
+function os.open(file)
+	if os.isUnix() then
+		os.execute('gnome-open "'..file..'"')
+	else
+		os.execute('start /b cmd /c "'..string.gsub(file, "/","\\")..'"')
+	end
+end
+function os.openFolder(folder)
+	if os.isUnix() then
+		os.execute('nautilus "'..folder..'"')
+	else
+		os.execute('explorer "'..string.gsub(folder,"/","\\")..'"')
+	end
+end
+function os.openTerminal(folder)
+	if os.isUnix() then
+		os.execute('gnome-terminal --working-directory "'..os.relativeToAbsolutePath(folder)..'"')
+	else
+		os.execute('cmd /k cd "'..string.gsub(folder, "/","\\")..'"')
+	end
+end
+
 function os.vi_check(fn)
 	local L = require "functional.list"
 	local otherVim='vim'
