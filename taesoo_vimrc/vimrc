@@ -2,12 +2,8 @@ set nocompatible
 filetype plugin on
 syntax on
 
-" support korean keyboard
+" support korean keyboard. (Toggle han/eng using \<space>)
 let hangeul_enabled=1
-map <leader>i i<Plug>ForceHanMode
-map <leader>a a<Plug>ForceHanMode
-imap <silent><leader><space> <Plug>HanMode
-
 
 """""""""""""""""""""""""""""""""""""""""""""
 " options
@@ -132,3 +128,13 @@ fun Ranger()
   endif
   redraw!
 endfun
+
+if !exists('hangeul_enabled')
+	finish
+endif
+map <leader>i i<Plug>HanMode
+map <leader>a a<Plug>HanMode
+map <leader>o o<Plug>HanMode
+map <leader>O O<Plug>HanMode
+imap <silent><leader><space> <Plug>HanMode
+
