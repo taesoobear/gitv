@@ -1,4 +1,4 @@
-
+"From http://www.vim.org/scripts/script.php?script_id=1492
 set background=light
 
 hi clear
