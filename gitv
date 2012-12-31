@@ -115,7 +115,7 @@ function git_tools.commit(path,force)
 					os.execute('gitscript')
 				end
 			else
-				print('\n ignoring untract files')
+				print('\n ignoring all untracked files')
 			end
 			print('\n\n-----------------------')
 		end
@@ -137,7 +137,7 @@ function git_tools.commit(path,force)
 			end
 		end
 		if #modified>=1 then
-			print('Do you want to commit these files to git repository? (yes/no)')
+			print('Do you want to commit these files to git repository? (yes/no optionally followed by a commit message)')
 			local ioread
 			if force then
 				ioread='yes'
