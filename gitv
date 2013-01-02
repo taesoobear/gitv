@@ -5,6 +5,7 @@ require("mylib")
 -- order doesn't matter
 g_etagsSrc={ "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
 g_vimSrc={"%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_grepSrc=g_etagsSrc
 g_cache_folder='/tmp/'
 
 function git_top()
@@ -309,6 +310,7 @@ function interactiveChoose(fn, fromHistory)
 	end
 	do -- add to history
 		if #fn==0 then return nil end
+		if fn[index]==nil then return nil end
 		local chosenFile=fn[index][1]
 		if not history then history=loadHistory() end
 		local max_num_hist=10
@@ -484,7 +486,14 @@ if arg[1] then
 		print(cmd)
 		os.execute(cmd)
 	elseif arg[1]=='grep' then
-		os.execute2('cd `git rev-parse --show-toplevel`', 'git grep '..table.concat(array.sub(arg,2), ' '))
+		local files=lsFiles()
+		if arg[2] then
+			for i,f in ipairs(files) do
+				if string.isMatched(f,g_grepSrc) then
+					util.grepFile(f, arg[2])
+				end
+			end
+		end
 	elseif arg[1]=='ls' then
 		local files=lsFiles()
 		for i,f in ipairs(files) do print (f) end
@@ -519,7 +528,7 @@ The most commonly used gitv commands are:
                $ gitv find keyword
   grep       Unlike git grep, entire repository (not limited to the current 
              directory) will be searched.
-               $ gitv grep [option] keyword
+               $ gitv grep keyword
   etags .    Generate TAGS for all tracked files in the current folder recursively
                $ gitv etags .
   etags      Generate TAGS for all tracked files in the git repository

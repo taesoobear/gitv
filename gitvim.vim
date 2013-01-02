@@ -12,14 +12,16 @@ nmap <c-b> :call BufSel(".")<CR>
 nmap <c-g> :Bg<space>
 "
 
-nmap <F4> :ts<space>
+" tag search words starting with...
+nmap <F4> :ts/\<
+" tag search the current word where the cursor is. (More robust than c+])
 nmap <F5> :tag/\<<C-r><C-w>\><CR>
 nmap <F6> :ts<CR>
 nmap <F7> :make<CR>
 nmap <F8> :copen<CR>
 nmap <F9> :cnext<CR>
 
-set grepprg=git\ grep
+set grepprg=gitv\ grep
 set tabstop=4
 set shiftwidth=4
 
