@@ -496,36 +496,32 @@ if arg[1] then
 		if arg[3] then fn(arg[3]) end
 	end
 else
-	print('usage: ')
-	print('vim: open a file in the git repository whose name contains the keyword. When no keyword is given, history will be shown.')
-	print('\tgitv vi [option] keyword')
-	print('\tor')
-	print('\tgitv vi [option]\n')
-	print('\tpossible options: -l (search only subdirectories of the current directory.)\n')
-	print('gvim:')
-	print('\tgitv gvim [option] keyword\n')
-	print('gedit:')
-	print('\tgitv gedit keyword')
-	print('choose: write choosen file name to '..g_cache_folder..'chosen')
-	print('\tgitv choose keyword\n')
-	print('clear-hist: clear history')
-	print('\tgitv clear-hist\n')
-	print('choose: write choosen file name to /tmp/chosen')
-	print('\tgitv choose keyword')
-	print('pull: pull the current branch from all remotes')
-	print('\tgitv pull\n')
-	print('fetch: fetch the current branch from all remotes')
-	print('\tgitv fetch\n')
-	print('push: push the current branch to all remotes')
-	print('\tgitv push\n')
-	print('commit: interactively commit the current branch')
-	print('\tgitv commit\n')
-	print('find:')
-	print('\tgitv find keyword\n')
-	print('grep: unlike git grep, entire repository (not limited to the current directory) will be searched.')
-	print('\tgitv grep [option] keyword\n')
-	print('etags: generate TAGS for all tracked files in the current folder recursively')
-	print('\tgitv etags .\n')
-	print('etags: generate TAGS for all tracked files in the git repository')
-	print('\tgitv etags\n')
+	print([[
+Usage: gitv <command> [option] [<args>]
+
+The most commonly used gitv commands are:
+  vi         Open a file in the git repository whose name contains 
+             the keyword. When no keyword is given, history will be shown.
+               $ gitv vi [option] keyword
+             or
+               $ gitv vi [option]
+             option -l: search only subdirectories of the current directory.
+  gvim       Open a file using gvim
+  gedit      Open a file using gedit
+  choose     Write choosen file name to /tmp/chosen
+               $ gitv choose keyword
+  clear-hist Clear history
+  pull       Pull the current branch from all remotes
+  fetch      Fetch the current branch from all remotes
+  push       Push the current branch to all remotes
+  commit     Interactively commit the current branch
+  find       Find files 
+               $ gitv find keyword
+  grep       Unlike git grep, entire repository (not limited to the current 
+             directory) will be searched.
+               $ gitv grep [option] keyword
+  etags .    Generate TAGS for all tracked files in the current folder recursively
+               $ gitv etags .
+  etags      Generate TAGS for all tracked files in the git repository
+  ]])
 end
