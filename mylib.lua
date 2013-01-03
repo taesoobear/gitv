@@ -10,12 +10,76 @@ dbg={ _count=1}
 util=util or {}
 function assert(bVal)
    if not bVal then
+	  -- when a log function is defined
+      if fineLog~=nil then
+		  debug.sethook() -- stop all kinds of debugger
+		  fineLog("assert failed")
+		  fineLog(dbg.callstackString(3))
+		  fineLog(util.tostring(dbg.locals()))
+      end
       print("assert failed: type cs or dbg.traceBack() or help for more information.")
 --      dbg.callstack()
 --      debug.debug()
       dbg.console() -- my debugger.
    end
    return bVal
+end
+
+
+function dbg.lunaType(c)
+	if type(c)~='userdata' then
+		return nil
+	end
+	local mt= getmetatable(c)
+	if mt==nil then return nil end
+	return mt.luna_class
+end
+function dbg.listLunaClasses(line)
+	local usrCnam= string.sub(line, 7)
+	local out2=''
+	local out=''
+	local outp=''
+	
+	for k,v in pairs(__luna)do
+		if type(v)=='table' then
+			local cname=v.luna_class
+			if cname then
+				local _, className=string.rightTokenize(cname,'%.')
+				local nn=string.sub(k, 1, -string.len(className)-1)
+				local namspac=string.gsub(nn,'_', '.')
+				if namspac=='.' then namspac='' end
+				if usrCnam=='' then
+					out=out..namspac.. className..', '
+				else
+					if namspac..className==usrCnam then
+						local map={__add='+', __mul='*',__div='/', __unm='-', __sub='-'}
+						local lastFn='funcName'
+						for kk,vv in pairs(v) do
+							if type(vv)=='function' then
+								if string.sub(kk,1,13)=='_property_get' then
+									outp=outp .. string.sub(kk,15)..', '
+								elseif string.sub(kk,1,13)=='_property_set' then
+									--outp=outp .. string.sub(kk,15)..','
+								else
+									if map[kk] then
+										out2=out2..map[kk]..', '
+									else
+										out2=out2..kk..', '
+									end
+									lastFn=kk
+								end
+							end
+						end
+						out2=out2..'\n\n Tip! you can see the function parameter types by typing "'..usrCnam..'.'..lastFn..'()"!'
+						out2=out2..'\n Known bug: property names can be incorrectly displayed. "'
+					end
+				end
+			end
+		end
+	end
+	if outp~='' then print('Properties:\n', outp) end
+	print(out)
+	if out2~='' then print('Member functions:\n', out2) end
 end
 function dbg.readLine(cursor)
 	io.write(cursor)
@@ -378,7 +442,7 @@ function dbg.console(msg, stackoffset)
 						local a=string.sub(info.source, 1,1)
 						if a=='=' or a=='[' then
 							level=level+1
-						elseif select(1,string.find(info.source, 'mylib_debugger.lua')) then
+						elseif select(1,string.find(info.source, 'mylib.lua')) then
 							level=level+1
 						else
 							break
