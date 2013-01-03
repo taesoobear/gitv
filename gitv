@@ -530,7 +530,7 @@ Usage: gitv <command> [option] [<args>]
 
 The most commonly used gitv commands are:
   vi         Open a file in the git repository whose name contains 
-             the keyword. When no keyword is given, history will be shown.
+             the keyword using vim. When no keyword is given, history will be shown.
                $ gitv vi [option] keyword
              or
                $ gitv vi [option]
@@ -548,7 +548,8 @@ The most commonly used gitv commands are:
   find       Find files 
                $ gitv find keyword
   grep       Unlike git grep, entire repository (not limited to the current 
-             directory) will be searched.
+             directory) will be searched. Files with allowed extensions will only
+             be searched. (see ~/bin/gitv.) Lua patterns are used.
                $ gitv grep keyword
   etags .    Generate TAGS for all tracked files in the current folder recursively
                $ gitv etags .
