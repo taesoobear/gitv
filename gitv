@@ -463,6 +463,16 @@ if arg[1] then
 			os.execute('vim -c ":hardcopy" -c ":q" "'..chosen[1]..'"')
 			os.execute('nautilus ~/PDF')
 		end
+	elseif arg[1]=='sync' then
+		print("------------------------")
+		print("Commit:")
+		git_tools.commit(git_top())
+		print("------------------------")
+		print("Pull:")
+		git_tools.pull(git_top())
+		print("------------------------")
+		print("Push:")
+		git_tools.push(git_top())
 	elseif arg[1]=='pull' then
 		git_tools.pull(git_top())
 	elseif arg[1]=='push' then
@@ -520,6 +530,7 @@ The most commonly used gitv commands are:
   choose     Write choosen file name to /tmp/chosen
                $ gitv choose keyword
   clear-hist Clear history
+  sync       Commit, pull, and then push. 
   pull       Pull the current branch from all remotes
   fetch      Fetch the current branch from all remotes
   push       Push the current branch to all remotes

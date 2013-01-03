@@ -2098,6 +2098,7 @@ function os.luaExecute(str, printCmd)
 	os.execute2(gotoRoot, luaExecute..str..endMark)
 end
 
+--use util.grepFile(fn, pattern)
 function util.grepFile(fn, pattern, prefix,raw, printFunc)
 	printFunc=printFunc or 
 	{ 
