@@ -477,7 +477,7 @@ if arg[1] then
 		git_tools.pull(git_top())
 	elseif arg[1]=='push' then
 		git_tools.push(git_top())
-	elseif arg[1]=='commit' then
+	elseif arg[1]=='commit' or arg[1]=='ci' then
 		git_tools.commit(git_top())
 	elseif arg[1]=='fetch' then
 		git_tools.fetch(git_top())
@@ -534,7 +534,7 @@ The most commonly used gitv commands are:
   pull       Pull the current branch from all remotes
   fetch      Fetch the current branch from all remotes
   push       Push the current branch to all remotes
-  commit     Interactively commit the current branch
+  commit     Interactively commit the current branch. gitv ci also works.
   find       Find files 
                $ gitv find keyword
   grep       Unlike git grep, entire repository (not limited to the current 
