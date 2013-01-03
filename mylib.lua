@@ -1715,7 +1715,7 @@ function os.absoluteToRelativePath(folder, currDir) -- param1: folder or file na
 	if(string.sub(folder,1,1)~="/") then return folder end
 	currDir=currDir or os.currentDirectory()
 	local n_ddot=0
-	while string.sub(folder,1,#currDir)~=currDir or currDir~="" do
+	while string.sub(folder,1,#currDir)~=currDir and currDir~="" do
 		currDir=os.parentDir(currDir)
 		n_ddot=n_ddot+1
 	end
