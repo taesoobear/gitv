@@ -513,6 +513,12 @@ if arg[1] then
 		local cmd={go=os.openFolder} 
 		local fn=cmd[arg[2]]
 		if arg[3] then fn(arg[3]) end
+	elseif arg[1]=='diff' then
+		if arg[2] then
+			os.execute('git difftool '..arg[2])
+		else
+			os.execute('git difftool')
+		end
 	end
 else
 	print([[
