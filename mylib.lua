@@ -7,7 +7,7 @@ if false then -- debug mode functions. (significant performance overhead when en
 	end
 end
 dbg={ _count=1}
-util={}
+util=util or {}
 function assert(bVal)
    if not bVal then
       print("assert failed: type cs or dbg.traceBack() or help for more information.")
