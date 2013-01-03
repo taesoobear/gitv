@@ -514,11 +514,15 @@ if arg[1] then
 		local fn=cmd[arg[2]]
 		if arg[3] then fn(arg[3]) end
 	elseif arg[1]=='diff' then
-		if arg[2] then
-			os.execute('git difftool '..arg[2])
-		else
-			os.execute('git difftool')
-		end
+
+		local added=''
+		if arg[2] then added=' '..arg[2] end
+		if arg[3] then added=' "'..arg[3]..'"' end
+		print('\n git diff --stat'..added)
+		print('---------------------------------------------------')
+		os.execute('git diff --stat'..added)
+		print('\n\n-------------------git difftool:-------------------')
+		os.execute('git difftool'..added)
 	end
 else
 	print([[
@@ -549,5 +553,8 @@ The most commonly used gitv commands are:
   etags .    Generate TAGS for all tracked files in the current folder recursively
                $ gitv etags .
   etags      Generate TAGS for all tracked files in the git repository
+  diff       Show differences between commits. 
+               $ gitv diff
+               $ gitv diff HEAD~10
   ]])
 end
