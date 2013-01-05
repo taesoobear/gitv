@@ -8,11 +8,10 @@ g_vimSrc={"%.wiki$","%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt
 g_grepSrc=g_etagsSrc
 g_cache_folder='/tmp/'
 g_vimpath=''
-g_home=os.home_path()
 
 if os.isMsysgit() then
 	g_vimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\'
-	g_cache_folder=g_home..'/'
+	g_cache_folder=os.home_path() ..'/'
 end
 function git_top()
 	return string.lines(os.capture('git rev-parse --show-toplevel', true))[1]
