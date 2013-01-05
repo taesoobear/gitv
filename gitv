@@ -67,7 +67,7 @@ end
 function git_tools.capture(cmd, isRaw)
 	if os.isWindows() then
 		local tokens=git_tools.tokenize_cmd(cmd)
-		createBatchFile('_temp.bat', tokens, true)
+		os.createBatchFile('_temp.bat', tokens, true)
 		return os.capture('_temp.bat', isRaw)	
 	else
 		return os.capture(cmd, isRaw)
@@ -76,7 +76,7 @@ end
 function git_tools.execute(cmd)
 	if os.isWindows() then
 		local tokens=git_tools.tokenize_cmd(cmd)
-		createBatchFile('_temp.bat', tokens, true)
+		os.createBatchFile('_temp.bat', tokens, true)
 		--os.execute('type _temp.bat')
 		return os.execute('_temp.bat')	
 	else
@@ -114,7 +114,7 @@ function git_tools.commit(path,force)
 				os.execute2('cd "'..path..'"', cmd)
 				print('\n Added '..#untracked..' files')
 			elseif string.sub(ioread,1,4)=="edit" then
-				createBatchFile("gitscript.bat", {'cd "'..path..'"',cmd})
+				os.createBatchFile("gitscript.bat", {'cd "'..path..'"',cmd})
 				os.execute2('vim gitscript.bat')
 				if os.isUnix() then
 					os.execute2('sh gitscript.bat')
