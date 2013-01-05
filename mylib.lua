@@ -113,25 +113,40 @@ function os.VI_path()
 	end
 end	
 
+function os.toWindowsFileName(file)
+	local fn=string.gsub(file, "/","\\")
+	if string.sub(fn,1,1)=="\\" then
+		fn=string.sub(fn,2,2)..':'..string.sub(fn,3)
+	end
+	return fn
+end
+function os.fromWindowsFileName(file)
+	local fn=string.gsub(file, "\\","/")
+	if string.sub(fn,2,2)==':' then
+		fn='/'..string.sub(fn,1,1)..string.sub(fn,3)
+	end
+	return fn
+end
+
 function os.open(file)
 	if os.isUnix() then
 		os.execute('gnome-open "'..file..'"')
 	else
-		os.execute('start /b cmd /c "'..string.gsub(file, "/","\\")..'"')
+		os.execute('start /b cmd /c "'..os.toWindowsFileName(file)..'"')
 	end
 end
 function os.openFolder(folder)
 	if os.isUnix() then
 		os.execute('nautilus "'..folder..'"')
 	else
-		os.execute('explorer "'..string.gsub(folder,"/","\\")..'"')
+		os.execute('explorer "'..os.toWindowsFileName(folder)..'"')
 	end
 end
 function os.openTerminal(folder)
 	if os.isUnix() then
 		os.execute('gnome-terminal --working-directory "'..os.relativeToAbsolutePath(folder)..'"')
 	else
-		os.execute('cmd /k cd "'..string.gsub(folder, "/","\\")..'"')
+		os.execute('cmd /k cd "'..os.toWindowsFileName(folder)..'"')
 	end
 end
 
@@ -1728,7 +1743,7 @@ function os.createDir(path)
    if os.isUnix() then
       os.execute('mkdir "'..path..'"')
    else
-      os.execute("md "..string.gsub(path, '/', '\\'))
+      os.execute("md "..os.toWindowsFileName(path))
    end
 end
 
@@ -1737,7 +1752,7 @@ function os.rename(name1, name2)
    if os.isUnix() then
       os.execute('mv "'..name1..'" "'..name2..'"')
    else
-      local cmd=string.gsub("move "..name1.." "..name2, '/', '\\')
+      local cmd="move "..os.toWindowsFileName(name1).." "..os.toWindowsFileName(name2)
       print(cmd)
       os.execute(cmd)
    end
@@ -1748,12 +1763,12 @@ function os.deleteFiles(mask)
    if os.isUnix() then
       os.execute("rm "..mask)
    else
-      os.execute("del "..string.gsub(mask, '/', '\\'))
+      os.execute("del "..os.toWindowsFileName(mask))
    end
 end
 
 function os.parentDir(currDir)
-   return os.rightTokenize(string.gsub(currDir, "\\","/"), "/")
+   return os.rightTokenize(os.fromWindowsFileName(currDir), "/")
 end
 
 function os.relativeToAbsolutePath(folder,currDir)
@@ -1796,7 +1811,7 @@ function os.currentDirectory()
 	if os.isUnix() then
 		return os.capture('pwd')
 	else
-		return os.capture('cd')
+		return os.fromWindowsFileName(os.capture('cd'))
 	end
 end
 function os.copyFile(mask, mask2)
@@ -1809,11 +1824,11 @@ function os.copyFile(mask, mask2)
 	   end
    else
 	   if mask2 then
-		   print('copy "'..      string.gsub(mask, '/', '\\')..'" "'..string.gsub(mask2, '/', '\\')..'"')
-		   os.execute('copy "'..      string.gsub(mask, '/', '\\')..'" "'..string.gsub(mask2, '/', '\\')..'"')
+		   print('copy "'..      os.toWindowsFileName(mask)..'" "'..os.toWindowsFileName(mask2)..'"')
+		   os.execute('copy "'..      os.toWindowsFileName(mask)..'" "'..os.toWindowsFileName(mask2)..'"')
 	   else
-		   print("copy "..      string.gsub(mask, '/', '\\'))
-		   os.execute("copy "..      string.gsub(mask, '/', '\\'))
+		   print("copy "..      os.toWindowsFileName(mask))
+		   os.execute("copy "..      os.toWindowsFileName(mask))
 	   end
    end
 end
@@ -1852,7 +1867,7 @@ function os.copyFiles(src, dest, ext) -- copy source files to destination folder
    if os.isUnix() then
       os.execute('cp "'..src..'" "'..dest..'"')
    else
-      local cmd="copy "..string.gsub(src, '/', '\\').." "..string.gsub(dest, '/', '\\')
+      local cmd="copy "..os.toWindowsFileName(src).." "..os.toWindowsFileName(dest)
       print(cmd)
       os.execute(cmd)
    end
@@ -1869,7 +1884,7 @@ function os.copyFiles(src, dest, ext) -- copy source files to destination folder
 end
 
 function os._globWin32(attr, mask, ignorepattern)
-	local cmd="dir /b/a:"..attr..' "'..string.gsub(mask, "/", "\\")..'" 2>nul'
+	local cmd="dir /b/a:"..attr..' "'..os.toWindowsFileName(mask)..'" 2>nul'
 	local cap=os.capture(cmd, true)
 	local tbl=string.tokenize(cap, "\n")
 	tbl[table.getn(tbl)]=nil
@@ -2042,14 +2057,15 @@ end
 
 function os.home_path()
 	if os.isUnix() then
-		return os.capture("echo ~")
+		--return os.capture("echo ~")
+		return os.getenv('HOME')
 	else
 		return os.capture("echo %HOMEDRIVE%")..os.capture("echo %HOMEPATH%")
 	end
 end
 -- returns filename, path
 function os.processFileName(target)-- fullpath
-	local target=string.gsub(target, '\\', '/')
+	local target=os.fromWindowsFileName(target)
 	local lastSep
 	local newSep=0
 	local count=0
@@ -2137,7 +2153,7 @@ function os.shellEscape(str)
 		str=string.gsub(str, '%%', '\\%%')
 	else
 		str=string.gsub(str, '\\', '\\\\')
-		str=string.gsub(str, '"', '\\"')
+		str=string.gsub(str, '"', '^"')
 		str=string.gsub(str, '%$', '\$')
 	end
 	return str

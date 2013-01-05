@@ -1,13 +1,19 @@
-#!/usr/bin/lua
+#!lua
 package.path = package.path .. ";"..os.getenv('HOME').."/bin/?.lua"
 require("mylib")
  
 -- order doesn't matter
 g_etagsSrc={ "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
-g_vimSrc={"%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={"%.wiki$","%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=g_etagsSrc
 g_cache_folder='/tmp/'
+g_vimpath=''
+g_home=os.home_path()
 
+if os.isMsysgit() then
+	g_vimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\'
+	g_cache_folder=g_home..'/'
+end
 function git_top()
 	return string.lines(os.capture('git rev-parse --show-toplevel', true))[1]
 end
@@ -61,7 +67,7 @@ end
 function git_tools.capture(cmd, isRaw)
 	if os.isWindows() then
 		local tokens=git_tools.tokenize_cmd(cmd)
-		createBatchFile('_temp.bat', tokens, true)
+		os.createBatchFile('_temp.bat', tokens, true)
 		return os.capture('_temp.bat', isRaw)	
 	else
 		return os.capture(cmd, isRaw)
@@ -70,7 +76,7 @@ end
 function git_tools.execute(cmd)
 	if os.isWindows() then
 		local tokens=git_tools.tokenize_cmd(cmd)
-		createBatchFile('_temp.bat', tokens, true)
+		os.createBatchFile('_temp.bat', tokens, true)
 		--os.execute('type _temp.bat')
 		return os.execute('_temp.bat')	
 	else
@@ -108,7 +114,7 @@ function git_tools.commit(path,force)
 				os.execute2('cd "'..path..'"', cmd)
 				print('\n Added '..#untracked..' files')
 			elseif string.sub(ioread,1,4)=="edit" then
-				createBatchFile("gitscript.bat", {'cd "'..path..'"',cmd})
+				os.createBatchFile("gitscript.bat", {'cd "'..path..'"',cmd})
 				os.execute2('vim gitscript.bat')
 				if os.isUnix() then
 					os.execute2('sh gitscript.bat')
@@ -357,7 +363,11 @@ function lsFiles(option)
 	if option=='-l' then	
 		cpt=os.capture('git ls-files .', true)
 	else
-		cpt=os.capture('git ls-files `git rev-parse --show-toplevel`', true)
+		if os.isMsysgit() then
+			cpt=os.capture('git ls-files '..git_top(), true)
+		else
+			cpt=os.capture('git ls-files `git rev-parse --show-toplevel`', true)
+		end
 	end
 
 	local files=string.lines(cpt)
@@ -401,7 +411,7 @@ if arg[1] then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
 		if chosen then
-			os.execute('vim "'..chosen[1]..'"')
+			os.execute(g_vimpath..'vim "'..chosen[1]..'"')
 		end
 	elseif arg[1]=="gedit" then
 		local keys=array.sub(arg,2)
@@ -414,7 +424,7 @@ if arg[1] then
 		local chosen=choose(keys)
 		if chosen then
 			local function serverLaunched()
-				local servers=string.tokenize(os.capture('vim --serverlist',true), "\n")
+				local servers=string.tokenize(os.capture(g_vimpath..'vim --serverlist',true), "\n")
 				local out=array.filter(function (x) return fn~="GVIM" end,servers)
 				if #out==1 then
 					return false
@@ -422,18 +432,30 @@ if arg[1] then
 				return true
 			end
 
-			if not serverLaunched() then
-				-- launch gvim
-				os.execute('gvim -f&')
-			end
-
-			while(true) do
-				if serverLaunched() then
-					break
+			if os.isMsysgit() then
+				local chosenfile=os.toWindowsFileName(chosen[1])
+				if not serverLaunched() then
+					local cmd='start /b cmd /c "'..os.shellEscape(g_vimpath..'gvim "'..chosenfile..'"')..'"'
+					print(cmd)
+					-- launch gvim
+					os.execute(cmd)
+				else
+					os.execute(g_vimpath..'gvim --remote-silent "'..chosenfile..'"')
 				end
-			end
+			else
+				if not serverLaunched() then
+					-- launch gvim
+					os.execute(g_vimpath..'gvim -f&')
+				end
 
-			os.execute('gvim --remote-silent "'..chosen[1]..'"')
+				while(true) do
+					if serverLaunched() then
+						break
+					end
+				end
+
+				os.execute(g_vimpath..'gvim --remote-silent "'..chosen[1]..'"')
+			end
 		end
 	elseif arg[1]=="choose" then
 		local keys=array.sub(arg,2)
