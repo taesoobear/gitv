@@ -1,4 +1,4 @@
-#!lua
+#!/usr/bin/lua
 package.path = package.path .. ";"..os.getenv('HOME').."/bin/?.lua"
 require("mylib")
  
