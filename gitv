@@ -11,8 +11,13 @@ g_vimpath='vim'
 g_gvimpath='gvim'
 
 if os.isWindows() then
-	g_vimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\vim'
-	g_gvimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\gvim'
+	if os.isFileExist("c:\\Program Files\\Git\\share\\vim\\vim73\\vim.exe") then
+		g_vimpath='""c:\\Program Files\\Git\\share\\vim\\vim73\\vim.exe"'
+		g_gvimpath='"c:\\Program\ Files\\Git\\share\\vim\\vim73\\gvim.exe"'
+	else
+		g_vimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\vim'
+		g_gvimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\gvim'
+	end
 	g_cache_folder=os.home_path() ..'/'
 end
 function git_top()
