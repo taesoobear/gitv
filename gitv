@@ -7,15 +7,17 @@ g_etagsSrc={ "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
 g_vimSrc={"%.wiki$","%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=g_etagsSrc
 g_cache_folder='/tmp/'
-g_vimpath=''
+g_vimpath='vim'
+g_gvimpath='gvim'
 
-if os.isMsysgit() then
-	g_vimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\'
+if os.isWindows() then
+	g_vimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\vim'
+	g_gvimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\gvim'
 	g_cache_folder=os.home_path() ..'/'
 end
 function git_top()
 	return string.lines(os.capture('git rev-parse --show-toplevel', true))[1]
-end
+end 
 git_tools={}
 
 function git_tools.pull(path)
@@ -362,7 +364,7 @@ function lsFiles(option)
 	if option=='-l' then	
 		cpt=os.capture('git ls-files .', true)
 	else
-		if os.isMsysgit() then
+		if os.isWindows() then
 			cpt=os.capture('git ls-files '..git_top(), true)
 		else
 			cpt=os.capture('git ls-files `git rev-parse --show-toplevel`', true)
@@ -410,7 +412,7 @@ if arg[1] then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
 		if chosen then
-			os.execute(g_vimpath..'vim "'..chosen[1]..'"')
+			os.execute(g_vimpath..' "'..chosen[1]..'"')
 		end
 	elseif arg[1]=="gedit" then
 		local keys=array.sub(arg,2)
@@ -423,7 +425,7 @@ if arg[1] then
 		local chosen=choose(keys)
 		if chosen then
 			local function serverLaunched()
-				local servers=string.tokenize(os.capture(g_vimpath..'vim --serverlist',true), "\n")
+				local servers=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
 				local out=array.filter(function (x) return fn~="GVIM" end,servers)
 				if #out==1 then
 					return false
@@ -431,20 +433,20 @@ if arg[1] then
 				return true
 			end
 
-			if os.isMsysgit() then
+			if os.isWindows() then
 				local chosenfile=os.toWindowsFileName(chosen[1])
 				if not serverLaunched() then
-					local cmd='start /b cmd /c "'..os.shellEscape(g_vimpath..'gvim "'..chosenfile..'"')..'"'
+					local cmd='start /b cmd /c "'..os.shellEscape(g_gvimpath..' "'..chosenfile..'"')..'"'
 					print(cmd)
 					-- launch gvim
 					os.execute(cmd)
 				else
-					os.execute(g_vimpath..'gvim --remote-silent "'..chosenfile..'"')
+					os.execute(g_gvimpath..' --remote-silent "'..chosenfile..'"')
 				end
 			else
 				if not serverLaunched() then
 					-- launch gvim
-					os.execute(g_vimpath..'gvim -f&')
+					os.execute(g_gvimpath..' -f&')
 				end
 
 				while(true) do
@@ -453,7 +455,7 @@ if arg[1] then
 					end
 				end
 
-				os.execute(g_vimpath..'gvim --remote-silent "'..chosen[1]..'"')
+				os.execute(g_gvimpath..' --remote-silent "'..chosen[1]..'"')
 			end
 		end
 	elseif arg[1]=="choose" then
