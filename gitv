@@ -153,7 +153,7 @@ function git_tools.commit(path,force)
 			local bDone
 			repeat
 				bDone=true
-				print('Do you want to commit these files to git repository? (yes/no/diff optionally followed by a commit message)')
+				print('Do you want to commit these files to git repository? (yes/[no]/diff optionally followed by a commit message)')
 				local ioread
 				if force then
 					ioread='yes'
