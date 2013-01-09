@@ -150,9 +150,9 @@ function git_tools.commit(path,force)
 			end
 		end
 		if #modified>=1 then
-			local bContinue
+			local bDone
 			repeat
-				bContinue=false
+				bDone=true
 				print('Do you want to commit these files to git repository? (yes/no/diff optionally followed by a commit message)')
 				local ioread
 				if force then
@@ -186,9 +186,9 @@ function git_tools.commit(path,force)
 					git_tools.execute('cd "'..path..'";git status . -s')
 				elseif string.sub(ioread,1,1)=="d" then
 					git_tools.execute('cd "'..path..'";git diff')
-					bContinue=true
+					bDone=false
 				end 
-			until bContinue 
+			until bDone
 		else
 			print('No locally modified files\n')
 			git_tools.execute('cd "'..path..'";git status . -s')
