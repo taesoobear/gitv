@@ -2179,7 +2179,7 @@ function os.luaExecute(str, printCmd)
 end
 
 --use util.grepFile(fn, pattern)
-function util.grepFile(fn, pattern, prefix,raw, printFunc)
+function util.grepFile(fn, pattern, prefix,useLuaPattern, printFunc)
 	printFunc=printFunc or 
 	{ 
 		iterate=function(self,fn,ln,idx,line)
@@ -2199,7 +2199,7 @@ function util.grepFile(fn, pattern, prefix,raw, printFunc)
 	for line in fin:lines() do
 		local lline=string.lower(line)
 		local res, idx
-		if raw then
+		if useLuaPattern then
 			res,idx=pcall(string.find, lline, pattern)
 		else
 			res,idx=pcall(string.find, lline, pattern, nil,true)

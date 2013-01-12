@@ -521,11 +521,12 @@ if arg[1] then
 		print(cmd)
 		os.execute(cmd)
 	elseif arg[1]=='grep' then
+		print('searching '..arg[2]..'...')
 		local files=lsFiles()
 		if arg[2] then
 			for i,f in ipairs(files) do
 				if string.isMatched(f,g_grepSrc) then
-					util.grepFile(f, arg[2])
+					util.grepFile(f, arg[2],'',true)
 				end
 			end
 		end
