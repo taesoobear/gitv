@@ -11,8 +11,13 @@ g_vimpath='vim'
 g_gvimpath='gvim'
 
 if os.isWindows() then
-	g_vimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\vim'
-	g_gvimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\gvim'
+	if os.isFileExist("c:\\Program Files\\Git\\share\\vim\\vim73\\vim.exe") then
+		g_vimpath='""c:\\Program Files\\Git\\share\\vim\\vim73\\vim.exe"'
+		g_gvimpath='"c:\\Program\ Files\\Git\\share\\vim\\vim73\\gvim.exe"'
+	else
+		g_vimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\vim'
+		g_gvimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\gvim'
+	end
 	g_cache_folder=os.home_path() ..'/'
 end
 function git_top()
@@ -145,38 +150,45 @@ function git_tools.commit(path,force)
 			end
 		end
 		if #modified>=1 then
-			print('Do you want to commit these files to git repository? (yes/no optionally followed by a commit message)')
-			local ioread
-			if force then
-				ioread='yes'
-			else
-				ioread=io.read('*line')
-			end
-			if string.sub(ioread,1,3)=="yes" or string.sub(ioread,1,1)=='y' then
-				local msg=string.sub(ioread,4)
-				if msg=='' then
-					msg='(no msg)'
+			local bDone
+			repeat
+				bDone=true
+				print('Do you want to commit these files to git repository? (yes/[no]/diff optionally followed by a commit message)')
+				local ioread
+				if force then
+					ioread='yes'
+				else
+					ioread=io.read('*line')
 				end
-				for im, m in ipairs(modified) do
-					git_tools.execute('cd "'..path..'";git add "'..m..'"')
-				end
-				git_tools.execute('cd "'..path..'";git commit -m "'..msg..'"')
-				if path~="n" then
-					if useGitSVN then
-						print('Do you want to commit these files to SVN server? (yes/no)')
-						local ioread=io.read('*line')
-						if string.sub(ioread,1,3)=='yes' then
-							os.execute('cd "'..path..'";git svn dcommit')
+				if string.sub(ioread,1,3)=="yes" or string.sub(ioread,1,1)=='y' then
+					local msg=string.sub(ioread,4)
+					if msg=='' then
+						msg='(no msg)'
+					end
+					for im, m in ipairs(modified) do
+						git_tools.execute('cd "'..path..'";git add "'..m..'"')
+					end
+					git_tools.execute('cd "'..path..'";git commit -m "'..msg..'"')
+					if path~="n" then
+						if useGitSVN then
+							print('Do you want to commit these files to SVN server? (yes/no)')
+							local ioread=io.read('*line')
+							if string.sub(ioread,1,3)=='yes' then
+								os.execute('cd "'..path..'";git svn dcommit')
+							end
 						end
 					end
-				end
-				print('\n\n-----------------------')
-				
-				for im, m in ipairs(modified) do
-					print('"'..m..'" added')
-				end
-				git_tools.execute('cd "'..path..'";git status . -s')
-			end
+					print('\n\n-----------------------')
+
+					for im, m in ipairs(modified) do
+						print('"'..m..'" added')
+					end
+					git_tools.execute('cd "'..path..'";git status . -s')
+				elseif string.sub(ioread,1,1)=="d" then
+					git_tools.execute('cd "'..path..'";git diff')
+					bDone=false
+				end 
+			until bDone
 		else
 			print('No locally modified files\n')
 			git_tools.execute('cd "'..path..'";git status . -s')
