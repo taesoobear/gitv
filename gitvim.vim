@@ -15,9 +15,9 @@ set grepprg=gitv\ grep
 
 " tag search words starting with...
 nmap <F3> :ts/\<
-" grep the current word where the cursor is. (Lua pattern is different from regexp)
+" grep the current word under the cursor. (Lua pattern is different from regexp)
 nmap <F4> :grep [^\%a]<C-r><C-w>[^\%a]<CR>
-" tag search the current word where the cursor is. (More robust than c+])
+" tag search the current word under the cursor. (More robust than c+])
 nmap <F5> :tag/\<<C-r><C-w>\><CR>
 nmap <F6> :ts<CR>
 nmap <F7> :make<CR>
