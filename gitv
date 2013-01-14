@@ -9,6 +9,45 @@ g_grepSrc=g_etagsSrc
 g_cache_folder='/tmp/'
 g_vimpath='vim'
 g_gvimpath='gvim'
+g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plot%.', 'OgreFltkConsole.exe', 'console.xml', 'OgreFltkConsoleJIT.exe','optimizelog'}
+
+function printHelp()
+	print([[
+Usage: gitv <command> [option] [<args>]
+
+The most commonly used gitv commands are:
+  --help       Show this page.
+  vi         Open a file in the git repository whose name contains 
+             the keyword using vim. When no keyword is given, history will be shown.
+               $ gitv vi [option] keyword
+             or
+               $ gitv vi [option]
+             option -l: search only subdirectories of the current directory.
+  gvim       Open a file using gvim
+  gedit      Open a file using gedit
+  choose     Write choosen file name to /tmp/chosen
+               $ gitv choose keyword
+  clear-hist Clear history
+  sync       Commit, pull, and then push. 
+  sync .	 Commit only the current folder (without recursing), pull, and then push.
+  pull       Pull the current branch from all remotes
+  fetch      Fetch the current branch from all remotes
+  push       Push the current branch to all remotes
+  commit     Interactively commit the current branch. gitv ci also works.
+  find       Find files 
+               $ gitv find keyword
+  grep       Unlike git grep, entire repository (not limited to the current 
+             directory) will be searched. Files with allowed extensions will only
+             be searched. (see ~/bin/gitv.) Lua patterns are used.
+               $ gitv grep keyword
+  etags .    Generate TAGS for all tracked files in the current folder recursively
+               $ gitv etags .
+  etags      Generate TAGS for all tracked files in the git repository
+  diff       Show differences between commits. 
+               $ gitv diff
+               $ gitv diff HEAD~10
+  ]])
+end
 
 if os.isWindows() then
 	if os.isFileExist("c:\\Program Files\\Git\\share\\vim\\vim73\\vim.exe") then
@@ -89,19 +128,41 @@ function git_tools.execute(cmd)
 		return os.execute(cmd)
 	end
 end
-function git_tools.commit(path,force)
-	if os.isFileExist(path..'/.git/HEAD') then
-		local ignorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plot%.', 'OgreFltkConsole.exe', 'console.xml', 'OgreFltkConsoleJIT.exe','optimizelog'}
-		-- git-svn or git is used as opposed to the plain svn
-		local status= string.lines(git_tools.capture('cd "'..path..'";git status -s .', true))
-		--print('stat=',status[2])
-		local untracked={}
+function git_tools.getUntracked(path)
+	-- git-svn or git is used as opposed to the plain svn
+	local status= string.lines(git_tools.capture('cd "'..path..'";git status -s .', true))
+	--print('stat=',status[2])
+	local untracked={}
+	for il, line in ipairs(status) do
+		local s,e,c=string.find(line, "%?%? (.+)")
+		if s then
+			untracked[#untracked+1]=c
+		end
+	end
+	return untracked
+end
+function git_tools.getFilesToCommit(path)
+		status= string.lines( git_tools.capture('cd "'..path..'";git status .', true))
+		local modified={}
 		for il, line in ipairs(status) do
-			local s,e,c=string.find(line, "%?%? (.+)")
-			if s then
-				untracked[#untracked+1]=c
+			local s,e,c=string.find(line, '#%s+modified:%s+(.+)')
+			if not c then
+				s,e,c=string.find(line, '#%s+new file:%s+(.+)')
+			end
+			if not c then
+				s,e,c=string.find(line, '#%s+renamed:%s+(.+)')
+			end
+			if c then 
+				if not string.isMatched(os.filename(c), g_commitIgnorePattern) then
+					modified[#modified+1]=c
+				end
 			end
 		end
+		return modified
+end
+function git_tools.commit(path,force)
+	if os.isFileExist(path..'/.git/HEAD') then
+		local untracked=git_tools.getUntracked(path)
 		if #untracked>=1 then
 			print('Untracked files:')
 			for i,v in ipairs(untracked) do print(v) end
@@ -132,31 +193,16 @@ function git_tools.commit(path,force)
 			end
 			print('\n\n-----------------------')
 		end
-		status= string.lines( git_tools.capture('cd "'..path..'";git status .', true))
-		local modified={}
-		for il, line in ipairs(status) do
-			local s,e,c=string.find(line, '#%s+modified:%s+(.+)')
-			if not c then
-				s,e,c=string.find(line, '#%s+new file:%s+(.+)')
-			end
-			if not c then
-				s,e,c=string.find(line, '#%s+renamed:%s+(.+)')
-			end
-			if c then 
-				if not string.isMatched(os.filename(c), ignorePattern) then
-					print(c) 
-					modified[#modified+1]=c
-				end
-			end
-		end
+		local modified=git_tools.getFilesToCommit(path)
 		if #modified>=1 then
+			printTable(modified)
 			local bDone
 			repeat
 				bDone=true
 				print('Do you want to commit these files to git repository? (yes/[no]/diff optionally followed by a commit message)')
 				local ioread
 				if force then
-					ioread='yes'
+					ioread='yes'..table.concat(array.sub(arg, 2), " ")
 				else
 					ioread=io.read('*line')
 				end
@@ -499,15 +545,72 @@ if arg[1] then
 			os.execute('nautilus ~/PDF')
 		end
 	elseif arg[1]=='sync' then
-		print("------------------------")
-		print("Commit:")
-		git_tools.commit(git_top())
-		print("------------------------")
-		print("Pull:")
-		git_tools.pull(git_top())
-		print("------------------------")
-		print("Push:")
-		git_tools.push(git_top())
+		if arg[2]=='.' then
+			local untracked=git_tools.getUntracked('.')
+			local filter=function(files)
+				local filtered={}
+				for i,v in ipairs(files) do
+					if select(1,string.find(v, '/')==nil) then
+						table.insert(filtered, v)
+					end
+				end
+				return filtered
+			end
+			local untracked_local=filter(untracked)
+			if #untracked_local>0 then
+				printTable(untracked_local)
+				print("Do you want to add these untracked files to git repository? ([yes]/no)")
+				ioread=io.read('*line')
+				if string.lower(ioread)~='no' then
+					for i,v in ipairs(untracked_local) do
+						os.execute('git add "'..v..'"')
+					end
+					print(msg)
+				end
+			end
+			local modified=filter(git_tools.getFilesToCommit('.'))
+			if #modified>0 then
+				printTable(modified)
+				local bDone
+				repeat
+					bDone=true
+					print("Do you want to commit these files to git repository? ([yes]/no/diff optionally followed by a commit message)")
+					ioread=io.read('*line')
+					if string.lower(string.sub(ioread, 1,2))=='no' then
+					elseif string.lower(string.sub(ioread,1,1))=='d' then
+						git_tools.execute('git diff .')
+						bDone=false
+					else
+						local msg=string.sub(ioread,4)
+						if msg=='' then
+							msg='(no msg)'
+						end
+						for im, m in ipairs(modified) do
+							git_tools.execute('git add "'..m..'"')
+						end
+						git_tools.execute('git commit -m "'..msg..'"')
+					end
+				until bDone 
+			end
+			print("------------------------")
+			print("Pull:")
+			print("------------------------")
+			git_tools.pull(git_top())
+			print("------------------------")
+			print("Push:")
+			print("------------------------")
+			git_tools.push(git_top())
+		else
+			print("------------------------")
+			print("Commit:")
+			git_tools.commit(git_top())
+			print("------------------------")
+			print("Pull:")
+			git_tools.pull(git_top())
+			print("------------------------")
+			print("Push:")
+			git_tools.push(git_top())
+		end
 	elseif arg[1]=='pull' then
 		git_tools.pull(git_top())
 	elseif arg[1]=='push' then
@@ -560,39 +663,9 @@ if arg[1] then
 		os.execute('git diff --stat'..added)
 		print('\n\n-------------------git difftool:-------------------')
 		os.execute('git difftool'..added)
+	else
+		printHelp()
 	end
 else
-	print([[
-Usage: gitv <command> [option] [<args>]
-
-The most commonly used gitv commands are:
-  vi         Open a file in the git repository whose name contains 
-             the keyword using vim. When no keyword is given, history will be shown.
-               $ gitv vi [option] keyword
-             or
-               $ gitv vi [option]
-             option -l: search only subdirectories of the current directory.
-  gvim       Open a file using gvim
-  gedit      Open a file using gedit
-  choose     Write choosen file name to /tmp/chosen
-               $ gitv choose keyword
-  clear-hist Clear history
-  sync       Commit, pull, and then push. 
-  pull       Pull the current branch from all remotes
-  fetch      Fetch the current branch from all remotes
-  push       Push the current branch to all remotes
-  commit     Interactively commit the current branch. gitv ci also works.
-  find       Find files 
-               $ gitv find keyword
-  grep       Unlike git grep, entire repository (not limited to the current 
-             directory) will be searched. Files with allowed extensions will only
-             be searched. (see ~/bin/gitv.) Lua patterns are used.
-               $ gitv grep keyword
-  etags .    Generate TAGS for all tracked files in the current folder recursively
-               $ gitv etags .
-  etags      Generate TAGS for all tracked files in the git repository
-  diff       Show differences between commits. 
-               $ gitv diff
-               $ gitv diff HEAD~10
-  ]])
+	printHelp()
 end
