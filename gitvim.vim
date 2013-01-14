@@ -11,9 +11,12 @@ command! -nargs=* -complete=buffer Bg :call BufSelGit("<args>")
 nmap <c-b> :call BufSel(".")<CR>
 nmap <c-g> :Bg<space>
 "
+set grepprg=gitv\ grep
 
 " tag search words starting with...
-nmap <F4> :ts/\<
+nmap <F3> :ts/\<
+" grep the current word where the cursor is. (Lua pattern is different from regexp)
+nmap <F4> :grep [^\%a]<C-r><C-w>[^\%a]<CR>
 " tag search the current word where the cursor is. (More robust than c+])
 nmap <F5> :tag/\<<C-r><C-w>\><CR>
 nmap <F6> :ts<CR>
@@ -21,7 +24,6 @@ nmap <F7> :make<CR>
 nmap <F8> :copen<CR>
 nmap <F9> :cnext<CR>
 
-set grepprg=gitv\ grep
 set tabstop=4
 set shiftwidth=4
 
