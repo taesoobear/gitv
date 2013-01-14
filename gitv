@@ -23,9 +23,10 @@ The most commonly used gitv commands are:
              or
                $ gitv vi [option]
              option -l: search only subdirectories of the current directory.
+  vir        Same as "vi" except that an existing vim server is used when available.
   gvim       Open a file using gvim
   gedit      Open a file using gedit
-  choose     Write choosen file name to /tmp/chosen
+  choose     Write the name of a choosen file to /tmp/chosen
                $ gitv choose keyword
   clear-hist Clear history
   sync       Commit, pull, and then push. 
@@ -464,6 +465,14 @@ function choose(keys)
 	local chosen=interactiveChoose(fn)
 	return chosen
 end
+function serverLaunched(servername)
+	local servers=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
+	local out=array.filter(function (x) return fn~=servername end,servers)
+	if #out==1 then
+		return false
+	end
+	return true
+end
 -- main: 
 if arg[1] then
 	if arg[1]=="vi" then
@@ -471,6 +480,18 @@ if arg[1] then
 		local chosen=choose(keys)
 		if chosen then
 			os.execute(g_vimpath..' "'..chosen[1]..'"')
+		end
+	elseif arg[1]=="vir" then
+		local keys=array.sub(arg,2)
+		local chosen=choose(keys)
+		if chosen then
+			if serverLaunched("VIM") then
+				print("sent "..chosen[1].." to the vim server")
+				os.execute(g_vimpath..' --servername VIM --remote "'..chosen[1]..'"')
+			else
+				-- launch vim
+				os.execute(g_vimpath..' --servername VIM "'..chosen[1]..'"')
+			end
 		end
 	elseif arg[1]=="gedit" then
 		local keys=array.sub(arg,2)
@@ -482,18 +503,10 @@ if arg[1] then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
 		if chosen then
-			local function serverLaunched()
-				local servers=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
-				local out=array.filter(function (x) return fn~="GVIM" end,servers)
-				if #out==1 then
-					return false
-				end
-				return true
-			end
 
 			if os.isWindows() then
 				local chosenfile=os.toWindowsFileName(chosen[1])
-				if not serverLaunched() then
+				if not serverLaunched("GVIM") then
 					local cmd='start /b cmd /c "'..os.shellEscape(g_gvimpath..' "'..chosenfile..'"')..'"'
 					print(cmd)
 					-- launch gvim
@@ -502,13 +515,13 @@ if arg[1] then
 					os.execute(g_gvimpath..' --remote-silent "'..chosenfile..'"')
 				end
 			else
-				if not serverLaunched() then
+				if not serverLaunched("GVIM") then
 					-- launch gvim
 					os.execute(g_gvimpath..' -f&')
 				end
 
 				while(true) do
-					if serverLaunched() then
+					if serverLaunched("GVIM") then
 						break
 					end
 				end
