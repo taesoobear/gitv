@@ -167,7 +167,7 @@ function git_tools.commit(path,force)
 		if #untracked>=1 then
 			print('Untracked files:')
 			for i,v in ipairs(untracked) do print(v) end
-			print('Do you want to add these untracked files to git repository? (YES/edit/[no])')
+			print('Do you want to add these untracked files to git repository? (YES/edit/[no]/ignore)')
 			local cmd=''
 			for i, v in ipairs(untracked) do 
 				cmd=cmd.. 'git add "'..v..'"\n'
@@ -189,6 +189,14 @@ function git_tools.commit(path,force)
 				else
 					os.execute('gitscript')
 				end
+			elseif string.sub(ioread, 1,6)=='ignore' then
+				local files=table.concat(untracked, '\n')
+				local gitignore=util.readFile(git_top()..'/.gitignore')
+				util.writeFile(git_top()..'/.gitignore.bak', gitignore)
+				if string.sub(gitignore, -1,-1)~='\n' then
+					gitignore=gitignore..'\n'
+				end
+				util.writeFile(git_top()..'/.gitignore', gitignore..files..'\n')
 			else
 				print('\n ignoring all untracked files')
 			end
