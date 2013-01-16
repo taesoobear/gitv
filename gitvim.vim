@@ -20,7 +20,7 @@ set grepprg=gitv\ grep
 nmap <F3> mZ:GitvTS ^
 nmap <C-F3> :ts/\<
 " grep the current word under the cursor. (Lua pattern is different from regexp)
-nmap <F4> :grep [^\%a]<C-r><C-w>[^\%a]<CR>
+nmap <F4> :grep [^\%a]<C-r><C-w>[^\%a]<CR>:copen<CR>
 " tag search the current word using gitv ts. Use <S-F5> instead of <C-t> to go back.
 nmap <F5> mZ:GitvTS ^<C-r><C-w>$<CR>
 nmap <S-F5> 'Z

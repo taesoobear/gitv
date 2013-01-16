@@ -4,7 +4,7 @@ require("mylib")
  
 -- order doesn't matter
 g_etagsSrc={ "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
-g_vimSrc={"%.wiki$","%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={"%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=g_etagsSrc
 g_cache_folder='/tmp/'
 g_vimpath='vim'
@@ -552,6 +552,9 @@ function interactiveTagChoose(fn)
 				local idx=string.findLastOf(string.upper(v[2]), string.upper(cmd))
 				if idx~=nil then
 					array.pushBack(refinedFn, v)
+				else 
+					idx=string.findLastOf(string.upper(os.filename(v[3])), string.upper(cmd))
+					if idx~=nil then array.pushBack(refinedFn, v) end
 				end
 			end
 			fn=refinedFn
