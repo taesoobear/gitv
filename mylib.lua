@@ -25,6 +25,18 @@ function assert(bVal)
    return bVal
 end
 
+--[[
+print2=print
+function print(...)
+
+	local a={...}
+	if a[1]==700000 then
+		dbg.console() 
+	end
+	print2(...)
+end
+]]--
+
 
 function dbg.lunaType(c)
 	if type(c)~='userdata' then
@@ -427,25 +439,25 @@ function dbg.console(msg, stackoffset)
 		end
 
 		if cmd=="h" or string.sub(line,1,4)=="help" then --help
-			print('cs[level=3]      : print callstack')
-			print('c[level=1]       : print source code at a stack level')
-			print(';(lua statement) : eval lua statements. e.g.) ;print(a)')
-			print(':(lua statement) : eval lua statements and exit debug console. e.g.) ;dbg.startCount(10)')
+			print('bt[level=3]      : backtrace. Prints callstack')
+			print(';(lua statement) : eval lua statements. Usually, ";" can be omitted. e.g.) print(a) ')
+			print(':(lua statement) : eval lua statements and exit debug console. e.g.) :dbg.startCount(10)')
 			print('s[number=1]      : proceed n steps')
 			print('r filename [lineno]  : run until execution of a line. filename can be a postfix substring. e.g.) r syn.lua 32')
+			print('c[level=2]       : print source code at a stack level')
 			print('e[level=2]       : show current line (at callstack level 2) in gedit editor')
 			print('v[level=2]       : show current line (at callstack level 2) in vi editor')
 			print('c[level=2]       : show nearby lines (at callstack level 2) here')
-			print('l[level=0]       : print local variables. Results are saved into \'l variable.')
-			print("                   e.g) DEBUG]>print('l.self.mVec)")
-			print('clist 		: list luna classes')
+			print('l[level=2]       : print local variables. Results are saved into \'l variable.')
+			print("                      e.g) DEBUG]>print('l.self.mVec)")
+			print('clist            : list luna classes')
 			print('clist className  : list functions in the class')
 			print('cont             : exit debug mode')
-			print('lua global variable     : Simply typing "a" print the content of a global variable "a".')
-			print('lua local variable     : Simply typing "`a" print the content of a local variable "a".')
+			print('global variables : Simply type "a" to print the content of a global variable "a".')
+			print('local variables  : Simply type "`a" to print the content of a local variable "a".')
 			print('lua statement    : run it')
 		elseif line=="cont" then break
-		elseif string.sub(line,1,2)=="cs" then dbg.callstack(tonumber(string.sub(line,3)) or 3)
+		elseif string.sub(line,1,2)=="bt" then dbg.callstack(tonumber(string.sub(line,3)) or 3)
 		elseif line=="clist" or string.sub(line,1,6)=='clist ' then
 			dbg.listLunaClasses(line)		
 		elseif cmd=="c" then
@@ -1259,7 +1271,8 @@ function pairsByKeys (t, f)
    return iter
 end
 
-function printTable(t, bPrintUserData)
+function printTable(t, bPrintUserData, maxLen)
+	maxLen=maxLen or 80
 	print('{')
 	for k,v in pairsByKeys(t) do
 		local tv=type(v)
@@ -1272,7 +1285,7 @@ function printTable(t, bPrintUserData)
 				print('\t['..k..']=('..tv..'), ')
 			end
 		elseif tv=="table" then
-			print('\t['..k..']='..table.toPrettyString(v, 80))
+			print('\t['..k..']='..table.toPrettyString(v, maxLen))
 		else
 			print('\t['..k..']='..tv..', ')
 		end
