@@ -3,22 +3,29 @@
 imap <C-c> <ESC>
 
 
-"select buffers using :Bs or :Bg
+" select buffers using :Bs or :Bg or :GitvTS
 command! -nargs=? -complete=buffer Bs :call BufSel("<args>")
 command! -nargs=* -complete=buffer Bg :call BufSelGit("<args>")
-"
+command! -nargs=* -complete=buffer GitvTS :call BufSelTag("<args>")
+" :CD to change the current directory to whatever directory your buffer currently is in. 
+command! -nargs=0 CD :execute ":lcd " . expand("%:p:h") 
+
 "select buffers using C-b or C-g
 nmap <c-b> :call BufSel(".")<CR>
 nmap <c-g> :Bg<space>
 "
 set grepprg=gitv\ grep
 
-" tag search words starting with...
-nmap <F3> :ts/\<
+" tag search words starting with... Use <S-F5> instead of <C-t> to go back.
+nmap <F3> mZ:GitvTS ^
+nmap <C-F3> :ts/\<
 " grep the current word under the cursor. (Lua pattern is different from regexp)
 nmap <F4> :grep [^\%a]<C-r><C-w>[^\%a]<CR>
+" tag search the current word using gitv ts. Use <S-F5> instead of <C-t> to go back.
+nmap <F5> mZ:GitvTS ^<C-r><C-w>$<CR>
+nmap <S-F5> 'Z
 " tag search the current word under the cursor. (More robust than c+])
-nmap <F5> :tag/\<<C-r><C-w>\><CR>
+nmap <C-F5> :tag/\<<C-r><C-w>\><CR>
 nmap <F6> :ts<CR>
 nmap <F7> :make<CR>
 nmap <F8> :copen<CR>
@@ -40,6 +47,26 @@ function! BufSelGit(pattern)
 		silent execute "!gitv choose ".a:pattern
 		if filereadable('/tmp/chosen')
 			exec 'edit ' . system('cat /tmp/chosen')
+			call system('rm /tmp/chosen')
+		end
+		redraw!
+	endif
+endfunction
+function! BufSelTag(pattern)
+	if has("gui_running")
+		execute "!gitv tschoose ".a:pattern
+		if filereadable('/tmp/chosen')
+			exec 'edit ' . system('cat /tmp/chosen')
+			exec ':' . system('cat /tmp/chosen_line')
+			call system('rm /tmp/chosen')
+		end
+		redraw!
+	else
+		silent execute "!clear"
+		silent execute "!gitv tschoose ".a:pattern
+		if filereadable('/tmp/chosen')
+			exec 'edit ' . system('cat /tmp/chosen')
+			exec ':' . system('cat /tmp/chosen_line')
 			call system('rm /tmp/chosen')
 		end
 		redraw!

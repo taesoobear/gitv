@@ -9,6 +9,8 @@ g_grepSrc=g_etagsSrc
 g_cache_folder='/tmp/'
 g_vimpath='vim'
 g_gvimpath='gvim'
+-- ignore files that match following patterns even if they are in the repository.
+g_ignorePattern={'^BaseLib/image/FreeImage/Dist/','^dependencies/'}
 g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plot%.', 'OgreFltkConsole.exe', 'console.xml', 'OgreFltkConsoleJIT.exe','optimizelog'}
 
 function printHelp()
@@ -24,11 +26,12 @@ The most commonly used gitv commands are:
                $ gitv vi [option]
              option -l: search only subdirectories of the current directory.
   vir        Same as "vi" except that an existing vim server is used when available.
-  ts         Search tags, and open using vim. For example, to edit main() function:
-               $ gitv ts ^main$
+  ts         Search a keyword in ./TAGS, and open using vim. ./TAGS will be generated if not exists. 
+             For example, to edit main() function:
+               $ gitv ts main$
   gvim       Open a file using gvim
   gedit      Open a file using gedit
-  choose     Write the name of a choosen file to /tmp/chosen
+  choose     Write the name of a choosen file to ]]..g_cache_folder..[[chosen
                $ gitv choose keyword
   clear-hist Clear history
   sync       Commit, pull, and then push. 
@@ -69,12 +72,18 @@ git_tools={}
 function string.prettyConcat(a,b,min_a)
 	
 	if #a<min_a then
+		if #a==0 then
+			return b
+		end
 		return a..string.rep(' ',min_a-#a)..b
 	end
 	return a..b
 end
 
 function git_tools.compareFileName(f1, f2)
+	if f1==nil or f2==nil then
+		dbg.console()
+	end
 		local _, count1 = string.gsub(f1, "/", "")
 		local _, count2 = string.gsub(f2, "/", "")
 		if count1==count2 then
@@ -85,8 +94,26 @@ function git_tools.compareFileName(f1, f2)
 		end
 		return count1<count2
 end
+function string.linesContaining(str, pattern)
+	pattern=string.gsub(pattern,'[%$%^]','')
+	assert(type(str)=='string')
+	local t = {}
+	local lastFileTag=''
+	local function helper(line) 
+		if select(1, string.find(string.upper(line),string.upper(pattern))) then 
+			table.insert(t, lastFileTag) 
+			table.insert(t, line) 
+		elseif not select(1, string.find(line, string.char(127))) then
+			lastFileTag=line
+		end
+		return "" 
+	end
+	helper((str:gsub("(.-)\r?\n", helper)))
+	return t
+end
 function git_tools.searchTag(filename, searchKey) 
-	local t=string.lines(util.readFile(filename))
+	local t=string.linesContaining(util.readFile(filename), searchKey)
+	--local t=string.lines(util.readFile(filename))
 	local currFile
 	local tags={}
 	local MAX_SEARCH=100
@@ -107,6 +134,24 @@ function git_tools.searchTag(filename, searchKey)
 				if #tags> MAX_SEARCH then
 					break
 				end
+			end
+		end
+	end
+	do
+		-- change relative folder.
+		local fn, path=os.processFileName(filename)
+		if path~='' then
+			local tagRoot=os.relativeToAbsolutePath(path)
+			local currDir=os.currentDirectory()
+
+			--print(tagRoot, currDir)
+			--print(fn, path)
+			for i=1,#tags do
+				local t=tags[i][3]
+				t=os.relativeToAbsolutePath(t, tagRoot)
+				t=os.absoluteToRelativePath(t, currDir)
+				--print(tags[i][3], t)
+				tags[i][3]=t
 			end
 		end
 	end
@@ -452,8 +497,8 @@ function interactiveTagChoose(fn)
 		local prevFn
 		for i,v in ipairs(fn) do
 			local printFn
-			if prevFn==v[3] then
-				printFn=''
+			if prevFn==v[3] and v[4]~=1 then
+				printFn='    + '..v[4]
 			else
 				printFn='    | '..v[3]
 				prevFn=v[3]
@@ -475,9 +520,9 @@ function interactiveTagChoose(fn)
 			end
 			v[2]=string.trimSpaces(v[2])
 			if c==1 then
-				print(string.prettyConcat("["..tostring(c).."]  "..v[2],printFn,60))
+				print("["..tostring(c).."]  "..string.prettyConcat(v[2],printFn,60))
 			else
-				print(string.prettyConcat("("..tostring(c)..")  "..v[2],printFn,60))
+				print("("..tostring(c)..")  "..string.prettyConcat(v[2],printFn,60))
 			end
 			c=c+1
 			if c>20 then
@@ -490,17 +535,13 @@ function interactiveTagChoose(fn)
 		index=tonumber(cmd) 
 
 		if cmd=="" then 
-			if fromHistory or nhist~=0 then
-				index=1
-				break
-			else
-				return nil 
-			end
+			index=1
+			break
 		elseif index==nil then 
 			-- refine search
 			local refinedFn={}
 			for i,v in ipairs(fn) do
-				local idx=string.findLastOf(string.upper(v[1]), string.upper(cmd))
+				local idx=string.findLastOf(string.upper(v[2]), string.upper(cmd))
 				if idx~=nil then
 					array.pushBack(refinedFn, v)
 				end
@@ -555,6 +596,16 @@ function lsFiles(option)
 
 	local files=string.lines(cpt)
 	local files=array.sub(files,1,-2)
+	if #g_ignorePattern>0 then
+		files=array.filter(function (fn)
+			for i,pattern in ipairs(g_ignorePattern) do
+				if select(1,string.find(fn, pattern)) then
+					return false
+				end
+			end
+			return true
+		end, files)
+	end
 	table.sort(files, git_tools.compareFileName)
 	return files
 end
@@ -606,6 +657,19 @@ function os.vi_remote(filename, line)
 		end
 	end
 end
+function git_tools.tagChoose(keyword)
+	if keyword==nil then
+		printHelp()
+		return nil
+	end
+	print('Searching '..arg[2])
+	if not os.isFileExist(git_top()..'/TAGS') then
+		print('Generating '..git_top()..'/TAGS...')
+		main('etags', git_top())
+	end
+	local chosen=interactiveTagChoose(git_tools.searchTag(git_top()..'/TAGS', arg[2]))
+	return chosen
+end
 function main(...)
 	local arg={...}
 	if arg[1]=="vi" then
@@ -621,17 +685,15 @@ function main(...)
 			os.vi_remote(chosen[1])
 		end
 	elseif arg[1]=="ts" then
-		if arg[2]==nil then
-			printHelp()
-			return
-		end
-		if not os.isFileExist('TAGS') then
-			print('Generating TAGS...')
-			main('etags')
-		end
-		local chosen=interactiveTagChoose(git_tools.searchTag('TAGS', arg[2]))
+		local chosen=git_tools.tagChoose(arg[2])
 		if chosen then
 			os.vi_remote(chosen[3],chosen[4])
+		end
+	elseif arg[1]=="tschoose" then
+		local chosen=git_tools.tagChoose(arg[2])
+		if chosen then
+			util.writeFile(g_cache_folder..'chosen', chosen[3] )
+			util.writeFile(g_cache_folder..'chosen_line', tostring(chosen[4]) )
 		end
 	elseif arg[1]=="gedit" then
 		local keys=array.sub(arg,2)
@@ -782,7 +844,10 @@ function main(...)
 		local files=array.filter(isSourceCode,lsFiles())
 		if arg[2]=='.' then
 			files=array.filter(function (f) local s=string.find(f, '^%.%.') return not s end, files)
+		elseif arg[2] then
 			--printTable(files)
+			os.execute2('cd "'..arg[2]..'"', 'gitv etags')
+			return
 		end
 		table.sort(files, git_tools.compareFileName)
 		util.writeFile(g_cache_folder..'gitvsrclist', table.concat(files,'\n'))
@@ -803,7 +868,8 @@ function main(...)
 		local files=lsFiles()
 		for i,f in ipairs(files) do print (f) end
 	elseif arg[1]=='clear-hist' then
-		os.execute('rm '..g_cache_folder..'cache_hist.txt')
+		os.deleteFiles(g_cache_folder..'cache_hist.txt')
+		os.deleteFiles(git_top()..'/TAGS')
 	elseif arg[1]=='cmd' then
 		local cmd={go=os.openFolder} 
 		local fn=cmd[arg[2]]
