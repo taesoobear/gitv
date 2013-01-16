@@ -16,7 +16,7 @@ function printHelp()
 Usage: gitv <command> [option] [<args>]
 
 The most commonly used gitv commands are:
-  --help       Show this page.
+  --help     Show this page.
   vi         Open a file in the git repository whose name contains 
              the keyword using vim. When no keyword is given, history will be shown.
                $ gitv vi [option] keyword
@@ -24,6 +24,8 @@ The most commonly used gitv commands are:
                $ gitv vi [option]
              option -l: search only subdirectories of the current directory.
   vir        Same as "vi" except that an existing vim server is used when available.
+  ts         Search tags, and open using vim. For example, to edit main() function:
+               $ gitv ts ^main$
   gvim       Open a file using gvim
   gedit      Open a file using gedit
   choose     Write the name of a choosen file to /tmp/chosen
@@ -64,7 +66,57 @@ function git_top()
 	return string.lines(os.capture('git rev-parse --show-toplevel', true))[1]
 end 
 git_tools={}
+function string.prettyConcat(a,b,min_a)
+	
+	if #a<min_a then
+		return a..string.rep(' ',min_a-#a)..b
+	end
+	return a..b
+end
 
+function git_tools.compareFileName(f1, f2)
+		local _, count1 = string.gsub(f1, "/", "")
+		local _, count2 = string.gsub(f2, "/", "")
+		if count1==count2 then
+			return string.upper(f1)<string.upper(f2)
+			--local lf1, p2=os.processFileName(f1)
+			--local lf2, p2=os.processFileName(f2)
+			--return lf1<lf2
+		end
+		return count1<count2
+end
+function git_tools.searchTag(filename, searchKey) 
+	local t=string.lines(util.readFile(filename))
+	local currFile
+	local tags={}
+	local MAX_SEARCH=100
+	for i=1,#t do
+		local o=''
+		local oo=string.tokenize(t[i],string.char(127))
+		if #oo==1 then
+			local oo2=string.tokenize(oo[1], ',')
+			if #oo2==2 then
+				--print(oo2[1], oo2[2])
+				currFile=oo2[1]
+			end
+		else 
+			local oo2=string.tokenize(oo[2], string.char(1))
+			--print(oo2[1])
+			if select(1,string.find(string.upper(oo2[1]),string.upper(searchKey))) then
+				table.insert(tags, {oo2[1], oo[1], currFile, tonumber(string.tokenize(oo2[2],',')[1])})
+				if #tags> MAX_SEARCH then
+					break
+				end
+			end
+		end
+	end
+	table.sort(tags, function(f11,f21)
+		local f1=f11[3]
+		local f2=f21[3]
+		return git_tools.compareFileName(f1,f2)
+	end)
+	return tags
+end
 function git_tools.pull(path)
 	if os.isFileExist(path..'/.git/HEAD') then
 		local remotes=array.filter(function (a) return string.len(a)>1 end, string.lines(git_tools.capture('cd "'..path..'";git remote',true)))
@@ -391,6 +443,77 @@ function interactiveChoose(fn, fromHistory)
 
 	return fn[index]
 end
+function interactiveTagChoose(fn)
+	local index=1
+	while #fn>1 do
+		-- start file choose interface
+		print('--------------------------------------------------------------')
+		local c=1
+		local prevFn
+		for i,v in ipairs(fn) do
+			local printFn
+			if prevFn==v[3] then
+				printFn=''
+			else
+				printFn='    | '..v[3]
+				prevFn=v[3]
+			end
+				
+			-- clean up function name
+			do 
+				-- remove function definition
+				local s,e=string.find(v[2], '{')
+				if s then
+					v[2]=string.sub(v[2], 1,s-1)
+				end
+				-- remove long arguments
+				local s=string.tokenize(v[2],',')
+				if #s>2 then
+					v[2]=s[1]..','..s[2]..',...'
+				end
+				v[2]=string.gsub(v[2], '%s+',' ')
+			end
+			v[2]=string.trimSpaces(v[2])
+			if c==1 then
+				print(string.prettyConcat("["..tostring(c).."]  "..v[2],printFn,60))
+			else
+				print(string.prettyConcat("("..tostring(c)..")  "..v[2],printFn,60))
+			end
+			c=c+1
+			if c>20 then
+				print('... not displaying more candidates') 
+				break
+			end
+		end
+		print('Enter file shortcut (shown on the right) or keyword to further refine the search:')
+		local cmd=io.read('*line')
+		index=tonumber(cmd) 
+
+		if cmd=="" then 
+			if fromHistory or nhist~=0 then
+				index=1
+				break
+			else
+				return nil 
+			end
+		elseif index==nil then 
+			-- refine search
+			local refinedFn={}
+			for i,v in ipairs(fn) do
+				local idx=string.findLastOf(string.upper(v[1]), string.upper(cmd))
+				if idx~=nil then
+					array.pushBack(refinedFn, v)
+				end
+			end
+			fn=refinedFn
+			index=1
+			if #fn==0 then return nil end
+		else
+			break
+		end
+	end
+	return fn[index]
+end
 function findFileFromGit(key, ...)
 	local fn
 	do
@@ -432,14 +555,7 @@ function lsFiles(option)
 
 	local files=string.lines(cpt)
 	local files=array.sub(files,1,-2)
-	table.sort(files, function(f1,f2)
-		local _, count1 = string.gsub(f1, "/", "")
-		local _, count2 = string.gsub(f2, "/", "")
-		--local lf1, p2=os.processFileName(f1)
-		--local lf2, p2=os.processFileName(f2)
-		--return count1*1000+#lf1<count2*1000+#lf2
-		return count1<count2
-	end)
+	table.sort(files, git_tools.compareFileName)
 	return files
 end
 function choose(keys)
@@ -473,8 +589,25 @@ function serverLaunched(servername)
 	end
 	return true
 end
--- main: 
-if arg[1] then
+function os.vi_remote(filename, line)
+	if serverLaunched("VIM") then
+		print("sent "..filename.." to the vim server")
+		if line then
+			os.execute(g_vimpath..' --servername VIM --remote +'..line..' "'..filename..'"')
+		else
+			os.execute(g_vimpath..' --servername VIM --remote "'..filename..'"')
+		end
+	else
+		-- launch vim
+		if line then
+			os.execute(g_vimpath..' --servername VIM +'..line..' "'..filename..'"')
+		else
+			os.execute(g_vimpath..' --servername VIM "'..filename..'"')
+		end
+	end
+end
+function main(...)
+	local arg={...}
 	if arg[1]=="vi" then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
@@ -485,13 +618,20 @@ if arg[1] then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
 		if chosen then
-			if serverLaunched("VIM") then
-				print("sent "..chosen[1].." to the vim server")
-				os.execute(g_vimpath..' --servername VIM --remote "'..chosen[1]..'"')
-			else
-				-- launch vim
-				os.execute(g_vimpath..' --servername VIM "'..chosen[1]..'"')
-			end
+			os.vi_remote(chosen[1])
+		end
+	elseif arg[1]=="ts" then
+		if arg[2]==nil then
+			printHelp()
+			return
+		end
+		if not os.isFileExist('TAGS') then
+			print('Generating TAGS...')
+			main('etags')
+		end
+		local chosen=interactiveTagChoose(git_tools.searchTag('TAGS', arg[2]))
+		if chosen then
+			os.vi_remote(chosen[3],chosen[4])
 		end
 	elseif arg[1]=="gedit" then
 		local keys=array.sub(arg,2)
@@ -644,6 +784,7 @@ if arg[1] then
 			files=array.filter(function (f) local s=string.find(f, '^%.%.') return not s end, files)
 			--printTable(files)
 		end
+		table.sort(files, git_tools.compareFileName)
 		util.writeFile(g_cache_folder..'gitvsrclist', table.concat(files,'\n'))
 		local cmd='etags --extra=+f --langmap=c++:.inl.h.hpp.c.cpp.cc.cxx -L '..g_cache_folder..'gitvsrclist'
 		print(cmd)
@@ -668,7 +809,6 @@ if arg[1] then
 		local fn=cmd[arg[2]]
 		if arg[3] then fn(arg[3]) end
 	elseif arg[1]=='diff' then
-
 		local added=''
 		if arg[2] then added=' '..arg[2] end
 		if arg[3] then added=' "'..arg[3]..'"' end
@@ -680,6 +820,9 @@ if arg[1] then
 	else
 		printHelp()
 	end
+end
+if arg[1] then
+	main(unpack(arg))
 else
 	printHelp()
 end
