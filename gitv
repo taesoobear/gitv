@@ -29,6 +29,9 @@ The most commonly used gitv commands are:
   ts         Search a keyword in ./TAGS, and open using vim. ./TAGS will be generated if not exists. 
              For example, to edit main() function:
                $ gitv ts main$
+  tl         List tags that match multiple keywords. The first keyword only matches either function names or class names.
+             You can skip the first keyword using "." pattern. To list all functions in class "motion":
+               $ gitv tl . [^%a]motion::
   gvim       Open a file using gvim
   gedit      Open a file using gedit
   choose     Write the name of a choosen file to ]]..g_cache_folder..[[chosen
@@ -87,7 +90,7 @@ function git_tools.compareFileName(f1, f2)
 		local _, count1 = string.gsub(f1, "/", "")
 		local _, count2 = string.gsub(f2, "/", "")
 		if count1==count2 then
-			return string.upper(f1)<string.upper(f2)
+			return string.lower(f1)<string.lower(f2)
 			--local lf1, p2=os.processFileName(f1)
 			--local lf2, p2=os.processFileName(f2)
 			--return lf1<lf2
@@ -100,7 +103,7 @@ function string.linesContaining(str, pattern)
 	local t = {}
 	local lastFileTag=''
 	local function helper(line) 
-		if select(1, string.find(string.upper(line),string.upper(pattern))) then 
+		if select(1, string.find(string.lower(line),string.lower(pattern))) then 
 			table.insert(t, lastFileTag) 
 			table.insert(t, line) 
 		elseif not select(1, string.find(line, string.char(127))) then
@@ -116,7 +119,7 @@ function git_tools.searchTag(filename, searchKey)
 	--local t=string.lines(util.readFile(filename))
 	local currFile
 	local tags={}
-	local MAX_SEARCH=100
+	local MAX_SEARCH=100000
 	for i=1,#t do
 		local o=''
 		local oo=string.tokenize(t[i],string.char(127))
@@ -129,7 +132,7 @@ function git_tools.searchTag(filename, searchKey)
 		else 
 			local oo2=string.tokenize(oo[2], string.char(1))
 			--print(oo2[1])
-			if select(1,string.find(string.upper(oo2[1]),string.upper(searchKey))) then
+			if select(1,string.find(string.lower(oo2[1]),string.lower(searchKey))) then
 				table.insert(tags, {oo2[1], oo[1], currFile, tonumber(string.tokenize(oo2[2],',')[1])})
 				if #tags> MAX_SEARCH then
 					break
@@ -467,7 +470,7 @@ function interactiveChoose(fn, fromHistory)
 			-- refine search
 			local refinedFn={}
 			for i,v in ipairs(fn) do
-				local idx=string.findLastOf(string.upper(v[1]), string.upper(cmd))
+				local idx=string.findLastOf(string.lower(v[1]), string.lower(cmd))
 				if idx~=nil then
 					array.pushBack(refinedFn, v)
 				end
@@ -496,8 +499,37 @@ function interactiveChoose(fn, fromHistory)
 
 	return fn[index]
 end
-function interactiveTagChoose(fn)
+function interactiveTagChoose(fn, inputs)
 	local index=1
+	local print=print
+	local getInput=function() return io.read('*line') end
+	local _currentInput=0
+
+	if inputs then 
+		print=function() end
+		getInput=function()
+			--dbg.console()
+			_currentInput= _currentInput+1
+			return inputs[_currentInput]
+		end
+	end
+
+	local function cleanUpFunctionName(v)
+		-- remove function definition
+		local s,e=string.find(v[2], '{')
+		if s then
+			v[2]=string.sub(v[2], 1,s-1)
+		end
+		if _currentInput==0 then
+			-- remove long arguments
+			local s=string.tokenize(v[2],',')
+			if #s>2 then
+				v[2]=s[1]..','..s[2]..',...'
+			end
+		end
+		v[2]=string.gsub(v[2], '%s+',' ')
+		v[2]=string.trimSpaces(v[2])
+	end
 	while #fn>1 do
 		-- start file choose interface
 		print('--------------------------------------------------------------')
@@ -512,21 +544,7 @@ function interactiveTagChoose(fn)
 				prevFn=v[3]
 			end
 				
-			-- clean up function name
-			do 
-				-- remove function definition
-				local s,e=string.find(v[2], '{')
-				if s then
-					v[2]=string.sub(v[2], 1,s-1)
-				end
-				-- remove long arguments
-				local s=string.tokenize(v[2],',')
-				if #s>2 then
-					v[2]=s[1]..','..s[2]..',...'
-				end
-				v[2]=string.gsub(v[2], '%s+',' ')
-			end
-			v[2]=string.trimSpaces(v[2])
+			cleanUpFunctionName(v)
 			if c==1 then
 				print("["..tostring(c).."]  "..string.prettyConcat(v[2],printFn,60))
 			else
@@ -539,21 +557,28 @@ function interactiveTagChoose(fn)
 			end
 		end
 		print('Enter file shortcut (shown on the right) or keyword to further refine the search:')
-		local cmd=io.read('*line')
+		local cmd=getInput()
 		index=tonumber(cmd) 
 
 		if cmd=="" then 
 			index=1
 			break
+		elseif cmd==nil then
+			-- prints
+			for i,v in ipairs(fn) do
+				cleanUpFunctionName(v)
+				io.write(string.prettyConcat(v[2],' | '.. v[3], 60)..'\n')
+			end
+			return nil
 		elseif index==nil then 
 			-- refine search
 			local refinedFn={}
 			for i,v in ipairs(fn) do
-				local idx=string.findLastOf(string.upper(v[2]), string.upper(cmd))
+				local idx=string.find(string.lower(v[2]), string.lower(cmd))
 				if idx~=nil then
 					array.pushBack(refinedFn, v)
 				else 
-					idx=string.findLastOf(string.upper(os.filename(v[3])), string.upper(cmd))
+					idx=string.findLastOf(string.lower(os.filename(v[3])), string.lower(cmd))
 					if idx~=nil then array.pushBack(refinedFn, v) end
 				end
 			end
@@ -582,7 +607,7 @@ function findFileFromGit(key, ...)
 				or select(1,string.find(file, "%.inl$")) 
 				or select(1,string.find(file, "%.cpp$")) then
 				for ikey,key in ipairs(keys) do
-					if select(1,string.find(string.upper(file), string.upper(key))) then
+					if select(1,string.find(string.lower(file), string.lower(key))) then
 						fn[#fn+1]={file}
 						break
 					end
@@ -633,7 +658,7 @@ function choose(keys)
 		if string.isMatched(file,g_vimSrc)  then
 			local filename=os.filename(file)
 			for ikey,key in ipairs(keys) do
-				if select(1,string.find(string.upper(filename), string.upper(key))) then
+				if select(1,string.find(string.lower(filename), string.lower(key))) then
 					fn[#fn+1]={file}
 					break
 				end
@@ -673,14 +698,26 @@ function git_tools.tagChoose(keyword)
 		printHelp()
 		return nil
 	end
-	print('Searching '..arg[2])
+	print('Searching '..keyword)
 	if not os.isFileExist(git_top()..'/TAGS') then
 		print('Generating '..git_top()..'/TAGS...')
 		main('etags', git_top())
 	end
-	local chosen=interactiveTagChoose(git_tools.searchTag(git_top()..'/TAGS', arg[2]))
+	local chosen=interactiveTagChoose(git_tools.searchTag(git_top()..'/TAGS', keyword))
 	return chosen
 end
+function git_tools.tagList(keywords)
+	if keywords[1]==nil then
+		printHelp()
+		return nil
+	end
+	if not os.isFileExist(git_top()..'/TAGS') then
+		print('Generating '..git_top()..'/TAGS...')
+		main('etags', git_top())
+	end
+	interactiveTagChoose(git_tools.searchTag(git_top()..'/TAGS', keywords[1]), array.sub(keywords,2))
+end
+
 function main(...)
 	local arg={...}
 	if arg[1]=="vi" then
@@ -700,6 +737,8 @@ function main(...)
 		if chosen then
 			os.vi_remote(chosen[3],chosen[4])
 		end
+	elseif arg[1]=="tl" then
+		git_tools.tagList(array.sub(arg,2))
 	elseif arg[1]=="tschoose" then
 		local chosen=git_tools.tagChoose(arg[2])
 		if chosen then
@@ -755,7 +794,7 @@ function main(...)
 		for ifile, file in ipairs(files) do
 			local passed=true
 			for j=1,#keys do
-				if not select(1,string.find(string.upper(file), string.upper(keys[j]))) then
+				if not select(1,string.find(string.lower(file), string.lower(keys[j]))) then
 					passed=false
 				end
 			end

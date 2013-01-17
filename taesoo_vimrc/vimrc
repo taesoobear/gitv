@@ -18,12 +18,12 @@ set clipboard=unnamed
 set tabstop=4
 set shiftwidth=4
 set noexpandtab
-"set tags=./TAGS,c:\taesoo_cmu\ctags,d:\cmu\taesoo_cmu\ctags,tags,TAGS
-set tags=~/taesoo_cmu/TAGS,./TAGS
+set tags=./TAGS
 set notagbsearch
 set nowrap
 " code folding using indentation
 set fdm=indent
+set foldlevel=3
 
 """""""""""""""""""""""""""""""""""""""""""""
 " maps

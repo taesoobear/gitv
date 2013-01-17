@@ -27,7 +27,7 @@ nmap <S-F5> 'Z
 " tag search the current word under the cursor. (More robust than c+])
 nmap <C-F5> :tag/\<<C-r><C-w>\><CR>
 nmap <F6> :ts<CR>
-nmap <F7> :make<CR>
+nmap <F7> :make<CR>:copen<CR>
 nmap <F8> :copen<CR>
 nmap <F9> :cnext<CR>
 
