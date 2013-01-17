@@ -13,6 +13,13 @@ command! -nargs=0 CD :execute ":lcd " . expand("%:p:h")
 "select buffers using C-b or C-g
 nmap <c-b> :call BufSel(".")<CR>
 nmap <c-g> :Bg<space>
+
+amenu &Gitv.&select\ buffer :Bg<space>
+amenu &Gitv.&tag\ search :GitvTS<space>^
+amenu &Gitv.&grep\ current\ word :grep [^\%a]<C-r><C-w>[^\%a]<CR>:copen<CR>
+amenu &Gitv.tag\ search\ current\ &word mZ:GitvTS ^<C-r><C-w>$<CR>
+amenu &Gitv.go\ &back 'Z
+
 "
 set grepprg=gitv\ grep
 

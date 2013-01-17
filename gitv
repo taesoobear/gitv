@@ -26,19 +26,20 @@ The most commonly used gitv commands are:
                $ gitv vi [option]
              option -l: search only subdirectories of the current directory.
   vir        Same as "vi" except that an existing vim server is used when available.
-  ts         Search a keyword in ./TAGS, and open using vim. ./TAGS will be generated if not exists. 
-             For example, to edit main() function:
+  ts         Search a keyword in $GIT_ROOT/TAGS, and open using vim. $GIT_ROOT is automatically detected,
+             and TAGS is generated if not there. 
+             To edit main() function:
                $ gitv ts main$
-  tl         List tags that match multiple keywords. The first keyword only matches either function names or class names.
+  tl         List tags that match multiple patterns. The first pattern only matches the function name.
              You can skip the first keyword using "." pattern. To list all functions in class "motion":
                $ gitv tl . [^%a]motion::
   gvim       Open a file using gvim
   gedit      Open a file using gedit
   choose     Write the name of a choosen file to ]]..g_cache_folder..[[chosen
                $ gitv choose keyword
-  clear-hist Clear history
+  clear-hist Clear history. $GIT_ROOT/TAGS will be removed too.
   sync       Commit, pull, and then push. 
-  sync .	 Commit only the current folder (without recursing), pull, and then push.
+  sync .     Commit only the current folder (without recursing), pull, and then push.
   pull       Pull the current branch from all remotes
   fetch      Fetch the current branch from all remotes
   push       Push the current branch to all remotes
@@ -441,7 +442,7 @@ function interactiveChoose(fn, fromHistory)
 		print('--------------------------------------------------------------')
 		local c=1
 		for i,v in ipairs(fn) do
-			if c==1 and c<=nhist then
+			if c==1 then --and c<=nhist then
 				print(v[1], "("..tostring(c).." - default)") 
 			else
 				print(v[1], "("..tostring(c)..")") 
@@ -460,12 +461,12 @@ function interactiveChoose(fn, fromHistory)
 		index=tonumber(cmd) 
 
 		if cmd=="" then 
-			if fromHistory or nhist~=0 then
+			--if fromHistory or nhist~=0 then
 				index=1
 				break
-			else
-				return nil 
-			end
+			--else
+			--	return nil 
+			--end
 		elseif index==nil then 
 			-- refine search
 			local refinedFn={}
@@ -668,21 +669,21 @@ function choose(keys)
 	local chosen=interactiveChoose(fn)
 	return chosen
 end
-function serverLaunched(servername)
-	local servers=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
-	local out=array.filter(function (x) return fn~=servername end,servers)
-	if #out==1 then
-		return false
+function serverLaunched()
+	local out=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
+	if #out>1 then
+		return out[1]
 	end
-	return true
+	return nil
 end
 function os.vi_remote(filename, line)
-	if serverLaunched("VIM") then
+	local servername=serverLaunched()
+	if servername then
 		print("sent "..filename.." to the vim server")
 		if line then
-			os.execute(g_vimpath..' --servername VIM --remote +'..line..' "'..filename..'"')
+			os.execute(g_vimpath..' --servername '..servername..' --remote +'..line..' "'..filename..'"')
 		else
-			os.execute(g_vimpath..' --servername VIM --remote "'..filename..'"')
+			os.execute(g_vimpath..' --servername '..servername..' --remote "'..filename..'"')
 		end
 	else
 		-- launch vim
@@ -933,6 +934,10 @@ function main(...)
 		os.execute('git diff --stat'..added)
 		print('\n\n-------------------git difftool:-------------------')
 		os.execute('git difftool'..added)
+	elseif arg[1]=='kill' then
+		local out=string.lines(os.capture('pgrep '..arg[2]))
+		os.execute('kill -9 '..out[1])
+
 	else
 		printHelp()
 	end

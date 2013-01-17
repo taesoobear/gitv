@@ -139,4 +139,5 @@ map <leader>a a<Plug>HanMode
 map <leader>o o<Plug>HanMode
 map <leader>O O<Plug>HanMode
 imap <silent><leader><space> <Plug>HanMode
-
+imap <S-space> <Plug>HanMode
+set guifont=Monospace\ 14
