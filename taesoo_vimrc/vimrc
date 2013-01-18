@@ -137,10 +137,14 @@ endfun
 if !exists('hangeul_enabled')
 	finish
 endif
-map <leader>i i<Plug>ForceHanMode
-map <leader>a a<Plug>ForceHanMode
-map <leader>o o<Plug>ForceHanMode
-map <leader>O O<Plug>ForceHanMode
+"map <leader>i i<Plug>ForceHanMode
+"map <leader>a a<Plug>ForceHanMode
+"map <leader>o o<Plug>ForceHanMode
+"map <leader>O O<Plug>ForceHanMode
+map <C-i> i<Plug>ForceHanMode
+map <C-a> a<Plug>ForceHanMode
+map <C-o> o<Plug>ForceHanMode
+map <C-O> O<Plug>ForceHanMode
 map i i<Plug>ForceEngMode
 map a a<Plug>ForceEngMode
 map o o<Plug>ForceEngMode
