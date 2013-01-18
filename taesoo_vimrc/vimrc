@@ -2,9 +2,12 @@ set nocompatible
 filetype plugin on
 syntax on
 source $VIMRUNTIME/vimrc_example.vim
+" The % key will switch between opening and closing brackets. By sourcing matchit.vim, the key can also switch among e.g. if/elsif/else/end, between opening and closing XML tags, and more. 
+runtime macros/matchit.vim
 set fileencodings=utf-8
 
 " support korean keyboard. (Toggle han/eng using \<space>)
+" Enter insert mode using \i, \o, \a, \O to use korean
 let hangeul_enabled=1
 
 """""""""""""""""""""""""""""""""""""""""""""
@@ -134,10 +137,15 @@ endfun
 if !exists('hangeul_enabled')
 	finish
 endif
-map <leader>i i<Plug>HanMode
-map <leader>a a<Plug>HanMode
-map <leader>o o<Plug>HanMode
-map <leader>O O<Plug>HanMode
+map <leader>i i<Plug>ForceHanMode
+map <leader>a a<Plug>ForceHanMode
+map <leader>o o<Plug>ForceHanMode
+map <leader>O O<Plug>ForceHanMode
+map i i<Plug>ForceEngMode
+map a a<Plug>ForceEngMode
+map o o<Plug>ForceEngMode
+map O O<Plug>ForceEngMode
+" toggle han/eng
 imap <silent><leader><space> <Plug>HanMode
 imap <S-space> <Plug>HanMode
 set guifont=Monospace\ 14
