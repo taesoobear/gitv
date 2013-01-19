@@ -34,6 +34,8 @@ The most commonly used gitv commands are:
              You can skip the first keyword using "." pattern. To list all functions in class "motion":
                $ gitv tl . [^%a]motion::
   gvim       Open a file using gvim
+  gvimr      Open a file using a gvim server. Supports multiple instances (experimental.)
+               $ gitv gvimr GVIM1 a.txt
   gedit      Open a file using gedit
   choose     Write the name of a choosen file to ]]..g_cache_folder..[[chosen
                $ gitv choose keyword
@@ -1058,12 +1060,35 @@ function main(...)
 		if arg[3] then added=' "'..arg[3]..'"' end
 		print('\n git diff --stat'..added)
 		print('---------------------------------------------------')
-		os.execute('git diff --stat'..added)
-		print('\n\n-------------------git difftool:-------------------')
-		os.execute('git difftool'..added)
+		local str= os.capture('git diff --stat'..added, true)
+		print(string.sub(str,1,-2))
+		if #string.lines(str)>1 then
+			print('---------------------------------------------------')
+			print('- do you want to see the differences? (yes/[no])')
+			if io.read('*line')=='yes' then
+				print('\n\n-------------------git difftool:-------------------')
+				os.execute('git difftool'..added)
+			end
+		else
+			print('-no changes----------------------------------------')
+		end
 	elseif arg[1]=='kill' then
 		local out=string.lines(os.capture('pgrep '..arg[2]))
 		os.execute('kill -9 '..out[1])
+	elseif arg[1]=='all' then
+		if os.isFileExist(os.home_path()..'/.gitv_conf') then
+			local out=string.lines(util.readFile(os.home_path()..'/.gitv_conf'))
+			out[#out]=nil
+			for i,v in ipairs(out) do
+				v=string.gsub(v, '~', os.home_path())
+				local cmd='gitv '..table.concat(array.sub(arg,2), ' ')
+				print('\n> cd "'..v..'";'..cmd)
+				os.execute2('cd "'..v..'"', cmd)
+			end
+		else
+			print('Cannot find ~/.gitv_conf')
+			print('  list git repositories seperated by new lines in ~/.gitv_conf')
+		end
 	else
 		printHelp()
 	end
