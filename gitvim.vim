@@ -43,41 +43,34 @@ set shiftwidth=4
 
 function! BufSelGit(pattern)
 	if has("gui_running")
-		execute "!gitv choose ".a:pattern
-		if filereadable('/tmp/chosen')
-			exec 'edit ' . system('cat /tmp/chosen')
-			call system('rm /tmp/chosen')
-		end
-		redraw!
+		execute "!gitv chooser ".v:servername." ".a:pattern
 	else
-		silent execute "!clear"
-		silent execute "!gitv choose ".a:pattern
-		if filereadable('/tmp/chosen')
-			exec 'edit ' . system('cat /tmp/chosen')
-			call system('rm /tmp/chosen')
-		end
-		redraw!
+		if v:servername==""
+			silent execute "!clear"
+			silent execute "!gitv choose ".a:pattern
+		else
+			silent execute "!clear"
+			silent execute "!gitv chooser ".v:servername." ".a:pattern
+		endif
 	endif
+	if filereadable('/tmp/gitv_script')
+		exec system('cat /tmp/gitv_script')
+		call system('rm /tmp/gitv_script')
+	end
+	redraw!
 endfunction
 function! BufSelTag(pattern)
 	if has("gui_running")
 		execute "!gitv tschoose ".a:pattern
-		if filereadable('/tmp/chosen')
-			exec 'edit ' . system('cat /tmp/chosen')
-			exec ':' . system('cat /tmp/chosen_line')
-			call system('rm /tmp/chosen')
-		end
-		redraw!
 	else
 		silent execute "!clear"
 		silent execute "!gitv tschoose ".a:pattern
-		if filereadable('/tmp/chosen')
-			exec 'edit ' . system('cat /tmp/chosen')
-			exec ':' . system('cat /tmp/chosen_line')
-			call system('rm /tmp/chosen')
-		end
-		redraw!
 	endif
+	if filereadable('/tmp/gitv_script')
+		exec system('cat /tmp/gitv_script')
+		call system('rm /tmp/gitv_script')
+	end
+	redraw!
 endfunction
 " BufSel downloaded from VIM forum, modified by Taesoo to support history.
 function! BufSel(pattern)
