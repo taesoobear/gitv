@@ -70,7 +70,11 @@ if os.isWindows() then
 	g_cache_folder=os.home_path() ..'/'
 end
 function git_top()
-	return string.lines(os.capture('git rev-parse --show-toplevel', true))[1]
+	if cache_git_top==nil then
+		local t= string.lines(os.capture('git rev-parse --show-toplevel', true))[1]
+		cache_git_top=t
+	end
+	return cache_git_top
 end 
 git_tools={}
 function string.prettyConcat(a,b,min_a)
@@ -624,11 +628,7 @@ function lsFiles(option)
 	if option=='-l' then	
 		cpt=os.capture('git ls-files .', true)
 	else
-		if os.isWindows() then
-			cpt=os.capture('git ls-files '..git_top(), true)
-		else
-			cpt=os.capture('git ls-files `git rev-parse --show-toplevel`', true)
-		end
+		cpt=os.capture('git ls-files '..git_top(), true)
 	end
 
 	local files=string.lines(cpt)
@@ -669,13 +669,119 @@ function choose(keys)
 	local chosen=interactiveChoose(fn)
 	return chosen
 end
-function serverLaunched()
+function serverLaunched(name)
 	local out=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
-	if #out>1 then
-		return out[1]
+	if name==nil then
+		if #out>1 then
+			return out[1]
+		end
+	else
+		out=array.filter(function (v) return name==v end, out)
+		if #out>0 then
+			return name
+		end
 	end
 	return nil
 end
+local function serverWithFileOpened(serverlist, fn)
+	local out=serverlist
+	if #out>0 then
+		fn=os.relativeToAbsolutePath(fn)
+		local allOpened={}
+		for i=1,#out do
+			local cmd=g_vimpath..' --servername '..out[i]..' --remote-expr "bufexists(\\\"'..fn..'\\\")"'
+			local opened=os.capture(cmd)=='1'
+			if opened then
+				table.insert(allOpened, out[i])
+			end
+		end
+		if #allOpened>0 then
+			return allOpened
+		end
+	end
+	return nil 
+end
+function makeEditable(servername, fullfn)
+	-- 1. select the buffer 
+	local cmd=g_vimpath..' --servername '..servername..' --remote-send "<ESC>:b '..fullfn..'<CR>"'
+	print(cmd)
+	os.execute(cmd)
+	-- 2. check if readonly
+	cmd=g_vimpath..' --servername '..servername..' --remote-expr "&readonly"'
+	print(cmd)
+	if os.capture(cmd)=='1' then
+		-- set writable
+		local cmd=g_vimpath..' --servername '..servername..' --remote-send ":setlocal noreadonly<CR>:setlocal modifiable<CR>:setlocal noautoread<CR>'
+		os.execute(cmd)
+	end
+end
+function makeReadOnlyAll(servers, fullfn)
+	local function isSwapExist(fullfn)
+		if os.isFileExist(path..'/.'..fn..'.swo') then return true end
+		if os.isFileExist(path..'/.'..fn..'.swp') then return true end
+		return false
+	end
+	local function deleteSwap(fullfn)
+		local fn, path=os.processFileName(fullfn)
+		if os.isFileExist(path..'/.'..fn..'.swo') then
+			os.deleteFiles(path..'/.'..fn..'.swo')
+		end
+		if os.isFileExist(path..'/.'..fn..'.swp') then
+			os.deleteFiles(path..'/.'..fn..'.swp')
+		end
+	end
+	local function makeReadOnly(servername, fullfn)
+		-- 1. select the buffer after setting a global marker
+		local cmd=g_vimpath..' --servername '..servername..' --remote-send "<ESC>mZ:b '..fullfn..'<CR>"'
+		--print(cmd)
+		os.execute(cmd)
+		-- 2. check if readonly
+		cmd=g_vimpath..' --servername '..servername..' --remote-expr "&readonly"'
+		if os.capture(cmd)=='1' then
+			-- already readonly. simply go back to the marker position
+			local cmd=g_vimpath..' --servername '..servername..' --remote-send "\'Z"'
+			os.execute(cmd)
+		else
+			-- write 
+			local cmd=g_vimpath..' --servername '..servername..' --remote-send ":w<CR>:setlocal readonly<CR>:setlocal nomodifiable<CR>:setlocal autoread<CR>\'Z"'
+			os.execute(cmd)
+		end
+	end
+	local allOpened =serverWithFileOpened(servers, fullfn)
+	if allOpened then
+		for i,opened in ipairs(allOpened) do
+			makeReadOnly(opened, fullfn)
+		end
+		deleteSwap(fullfn)
+	end
+end
+function gvimFile(servername, chosen)
+	if os.isWindows() then
+		local chosenfile=os.toWindowsFileName(chosen)
+		if not serverLaunched(servername) then
+			local cmd='start /b cmd /c "'..os.shellEscape(g_gvimpath..' '..servername..' "'..chosenfile..'"')..'"'
+			print(cmd)
+			-- launch gvim
+			os.execute(cmd)
+		else
+			os.execute(g_gvimpath..' --servername '..servername..' --remote-silent "'..chosenfile..'"')
+		end
+	else
+		if not serverLaunched(servername) then
+			-- launch gvim
+			os.execute(g_gvimpath..' --servername '..servername..' -f&')
+		end
+
+		while(true) do
+			if serverLaunched(servername) then
+				break
+			end
+		end
+
+		os.execute(g_gvimpath..' --servername '..servername..' --remote-silent "'..chosen..'"')
+	end
+end
+
 function os.vi_remote(filename, line)
 	local servername=serverLaunched()
 	if servername then
@@ -743,8 +849,8 @@ function main(...)
 	elseif arg[1]=="tschoose" then
 		local chosen=git_tools.tagChoose(arg[2])
 		if chosen then
-			util.writeFile(g_cache_folder..'chosen', chosen[3] )
-			util.writeFile(g_cache_folder..'chosen_line', tostring(chosen[4]) )
+			util.writeFile(g_cache_folder..'gitv_script', 
+			'edit '..chosen[3]..'\n:' ..tostring(chosen[4]))
 		end
 	elseif arg[1]=="gedit" then
 		local keys=array.sub(arg,2)
@@ -756,37 +862,48 @@ function main(...)
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
 		if chosen then
-
-			if os.isWindows() then
-				local chosenfile=os.toWindowsFileName(chosen[1])
-				if not serverLaunched("GVIM") then
-					local cmd='start /b cmd /c "'..os.shellEscape(g_gvimpath..' "'..chosenfile..'"')..'"'
-					print(cmd)
-					-- launch gvim
-					os.execute(cmd)
-				else
-					os.execute(g_gvimpath..' --remote-silent "'..chosenfile..'"')
-				end
+			gvimFile('GVIM', chosen[1])
+		end
+	elseif arg[1]=="gvimr" then
+		local servername=arg[2]
+		local keys=array.sub(arg,3)
+		if keys[1]==nil then printHelp() return end
+		local chosen=choose(keys)
+		if chosen then
+			local out=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
+			local otherServers=array.filter(function(v)return v~=servername  end, out)
+			local thisServer=array.filter(function(v)return v==servername  end, out)
+			otherServers[#otherServers]=nil
+			thisServer[#thisServer]=nil
+			local fullfn=os.relativeToAbsolutePath(chosen[1])
+			makeReadOnlyAll(otherServers, fullfn)
+			if #thisServer>0 and #serverWithFileOpened(thisServer, fullfn)>0 then
+				-- already open on this server so just choose
+				makeEditable(servername, fullfn)
 			else
-				if not serverLaunched("GVIM") then
-					-- launch gvim
-					os.execute(g_gvimpath..' -f&')
-				end
-
-				while(true) do
-					if serverLaunched("GVIM") then
-						break
-					end
-				end
-
-				os.execute(g_gvimpath..' --remote-silent "'..chosen[1]..'"')
+				gvimFile(servername, chosen[1])
 			end
 		end
 	elseif arg[1]=="choose" then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
 		if chosen then
-			util.writeFile(g_cache_folder..'chosen', chosen[1] )
+			util.writeFile(g_cache_folder..'gitv_script', 'edit '..chosen[1])
+		end
+	elseif arg[1]=="chooser" then
+		local servername=arg[2]
+		local keys=array.sub(arg,3)
+		local chosen=choose(keys)
+		if chosen then
+			local out=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
+			local otherServers=array.filter(function(v)return v~=servername  end, out)
+			local thisServer=array.filter(function(v)return v==servername  end, out)
+			otherServers[#otherServers]=nil
+			thisServer[#thisServer]=nil
+			local fullfn=os.relativeToAbsolutePath(chosen[1])
+			makeReadOnlyAll(otherServers, fullfn)
+			util.writeFile(g_cache_folder..'gitv_script', 'edit '..chosen[1]..
+			'\n:setlocal noreadonly\n:setlocal modifiable\n:setlocal noautoread')
 		end
 	elseif arg[1]=="find" then
 		local keys=array.sub(arg,2)
@@ -937,7 +1054,6 @@ function main(...)
 	elseif arg[1]=='kill' then
 		local out=string.lines(os.capture('pgrep '..arg[2]))
 		os.execute('kill -9 '..out[1])
-
 	else
 		printHelp()
 	end

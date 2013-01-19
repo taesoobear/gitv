@@ -1551,7 +1551,11 @@ function util.writeFile(fn, contents)
 		print(msg)
 		return msg
 	end
-	fout:write(contents)
+	if type(contents)=='string' then
+		fout:write(contents)
+	else
+		fout:write(table.tostring2(contents))
+	end
 	fout:close()
 end
 function util.appendFile(fn, arg)
