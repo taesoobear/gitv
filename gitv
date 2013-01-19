@@ -137,7 +137,10 @@ function git_tools.searchTag(filename, searchKey)
 		else 
 			local oo2=string.tokenize(oo[2], string.char(1))
 			--print(oo2[1])
-			if select(1,string.find(string.lower(oo2[1]),string.lower(searchKey))) then
+			--print(searchKey)
+			--print(string.gsub(string.lower(searchKey), "%^",":"))
+			if select(1,string.find(string.lower(oo2[1]),string.lower(searchKey))) or
+			 select(1,string.find(string.lower(oo2[1]),string.gsub(string.lower(searchKey), "%^","[:%.]"))) then
 				table.insert(tags, {oo2[1], oo[1], currFile, tonumber(string.tokenize(oo2[2],',')[1])})
 				if #tags> MAX_SEARCH then
 					break
@@ -782,6 +785,21 @@ function gvimFile(servername, chosen)
 	end
 end
 
+function os.gvim_remote(servername, filename)
+	local out=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
+	local otherServers=array.filter(function(v)return v~=servername  end, out)
+	local thisServer=array.filter(function(v)return v==servername  end, out)
+	otherServers[#otherServers]=nil
+	thisServer[#thisServer]=nil
+	local fullfn=os.relativeToAbsolutePath(filename)
+	makeReadOnlyAll(otherServers, fullfn)
+	if #thisServer>0 and #serverWithFileOpened(thisServer, fullfn)>0 then
+		-- already open on this server so just choose
+		makeEditable(servername, fullfn)
+	else
+		gvimFile(servername, filename)
+	end
+end
 function os.vi_remote(filename, line)
 	local servername=serverLaunched()
 	if servername then
@@ -870,20 +888,12 @@ function main(...)
 		if keys[1]==nil then printHelp() return end
 		local chosen=choose(keys)
 		if chosen then
-			local out=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
-			local otherServers=array.filter(function(v)return v~=servername  end, out)
-			local thisServer=array.filter(function(v)return v==servername  end, out)
-			otherServers[#otherServers]=nil
-			thisServer[#thisServer]=nil
-			local fullfn=os.relativeToAbsolutePath(chosen[1])
-			makeReadOnlyAll(otherServers, fullfn)
-			if #thisServer>0 and #serverWithFileOpened(thisServer, fullfn)>0 then
-				-- already open on this server so just choose
-				makeEditable(servername, fullfn)
-			else
-				gvimFile(servername, chosen[1])
-			end
+			os.gvim_remote(servername, chosen[1])
 		end
+	elseif arg[1]=="_gvimr" then
+		print("Servername: ", arg[2])
+		print("Filename: ", arg[3])
+		os.gvim_remote(arg[2], arg[3])
 	elseif arg[1]=="choose" then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)

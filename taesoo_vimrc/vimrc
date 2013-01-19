@@ -27,7 +27,8 @@ set nowrap
 " code folding using indentation
 set fdm=indent
 set foldlevel=3
-
+" use system clipboard
+set clipboard=unnamedplus
 """""""""""""""""""""""""""""""""""""""""""""
 " maps
 """""""""""""""""""""""""""""""""""""""""""""
