@@ -2,7 +2,20 @@ mkdir -p ~/bin
 cp gitv ~/bin/
 sed -i "s/\/usr\/bin\///g" ~/bin/gitv 
 cp mylib.lua ~/bin/
-mkdir -p /share/vim/vim73/plugin
-cp gitvim.vim /share/vim/vim73/plugin
+cp gitvim.vim ~/bin/
+WINHOMEPATH=$HOMEDRIVE$HOMEPATH
+echo "$WINHOMEPATH"
+echo "s/\/tmp\//$(printf '%q' "$WINHOMEPATH")\\\/g" 
+sed -i "s/silent execute \"!clear/\"/g" ~/bin/gitvim.vim
+sed -i "s/\/tmp\//$(printf '%q' "$WINHOMEPATH")\\\/g" ~/bin/gitvim.vim
+sed -i "s/\<cat\>/type/g" ~/bin/gitvim.vim
+sed -i "s/\<rm\>/del/g" ~/bin/gitvim.vim
+# install to /share/vim/vim73 by default. edit appropriately
+VIMPATH=/share/vim/vim73
+echo $VIMPATH
+cp gitv.bat $VIMPATH
+mkdir -p $VIMPATH/plugin
+rm -f $VIMPATH/plugin/gitvim.vim
+cp ~/bin/gitvim.vim $VIMPATH/plugin
 chmod +x ~/bin/gitv
 
