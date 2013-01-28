@@ -45,7 +45,7 @@ The most commonly used gitv commands are:
   pull       Pull the current branch from all remotes
   fetch      Fetch the current branch from all remotes
   push       Push the current branch to all remotes
-  commit     Interactively commit the current branch. gitv ci also works.
+  commit     Interactively commit the current branch. "gitv ci" does the same.
   find       Find files 
                $ gitv find keyword
   grep       Unlike git grep, entire repository (not limited to the current 
@@ -901,6 +901,13 @@ function main(...)
 		local chosen=choose(keys)
 		if chosen then
 			util.writeFile(g_cache_folder..'gitv_script', 'edit '..chosen[1])
+		end
+	elseif arg[1]=="chooseFolder" then
+		local keys=array.sub(arg,2)
+		local chosen=choose(keys)
+		if chosen then
+			local fn, path=os.processFileName(chosen[1])
+			util.writeFile(g_cache_folder..'gitv_chosen', path)
 		end
 	elseif arg[1]=="chooser" then
 		local servername=arg[2]
