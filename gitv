@@ -9,8 +9,8 @@ require("mylib")
  
 -- order doesn't matter
 g_etagsSrc={ "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
-g_vimSrc={"%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
-g_grepSrc=g_etagsSrc
+g_vimSrc={"%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_grepSrc={ unpack(g_etagsSrc), "%.tex$"}
 g_cache_folder='/tmp/'
 g_vimpath='vim'
 g_gvimpath='gvim'
@@ -788,7 +788,7 @@ function gvimFile(servername, chosen)
 			end
 		end
 
-		os.execute(g_gvimpath..' --servername '..servername..' --remote-silent "'..chosen..'"')
+		os.execute(g_gvimpath..' --servername '..servername..' --remote-silent "'..chosen..'"&')
 	end
 end
 
@@ -876,6 +876,15 @@ function main(...)
 		if chosen then
 			util.writeFile(g_cache_folder..'gitv_script', 
 			'edit '..chosen[3]..'\n:' ..tostring(chosen[4]))
+		else
+			local key=string.gsub(arg[2],"%$", "")
+			local key=string.gsub(key,"%^", "")
+			print("Tags "..key.." not found. Fallback to the file chooser!")
+			local chosen=choose({ key})
+			if chosen then
+				util.writeFile(g_cache_folder..'gitv_script', 
+				'edit '..chosen[1]..'\n:1')
+			end
 		end
 	elseif arg[1]=="gedit" then
 		local keys=array.sub(arg,2)
