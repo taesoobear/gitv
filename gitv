@@ -10,7 +10,7 @@ require("mylib")
 -- order doesn't matter
 g_etagsSrc={ "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
 g_vimSrc={"%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
-g_grepSrc={ unpack(g_etagsSrc), "%.tex$"}
+g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$"})
 g_cache_folder='/tmp/'
 g_vimpath='vim'
 g_gvimpath='gvim'
@@ -150,6 +150,7 @@ function git_tools.searchTag(filename, searchKey)
 			 select(1,string.find(string.lower(oo2[1]),string.gsub(string.lower(searchKey), "%^","[:%.]"))) then
 				table.insert(tags, {oo2[1], oo[1], currFile, tonumber(string.tokenize(oo2[2],',')[1])})
 				if #tags> MAX_SEARCH then
+					printf("Error! max_search overflow")
 					break
 				end
 			end
