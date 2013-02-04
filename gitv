@@ -780,16 +780,18 @@ function gvimFile(servername, chosen)
 	else
 		if not serverLaunched(servername) then
 			-- launch gvim
-			os.execute(g_gvimpath..' --servername '..servername..' -f&')
-		end
-
-		while(true) do
-			if serverLaunched(servername) then
-				break
+			os.execute(g_gvimpath..' --servername '..servername..' -f "'..chosen..'"&')
+		else
+			--[[
+			while(true) do
+				if serverLaunched(servername) then
+					break
+				end
 			end
-		end
+			]]--
 
-		os.execute(g_gvimpath..' --servername '..servername..' --remote-silent "'..chosen..'"&')
+			os.execute(g_gvimpath..' --servername '..servername..' --remote-silent "'..chosen..'"&')
+		end
 	end
 end
 
