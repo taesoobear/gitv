@@ -9,7 +9,7 @@ require("mylib")
  
 -- order doesn't matter
 g_etagsSrc={ "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
-g_vimSrc={"%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={"%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$"})
 g_cache_folder='/tmp/'
 g_vimpath='vim'
@@ -1062,6 +1062,10 @@ function main(...)
 		print('searching '..arg[2]..'...')
 		local files=lsFiles()
 		if arg[2] then
+			if select(1, string.find(arg[2], '"')) and not select(1, string.find(arg[2],'%[')) then
+				-- treat " and ' same. (convenient for many script languages)
+				arg[2]=string.gsub(arg[2], '"', '["\']')
+			end
 			for i,f in ipairs(files) do
 				if string.isMatched(f,g_grepSrc) then
 					util.grepFile(f, arg[2],'',true)
