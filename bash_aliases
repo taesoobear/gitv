@@ -21,3 +21,4 @@ alias b='gitv gvimr GVIM'
 # gitv gvimr support multiple instances of gvim 
 # even when the same file is open in both gvim (an experimental feature).
 alias b2='gitv gvimr GVIM2'
+alias va='vi ~/.bashrc;source ~/.bashrc'

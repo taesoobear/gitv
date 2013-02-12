@@ -67,12 +67,19 @@ The most commonly used gitv commands are:
 end
 
 if os.isWindows() then
-	if os.isFileExist("c:\\Program Files\\Git\\share\\vim\\vim73\\vim.exe") then
-		g_vimpath='""c:\\Program Files\\Git\\share\\vim\\vim73\\vim.exe"'
-		g_gvimpath='"c:\\Program\ Files\\Git\\share\\vim\\vim73\\gvim.exe"'
-	else
-		g_vimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\vim'
-		g_gvimpath='c:\\msysgit\\msysgit\\share\\vim\\vim73\\gvim'
+	local search={
+		"c:\\Program Files\\Vim\\vim73\\vim.exe",
+		"c:\\Program Files (x86)\\Vim\\vim73\\vim.exe",
+		"c:\\Program Files\\Git\\share\\vim\\vim73\\vim.exe",
+		"c:\\Program Files (x86)\\Git\\share\\vim\\vim73\\vim.exe",
+		'c:\\msysgit\\msysgit\\share\\vim\\vim73\\vim',
+		}
+
+	for i,v in ipairs(search) do
+		if os.isFileExist(v) then
+			g_vimpath='""'..v..'"'
+			break
+		end
 	end
 	g_cache_folder=os.home_path() ..'/'
 end
