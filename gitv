@@ -318,6 +318,7 @@ function git_tools.commit(path,force)
 				else
 					os.execute('gitscript')
 				end
+				os.deleteFiles('gitscript')
 			elseif string.sub(ioread, 1,6)=='ignore' then
 				local files=table.concat(untracked, '\n')
 				local gitignore=util.readFile(git_top()..'/.gitignore')
