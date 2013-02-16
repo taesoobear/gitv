@@ -31,12 +31,15 @@ function lsFolders(option)
 	local folders={}
 	for i,v in ipairs(g_gitPaths) do
 		cache_git_top=v
-		local out=lsFolders_single('-g')
+		local out=lsFolders_single('-g', lsFiles_single)
 		array.concat(folders,out)
 	end
 	for i,v in ipairs(folders) do
 		local t=string.gsub(v,'~', os.home_path())
 		folders[i]=os.absoluteToRelativePath(t)
+		if folders[i] =='' then
+			folders[i]='../'..os.filename(os.relativeToAbsolutePath(folders[i]))
+		end
 	end
 	table.sort(folders, git_tools.compareFileName)
 	return folders

@@ -106,6 +106,9 @@ function git_tools.compareFileName(f1, f2)
 	if f1==nil or f2==nil then
 		dbg.console()
 	end
+	local _, count3 = string.gsub(f1, "%.%./", "")
+	local _, count4 = string.gsub(f2, "%.%./", "")
+	if count3==count4 then
 		local _, count1 = string.gsub(f1, "/", "")
 		local _, count2 = string.gsub(f2, "/", "")
 		if count1==count2 then
@@ -115,6 +118,9 @@ function git_tools.compareFileName(f1, f2)
 			--return lf1<lf2
 		end
 		return count1<count2
+	else
+		return count3<count4
+	end
 end
 function string.linesContaining(str, pattern)
 	pattern=string.gsub(pattern,'[%$%^]','')
@@ -673,7 +679,8 @@ function lsFiles(option)
 	return files
 end
 
-function lsFolders(option)
+function lsFolders(option, lsFiles_fcn)
+	local lsFiles=lsFiles_fcn or lsFiles
 	local tbl=lsFiles(option)
 	local folders={}
 	for i,v in ipairs(tbl) do
@@ -1039,7 +1046,8 @@ function main(...)
 		local keys=array.sub(arg,2)
 		local chosen=chooseFolder(keys)
 		if chosen then
-			util.writeFile(g_cache_folder..'gitv_chosen', chosen)
+			local t=string.gsub(chosen,'~', os.home_path())
+			util.writeFile(g_cache_folder..'gitv_chosen', t)
 		else
 			util.writeFile(g_cache_folder..'gitv_chosen', '.')
 		end
