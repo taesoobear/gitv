@@ -1,16 +1,16 @@
 #!/usr/bin/lua
 local isWin=string.find(string.lower(os.getenv('OS') or 'nil'),'windows')~=nil
 if isWin then
-	package.path = package.path .. ";"..os.getenv('HOMEDRIVE')..os.getenv('HOMEPATH').."/bin/?.lua"
+	package.path =os.getenv('HOMEDRIVE')..os.getenv('HOMEPATH').."/bin/?.lua" .. ";"..package.path 
 else
-	package.path = package.path .. ";"..os.getenv('HOME').."/bin/?.lua"
+	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
 end
 require("mylib")
  
 -- order doesn't matter
 g_etagsSrc={ "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
 g_vimSrc={"%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
-g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$"})
+g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
 g_cache_folder='/tmp/'
 g_vimpath='vim'
 g_gvimpath='gvim'
