@@ -672,6 +672,82 @@ function lsFiles(option)
 	table.sort(files, git_tools.compareFileName)
 	return files
 end
+
+function lsFolders(option)
+	local tbl=lsFiles(option)
+	local folders={}
+	for i,v in ipairs(tbl) do
+		local fn, folder=os.processFileName(v)
+		folders[folder]=true
+	end
+	local tbl={}
+	for k,v in pairs(folders) do
+		array.pushBack(tbl, k)
+	end
+	table.sort(tbl, git_tools.compareFileName)
+	return tbl
+end
+function chooseFolder(keys)
+	local folders=lsFolders()
+
+	local fn={}
+	for ifolder, folder in ipairs(folders) do
+		for ikey,key in ipairs(keys) do
+			if select(1,string.find(string.lower(folder), string.lower(key))) then
+				fn[#fn+1]=folder
+				break
+			end
+		end
+	end
+	local index=1
+	local print=print
+	local getInput=function() return io.read('*line') end
+	local _currentInput=0
+
+	while #fn>1 do
+		-- start file choose interface
+		print('--------------------------------------------------------------')
+		local c=1
+		for i,v in ipairs(fn) do
+			if c==1 then
+				print("["..tostring(c).."]  "..v)
+			else
+				print("("..tostring(c)..")  "..v)
+			end
+			c=c+1
+			if c>20 then
+				print('... not displaying more candidates') 
+				break
+			end
+		end
+		print('Enter file shortcut (shown on the right) or keyword to further refine the search:')
+		local cmd=getInput()
+		index=tonumber(cmd) 
+
+		if cmd=="" then 
+			index=1
+			break
+		elseif index==nil then 
+			-- refine search
+			local refinedFn={}
+			for i,v in ipairs(fn) do
+				local idx=string.find(string.lower(v), string.lower(cmd))
+				if idx~=nil then
+					array.pushBack(refinedFn, v)
+				else 
+					idx=string.findLastOf(string.lower(v), string.lower(cmd))
+					if idx~=nil then array.pushBack(refinedFn, v) end
+				end
+			end
+			fn=refinedFn
+			index=1
+			if #fn==0 then return nil end
+		else
+			break
+		end
+	end
+	return fn[index]
+end
 function choose(keys)
 	local fn=nonInteractiveChoose(keys)
 	local chosen=interactiveChoose(fn)
@@ -956,6 +1032,16 @@ function main(...)
 		if chosen then
 			local fn, path=os.processFileName(chosen[1])
 			util.writeFile(g_cache_folder..'gitv_chosen', path)
+		else
+			util.writeFile(g_cache_folder..'gitv_chosen', '.')
+		end
+	elseif arg[1]=="chooseFolder2" then
+		local keys=array.sub(arg,2)
+		local chosen=chooseFolder(keys)
+		if chosen then
+			util.writeFile(g_cache_folder..'gitv_chosen', chosen)
+		else
+			util.writeFile(g_cache_folder..'gitv_chosen', '.')
 		end
 	elseif arg[1]=="chooser" then
 		local servername=arg[2]
@@ -1135,9 +1221,17 @@ function main(...)
 		local out=string.lines(os.capture('pgrep '..arg[2]))
 		os.execute('kill -9 '..out[1])
 	elseif arg[1]=='all' then
-		if os.isFileExist(os.home_path()..'/.gitv_conf') then
-			local out=string.lines(util.readFile(os.home_path()..'/.gitv_conf'))
-			out[#out]=nil
+		local use_gitv_conf=os.isFileExist(os.home_path()..'/.gitv_conf') 
+
+		if use_gitv_conf or g_gitPaths then
+
+			local out
+			if use_gitv_conf then
+				out=string.lines(util.readFile(os.home_path()..'/.gitv_conf'))
+				out[#out]=nil
+			else
+				out=g_gitPaths
+			end
 			for i,v in ipairs(out) do
 				v=string.gsub(v, '~', os.home_path())
 				local cmd='gitv '..table.concat(array.sub(arg,2), ' ')

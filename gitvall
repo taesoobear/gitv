@@ -9,7 +9,7 @@ end
 package.path = package.path .. ";"..gitvPath.."/?.lua"
 dofile(gitvPath.."/gitv") 
 
-g_gitPaths={"~/taesooLib", "~/Documents/papers", "~/taesoo_cmu"}
+g_gitPaths={"~/taesooLib", "~/Documents/papers", "~/taesoo_cmu", "~/taesoo"}
 
 lsFiles_single=lsFiles
 function lsFiles(option)
@@ -26,9 +26,41 @@ function lsFiles(option)
 	table.sort(files, git_tools.compareFileName)
 	return files
 end
-if arg[1] then
+lsFolders_single=lsFolders
+function lsFolders(option)
+	local folders={}
+	for i,v in ipairs(g_gitPaths) do
+		cache_git_top=v
+		local out=lsFolders_single('-g')
+		array.concat(folders,out)
+	end
+	for i,v in ipairs(folders) do
+		local t=string.gsub(v,'~', os.home_path())
+		folders[i]=os.absoluteToRelativePath(t)
+	end
+	table.sort(folders, git_tools.compareFileName)
+	return folders
+end
 
-	main(unpack(arg))
+if arg[1] then
+	if arg[1]=='pull' or
+		arg[1]=='push' or
+		arg[1]=='sync' or
+		arg[1]=='fetch' then
+		for i,v in ipairs(g_gitPaths) do
+			local t=string.gsub(v,'~', os.home_path())
+			cache_git_top=t
+			print('\n> cd "'..v..'"')
+			main(unpack(arg))
+		end
+	elseif arg[1]=='diff' or 
+		arg[1]=='ci' or
+		arg[1]=='cif' or
+		arg[1]=='ts' then
+		main('all', unpack(arg))
+	else
+		main(unpack(arg))
+	end
 else
 	printHelp()
 end
