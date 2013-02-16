@@ -1,6 +1,6 @@
 stty -ixon
 # use vim to open a file. e.g. v luna.c
-alias v='gitv vi'
+alias v='gitv gvimr GVIM'
 # tag search. e.g. t main$
 alias t='gitv ts'
 # use remote gvim to open a file

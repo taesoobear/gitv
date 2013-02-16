@@ -1,0 +1,34 @@
+#!/usr/bin/lua
+local gitvPath
+local isWin=string.find(string.lower(os.getenv('OS') or 'nil'),'windows')~=nil
+if isWin then
+	gitvPath=os.getenv('HOMEDRIVE')..os.getenv('HOMEPATH').."/bin"
+else
+	gitvPath=os.getenv('HOME').."/bin"
+end
+package.path = package.path .. ";"..gitvPath.."/?.lua"
+dofile(gitvPath.."/gitv") 
+
+g_gitPaths={"~/taesooLib", "~/Documents/papers", "~/taesoo_cmu"}
+
+lsFiles_single=lsFiles
+function lsFiles(option)
+	local files={}
+	for i,v in ipairs(g_gitPaths) do
+		cache_git_top=v
+		local out=lsFiles_single('-g')
+		array.concat(files,out)
+	end
+	for i,v in ipairs(files) do
+		local t=string.gsub(v,'~', os.home_path())
+		files[i]=os.absoluteToRelativePath(t)
+	end
+	table.sort(files, git_tools.compareFileName)
+	return files
+end
+if arg[1] then
+
+	main(unpack(arg))
+else
+	printHelp()
+end
