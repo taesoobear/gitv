@@ -1,3 +1,4 @@
+stty -ixon
 # use vim to open a file. e.g. v luna.c
 alias v='gitv vi'
 # tag search. e.g. t main$
@@ -21,4 +22,10 @@ alias b='gitv gvimr GVIM'
 # gitv gvimr support multiple instances of gvim 
 # even when the same file is open in both gvim (an experimental feature).
 alias b2='gitv gvimr GVIM2'
-alias va='vi ~/.bashrc;source ~/.bashrc'
+
+# put the following line in .bashrc 
+export PATH=$PATH:~/bin
+
+# because I change .bash_aliases very often,
+#alias va='vi ~/.bashrc;source ~/.bashrc'
+alias va='vi ~/.bash_aliases;source ~/.bash_aliases'

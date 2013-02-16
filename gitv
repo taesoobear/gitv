@@ -645,12 +645,20 @@ function lsFiles(option)
 	local cpt
 	if option=='-l' then	
 		cpt=os.capture('git ls-files .', true)
+	elseif option=='-g' then
+		-- use absolute
+		cpt=os.capture('cd '..git_top()..';git ls-files .', true)
 	else
 		cpt=os.capture('git ls-files '..git_top(), true)
 	end
 
 	local files=string.lines(cpt)
 	local files=array.sub(files,1,-2)
+	if option=='-g' then
+		for i,v in ipairs(files) do
+			files[i]=git_top()..'/'..v
+		end
+	end
 	if #g_ignorePattern>0 then
 		files=array.filter(function (fn)
 			for i,pattern in ipairs(g_ignorePattern) do
@@ -665,6 +673,11 @@ function lsFiles(option)
 	return files
 end
 function choose(keys)
+	local fn=nonInteractiveChoose(keys)
+	local chosen=interactiveChoose(fn)
+	return chosen
+end
+function nonInteractiveChoose(keys)
 	local option
 	if keys[1]=='-l' then
 		option='-l'
@@ -684,8 +697,7 @@ function choose(keys)
 			end
 		end
 	end
-	local chosen=interactiveChoose(fn)
-	return chosen
+	return fn
 end
 function serverLaunched(name)
 	local out=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
@@ -926,6 +938,18 @@ function main(...)
 		if chosen then
 			util.writeFile(g_cache_folder..'gitv_script', 'edit '..chosen[1])
 		end
+	elseif arg[1]=="listFolder" then
+		local keys=array.sub(arg,2)
+		local fns=nonInteractiveChoose(keys)
+		if fns  then
+			for i,v in ipairs(fns) do
+				local fn, path=os.processFileName(v[1])
+				if path=="" then
+					path='.'
+				end
+				print(path)
+			end
+		end
 	elseif arg[1]=="chooseFolder" then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
@@ -1127,6 +1151,9 @@ function main(...)
 	else
 		printHelp()
 	end
+end
+if string.sub(arg[0],-4)~='gitv' then
+	return
 end
 if arg[1] then
 	main(unpack(arg))
