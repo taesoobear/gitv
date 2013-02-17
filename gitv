@@ -589,6 +589,12 @@ function interactiveTagChoose(fn, inputs)
 		v[2]=string.gsub(v[2], '%s+',' ')
 		v[2]=string.trimSpaces(v[2])
 	end
+	local maxColumn=60
+	local maxRow=20
+	if os.isWindows() then 
+		maxColumn=40
+		maxRow=10
+	end
 	while #fn>1 do
 		-- start file choose interface
 		print('--------------------------------------------------------------')
@@ -605,12 +611,12 @@ function interactiveTagChoose(fn, inputs)
 				
 			cleanUpFunctionName(v)
 			if c==1 then
-				print("["..tostring(c).."]  "..string.prettyConcat(v[2],printFn,60))
+				print("["..tostring(c).."]  "..string.prettyConcat(v[2],printFn,maxColumn))
 			else
-				print("("..tostring(c)..")  "..string.prettyConcat(v[2],printFn,60))
+				print("("..tostring(c)..")  "..string.prettyConcat(v[2],printFn,maxColumn))
 			end
 			c=c+1
-			if c>20 then
+			if c>maxRow then
 				print('... not displaying more candidates') 
 				break
 			end
@@ -626,7 +632,7 @@ function interactiveTagChoose(fn, inputs)
 			-- prints
 			for i,v in ipairs(fn) do
 				cleanUpFunctionName(v)
-				io.write(string.prettyConcat(v[2],' | '.. v[3], 60)..'\n')
+				io.write(string.prettyConcat(v[2],' | '.. v[3], maxColumn)..'\n')
 			end
 			return nil
 		elseif index==nil then 
