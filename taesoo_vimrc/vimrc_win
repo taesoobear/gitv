@@ -6,7 +6,7 @@ syntax on
 runtime macros/matchit.vim
 set fileencodings=utf-8
 if has("gui_running")
-    set guifont=Consolas:h12
+    set guifont=Consolas:h11
     set guioptions-=T
     au GUIEnter * winsize 180 54
     au GUIEnter * winpos 0 0
