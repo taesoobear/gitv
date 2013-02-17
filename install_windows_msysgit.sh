@@ -14,6 +14,7 @@ sed -i "s/\<rm\>/del/g" ~/bin/gitvim.vim
 VIMPATH=/share/vim/vim73
 echo $VIMPATH
 cp gitv.bat $VIMPATH
+echo "copy gitv.bat to your windows folder"
 mkdir -p $VIMPATH/plugin
 rm -f $VIMPATH/plugin/gitvim.vim
 cp ~/bin/gitvim.vim $VIMPATH/plugin
