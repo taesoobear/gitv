@@ -116,6 +116,40 @@ function dbg.traceBack(level)
       end
    end
 end
+function os.findVIM()
+	if os.isWindows() then
+		local search={
+			"c:\\Program Files\\Vim\\vim73\\vim.exe",
+			"c:\\Program Files (x86)\\Vim\\vim73\\vim.exe",
+			"c:\\Program Files\\Git\\share\\vim\\vim73\\vim.exe",
+			"c:\\Program Files (x86)\\Git\\share\\vim\\vim73\\vim.exe",
+			'c:\\msysgit\\msysgit\\share\\vim\\vim73\\vim',
+		}
+
+		for i,v in ipairs(search) do
+			if os.isFileExist(v) then
+				local vimpath= '"'..v..'"'
+				local gvimpath= '"'..string.gsub(v, 'vim.exe', 'gvim.exe')..'"'
+				return vimpath, gvimpath
+			end
+		end
+	end
+	return 'vim', 'gvim'
+end
+function os.findGIT()
+	if os.isWindows() then
+		local search={
+			"c:\\Program Files\\Git\\bin\\git.exe",
+			"c:\\Program Files (x86)\\Git\\bin\\git.exe",
+			}
+		for i,v in ipairs(search) do
+			if os.isFileExist(v) then
+				return '"'..v..'"'
+			end
+		end
+	end
+	return 'git'
+end
 function os.VI_path()
 	if os.isUnix() then
 --		return "vim"  -- use vim in a gnome-terminal
@@ -2125,12 +2159,23 @@ function os.createBatchFile(fn, list, echoOff)
 	fout:close()
 end
 
-function os.execute2(...) -- excute multiple serial operations
-	local list={...}
+function os.createUnnamedBatchFile(list, echoOff)
 	if not math.seeded then
 		math.randomseed(os.time())
 		math.seeded=true
 	end
+	local tmppath
+	if os.isWindows() then
+		tmppath=os.home_path() 
+	else
+		tmppath='/tmp'
+	end
+	local fn=tmppath..'/_temp'..tostring(math.random(1,10000))..'.bat'
+	os.createBatchFile(fn, list)
+	return fn
+end
+function os.execute2(...) -- excute multiple serial operations
+	local list={...}
 	if os.isUnix() then
 		if #list<3 then
 			local cmd=""
@@ -2140,25 +2185,23 @@ function os.execute2(...) -- excute multiple serial operations
 			--print(string.sub(cmd,2))
 			os.execute(string.sub(cmd, 2))
 		else
-			local fn='temp/_temp'..tostring(math.random(1,10000))
-			os.createBatchFile(fn, list)
+			local fn= os.createUnnamedBatchFile(list)
 			os.execute("sh "..fn)
 			os.deleteFiles(fn)
 		end
 	else
-		os.createBatchFile("_temp.bat",list,true)
-		--      os.execute("cat _temp.bat")
-		os.execute("_temp.bat")	
+		local fn= os.createUnnamedBatchFile(list)
+		os.execute('"'..fn..'"')
 	end
 end
 
 function os.pexecute(...) -- excute multiple serial operations
-	if os.isUnix() then
-		os.execute2(...)
+	local list={...}
+	local fn=os.createUnnamedBatchFile(list)
+	if os.isWindows() then
+		os.execute('start /b cmd /c "'..fn..'"')
 	else
-		local list={...}
-		os.createBatchFile("_temp.bat",list)      
-		os.execute("start _temp.bat")	
+		os.execute(fn.."&")
 	end      
 end
 

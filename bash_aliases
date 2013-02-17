@@ -29,3 +29,21 @@ export PATH=$PATH:~/bin
 # because I change .bash_aliases very often,
 #alias va='vi ~/.bashrc;source ~/.bashrc'
 alias va='vi ~/.bash_aliases;source ~/.bash_aliases'
+
+
+##############################################
+# windows msysgit only below                 #
+##############################################
+function gvim {
+	"/c/Program Files (x86)/vim/Vim73/gvim" "$@" &
+	}
+alias vimdiff='vim -d'
+# use the following instead of the above one on windows
+function gitv-cd {
+  before="$(pwd)"
+  gitv chooseFolder "$@" 
+  after="$(cat ~/gitv_chosen)"
+  if [[ "$before" != "$after" ]]; then
+    cd "$after"
+  fi
+}

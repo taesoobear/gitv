@@ -81,33 +81,11 @@ The most commonly used gitv commands are:
   ]])
 end
 
-if os.isWindows() then
-	local search={
-		"c:\\Program Files\\Vim\\vim73\\vim.exe",
-		"c:\\Program Files (x86)\\Vim\\vim73\\vim.exe",
-		"c:\\Program Files\\Git\\share\\vim\\vim73\\vim.exe",
-		"c:\\Program Files (x86)\\Git\\share\\vim\\vim73\\vim.exe",
-		'c:\\msysgit\\msysgit\\share\\vim\\vim73\\vim',
-		}
+g_vimpath, g_gvimpath=os.findVIM()
+g_gitpath=os.findGIT()
 
-	for i,v in ipairs(search) do
-		if os.isFileExist(v) then
-			g_vimpath='"'..v..'"'
-			g_gvimpath='"'..string.gsub(v, 'vim.exe', 'gvim.exe')..'"'
-			break
-		end
-	end
+if os.isWindows() then
 	g_cache_folder=os.home_path() ..'/'
-	local search={
-		"c:\\Program Files\\Git\\bin\\git.exe",
-		"c:\\Program Files (x86)\\Git\\bin\\git.exe",
-		}
-	for i,v in ipairs(search) do
-		if os.isFileExist(v) then
-			g_gitpath='"'..v..'"'
-			break
-		end
-	end
 end
 function git()
 	return g_gitpath or 'git'
@@ -1208,6 +1186,9 @@ function main(...)
 		git_tools.pull(git_top())
 	elseif arg[1]=='push' then
 		git_tools.push(git_top())
+	elseif arg[1]=='backup' then
+		print('> git stash save; git stash apply')
+		os.execute2(git()..' stash save', git() .. ' stash apply')
 	elseif arg[1]=='commit' or arg[1]=='ci' then
 		git_tools.commit(git_top())
 	elseif arg[1]=='cif' then

@@ -34,7 +34,7 @@ set notagbsearch
 set nowrap
 " code folding using indentation
 set fdm=indent
-set foldlevel=3
+set foldlevel=1
 " use system clipboard
 set clipboard=unnamed
 """""""""""""""""""""""""""""""""""""""""""""
@@ -114,7 +114,7 @@ command! -nargs=0 Sh :ConqueTerm bash
 command! -nargs=1 RunL :!l <args> 
 
 
-highlight Folded guifg=#606060 guibg=#090909
+highlight Folded guifg=#606060 guibg=#d9d9d9
 
 " Toggle fold state between closed and opened. 
 " 
