@@ -948,19 +948,23 @@ function os.gvim_remote(servername, filename)
 end
 function os.vi_remote(filename, line)
 	local servername=serverLaunched()
+	local vimpath=g_vimpath
+	if os.isWindows() then
+		vimpath='"'..vimpath
+	end
 	if servername then
 		print("sent "..filename.." to the vim server")
 		if line then
-			os.execute(g_vimpath..' --servername '..servername..' --remote +'..line..' "'..filename..'"')
+			os.execute(vimpath..' --servername '..servername..' --remote +'..line..' "'..filename..'"')
 		else
-			os.execute(g_vimpath..' --servername '..servername..' --remote "'..filename..'"')
+			os.execute(vimpath..' --servername '..servername..' --remote "'..filename..'"')
 		end
 	else
 		-- launch vim
 		if line then
-			os.execute(g_vimpath..' --servername VIM +'..line..' "'..filename..'"')
+			os.execute(vimpath..' --servername VIM +'..line..' "'..filename..'"')
 		else
-			os.execute(g_vimpath..' --servername VIM "'..filename..'"')
+			os.execute(vimpath..' --servername VIM "'..filename..'"')
 		end
 	end
 end
@@ -1218,9 +1222,13 @@ function main(...)
 		end
 		table.sort(files, git_tools.compareFileName)
 		util.writeFile(g_cache_folder..'gitvsrclist', table.concat(files,'\n'))
-		local cmd='etags --extra=+f --langmap=c++:.inl.h.hpp.c.cpp.cc.cxx -L '..g_cache_folder..'gitvsrclist'
+		local cmd='--extra=+f --langmap=c++:.inl.h.hpp.c.cpp.cc.cxx -L '..g_cache_folder..'gitvsrclist'
 		print(cmd)
-		os.execute(cmd)
+		if os.isWindows() then
+			os.execute('ctags -e '..string.gsub(cmd,'\\','/') )
+		else
+			os.execute('etags '..cmd)
+		end
 	elseif arg[1]=='grep' then
 		print('searching '..arg[2]..'...')
 		local files=lsFiles()
