@@ -8,6 +8,7 @@ set fileencodings=utf-8
 if has("gui_running")
     set guifont=Consolas:h11
     set guioptions-=T
+	"au GUIEnter * simalt ~x "x on an English Windows version. n on a French one
     au GUIEnter * winsize 180 54
     au GUIEnter * winpos 0 0
 endif
