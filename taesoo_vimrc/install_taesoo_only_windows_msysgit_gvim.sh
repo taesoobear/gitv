@@ -11,8 +11,9 @@ mkdir -p "$vimpath/plugin"
 mkdir -p "$vimpath/colors"
 unzip "$currdir/vimwiki-1-1-1.zip"
 cd "$vimpath/plugin"
-"unzip "$currdir/hangeul.zip"
+#unzip "$currdir/hangeul.zip"
 mkdir -p "$vimpath/colors"
 cp "$currdir/pyte.vim" "$vimpath/colors"
 rm -f $vimpath/plugin/gitvim.vim
-cp "$currdir/../gitvim.vim" $vimpath/plugin
+cp "$HOME/bin/gitvim.vim" "$vimpath/plugin"
+
