@@ -135,7 +135,7 @@ end
 function os.fromWindowsFileName(file)
 	local fn=string.gsub(file, "\\","/")
 	if string.sub(fn,2,2)==':' then
-		fn='/'..string.sub(fn,1,1)..string.sub(fn,3)
+		fn='/'..string.upper(string.sub(fn,1,1))..string.sub(fn,3)
 	end
 	return fn
 end

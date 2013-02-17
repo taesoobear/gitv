@@ -209,6 +209,7 @@ function git_tools.searchTag(filename, searchKey)
 			--print(fn, path)
 			for i=1,#tags do
 				local t=tags[i][3]
+				if os.isWindows() then t=os.fromWindowsFileName(t) end
 				t=os.relativeToAbsolutePath(t, tagRoot)
 				t=os.absoluteToRelativePath(t, currDir)
 				--print(tags[i][3], t)
