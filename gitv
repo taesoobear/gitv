@@ -18,6 +18,21 @@ g_gvimpath='gvim'
 g_ignorePattern={'^BaseLib/image/FreeImage/Dist/','^dependencies/'}
 g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plot%.', 'OgreFltkConsole.exe', 'console.xml', 'OgreFltkConsoleJIT.exe','optimizelog'}
 
+g_debug=false
+
+if g_debug then
+	os.execute_old=os.execute
+	function os.execute(cmd)
+		print(cmd)
+		os.execute_old(cmd)
+	end
+	os.capture_old=os.capture
+	function os.capture(cmd, opt)
+		print(cmd)
+		return os.capture_old(cmd, opt)
+	end
+end
+
 function printHelp()
 	print([[
 Usage: gitv <command> [option] [<args>]
@@ -66,26 +81,18 @@ The most commonly used gitv commands are:
   ]])
 end
 
-if os.isWindows() then
-	local search={
-		"c:\\Program Files\\Vim\\vim73\\vim.exe",
-		"c:\\Program Files (x86)\\Vim\\vim73\\vim.exe",
-		"c:\\Program Files\\Git\\share\\vim\\vim73\\vim.exe",
-		"c:\\Program Files (x86)\\Git\\share\\vim\\vim73\\vim.exe",
-		'c:\\msysgit\\msysgit\\share\\vim\\vim73\\vim',
-		}
+g_vimpath, g_gvimpath=os.findVIM()
+g_gitpath=os.findGIT()
 
-	for i,v in ipairs(search) do
-		if os.isFileExist(v) then
-			g_vimpath='""'..v..'"'
-			break
-		end
-	end
+if os.isWindows() then
 	g_cache_folder=os.home_path() ..'/'
+end
+function git()
+	return g_gitpath or 'git'
 end
 function git_top()
 	if cache_git_top==nil then
-		local t= string.lines(os.capture('git rev-parse --show-toplevel', true))[1]
+		local t= string.lines(os.capture(git()..' rev-parse --show-toplevel', true))[1]
 		cache_git_top=t
 	end
 	return cache_git_top
@@ -180,6 +187,7 @@ function git_tools.searchTag(filename, searchKey)
 			--print(fn, path)
 			for i=1,#tags do
 				local t=tags[i][3]
+				if os.isWindows() then t=os.fromWindowsFileName(t) end
 				t=os.relativeToAbsolutePath(t, tagRoot)
 				t=os.absoluteToRelativePath(t, currDir)
 				--print(tags[i][3], t)
@@ -299,7 +307,7 @@ function git_tools.commit(path,force)
 			print('Do you want to add these untracked files to git repository? (YES/edit/[no]/ignore)')
 			local cmd=''
 			for i, v in ipairs(untracked) do 
-				cmd=cmd.. 'git add "'..v..'"\n'
+				cmd=cmd.. git()..' add "'..v..'"\n'
 			end
 			local ioread
 			if force then
@@ -560,6 +568,12 @@ function interactiveTagChoose(fn, inputs)
 		v[2]=string.gsub(v[2], '%s+',' ')
 		v[2]=string.trimSpaces(v[2])
 	end
+	local maxColumn=60
+	local maxRow=20
+	if os.isWindows() then 
+		maxColumn=40
+		maxRow=10
+	end
 	while #fn>1 do
 		-- start file choose interface
 		print('--------------------------------------------------------------')
@@ -576,12 +590,12 @@ function interactiveTagChoose(fn, inputs)
 				
 			cleanUpFunctionName(v)
 			if c==1 then
-				print("["..tostring(c).."]  "..string.prettyConcat(v[2],printFn,60))
+				print("["..tostring(c).."]  "..string.prettyConcat(v[2],printFn,maxColumn))
 			else
-				print("("..tostring(c)..")  "..string.prettyConcat(v[2],printFn,60))
+				print("("..tostring(c)..")  "..string.prettyConcat(v[2],printFn,maxColumn))
 			end
 			c=c+1
-			if c>20 then
+			if c>maxRow then
 				print('... not displaying more candidates') 
 				break
 			end
@@ -597,7 +611,7 @@ function interactiveTagChoose(fn, inputs)
 			-- prints
 			for i,v in ipairs(fn) do
 				cleanUpFunctionName(v)
-				io.write(string.prettyConcat(v[2],' | '.. v[3], 60)..'\n')
+				io.write(string.prettyConcat(v[2],' | '.. v[3], maxColumn)..'\n')
 			end
 			return nil
 		elseif index==nil then 
@@ -624,7 +638,7 @@ end
 function findFileFromGit(key, ...)
 	local fn
 	do
-		local str=os.capture('git ls-files ../..', true)
+		local str=os.capture(git()..' ls-files ../..', true)
 		local files=string.lines(str)
 		fn={}
 		local keys={key,...}
@@ -651,12 +665,12 @@ end
 function lsFiles(option)
 	local cpt
 	if option=='-l' then	
-		cpt=os.capture('git ls-files .', true)
+		cpt=os.capture(git()..' ls-files .', true)
 	elseif option=='-g' then
 		-- use absolute
 		cpt=os.capture('cd '..git_top()..';git ls-files .', true)
 	else
-		cpt=os.capture('git ls-files '..git_top(), true)
+		cpt=os.capture(git()..' ls-files '..git_top(), true)
 	end
 
 	local files=string.lines(cpt)
@@ -804,7 +818,12 @@ local function serverWithFileOpened(serverlist, fn)
 		local allOpened={}
 		for i=1,#out do
 			local cmd=g_vimpath..' --servername '..out[i]..' --remote-expr "bufexists(\\\"'..fn..'\\\")"'
-			local opened=os.capture(cmd)=='1'
+			local opened
+			if os.isWindows then
+				opened=os.capture('"'..cmd)=='1'
+			else
+				opened=os.capture(cmd)=='1'
+			end
 			if opened then
 				table.insert(allOpened, out[i])
 			end
@@ -873,10 +892,10 @@ function gvimFile(servername, chosen)
 	if os.isWindows() then
 		local chosenfile=os.toWindowsFileName(chosen)
 		if not serverLaunched(servername) then
-			local cmd='start /b cmd /c "'..os.shellEscape(g_gvimpath..' '..servername..' "'..chosenfile..'"')..'"'
-			print(cmd)
+			local cmd=g_gvimpath..' --servername '..servername..' "'..chosenfile..'"'
 			-- launch gvim
-			os.execute(cmd)
+			os.createBatchFile('_temp2.bat', {cmd})
+			os.execute('start /b cmd /c _temp2.bat')
 		else
 			os.execute(g_gvimpath..' --servername '..servername..' --remote-silent "'..chosenfile..'"')
 		end
@@ -915,19 +934,23 @@ function os.gvim_remote(servername, filename)
 end
 function os.vi_remote(filename, line)
 	local servername=serverLaunched()
+	local vimpath=g_vimpath
+	if os.isWindows() then
+		vimpath='"'..vimpath
+	end
 	if servername then
 		print("sent "..filename.." to the vim server")
 		if line then
-			os.execute(g_vimpath..' --servername '..servername..' --remote +'..line..' "'..filename..'"')
+			os.execute(vimpath..' --servername '..servername..' --remote +'..line..' "'..filename..'"')
 		else
-			os.execute(g_vimpath..' --servername '..servername..' --remote "'..filename..'"')
+			os.execute(vimpath..' --servername '..servername..' --remote "'..filename..'"')
 		end
 	else
 		-- launch vim
 		if line then
-			os.execute(g_vimpath..' --servername VIM +'..line..' "'..filename..'"')
+			os.execute(vimpath..' --servername VIM +'..line..' "'..filename..'"')
 		else
-			os.execute(g_vimpath..' --servername VIM "'..filename..'"')
+			os.execute(vimpath..' --servername VIM "'..filename..'"')
 		end
 	end
 end
@@ -962,7 +985,11 @@ function main(...)
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
 		if chosen then
-			os.execute(g_vimpath..' "'..chosen[1]..'"')
+			if os.isWindows() then
+				os.execute('"'..g_vimpath..' "'..chosen[1]..'"') -- obviously a bug of lua.
+			else
+				os.execute(g_vimpath..' "'..chosen[1]..'"')
+			end
 		end
 	elseif arg[1]=="vir" then
 		local keys=array.sub(arg,2)
@@ -1108,7 +1135,7 @@ function main(...)
 				ioread=io.read('*line')
 				if string.lower(ioread)~='no' then
 					for i,v in ipairs(untracked_local) do
-						os.execute('git add "'..v..'"')
+						os.execute(git()..' add "'..v..'"')
 					end
 					print(msg)
 				end
@@ -1123,7 +1150,7 @@ function main(...)
 					ioread=io.read('*line')
 					if string.lower(string.sub(ioread, 1,2))=='no' then
 					elseif string.lower(string.sub(ioread,1,1))=='d' then
-						git_tools.execute('git diff .')
+						git_tools.execute(git()..' diff .')
 						bDone=false
 					else
 						local msg=string.sub(ioread,4)
@@ -1131,9 +1158,9 @@ function main(...)
 							msg='(no msg)'
 						end
 						for im, m in ipairs(modified) do
-							git_tools.execute('git add "'..m..'"')
+							git_tools.execute(git()..' add "'..m..'"')
 						end
-						git_tools.execute('git commit -m "'..msg..'"')
+						git_tools.execute(git()..' commit -m "'..msg..'"')
 					end
 				until bDone 
 			end
@@ -1160,6 +1187,9 @@ function main(...)
 		git_tools.pull(git_top())
 	elseif arg[1]=='push' then
 		git_tools.push(git_top())
+	elseif arg[1]=='backup' then
+		print('> git stash save; git stash apply')
+		os.execute2(git()..' stash save', git() .. ' stash apply')
 	elseif arg[1]=='commit' or arg[1]=='ci' then
 		git_tools.commit(git_top())
 	elseif arg[1]=='cif' then
@@ -1181,9 +1211,13 @@ function main(...)
 		end
 		table.sort(files, git_tools.compareFileName)
 		util.writeFile(g_cache_folder..'gitvsrclist', table.concat(files,'\n'))
-		local cmd='etags --extra=+f --langmap=c++:.inl.h.hpp.c.cpp.cc.cxx -L '..g_cache_folder..'gitvsrclist'
+		local cmd='--extra=+f --langmap=c++:.inl.h.hpp.c.cpp.cc.cxx -L '..g_cache_folder..'gitvsrclist'
 		print(cmd)
-		os.execute(cmd)
+		if os.isWindows() then
+			os.execute('ctags -e '..string.gsub(cmd,'\\','/') )
+		else
+			os.execute('etags '..cmd)
+		end
 	elseif arg[1]=='grep' then
 		print('searching '..arg[2]..'...')
 		local files=lsFiles()
@@ -1214,14 +1248,14 @@ function main(...)
 		if arg[3] then added=' "'..arg[3]..'"' end
 		print('\n git diff --stat'..added)
 		print('---------------------------------------------------')
-		local str= os.capture('git diff --stat'..added, true)
+		local str= os.capture(git()..' diff --stat'..added, true)
 		print(string.sub(str,1,-2))
 		if #string.lines(str)>1 then
 			print('---------------------------------------------------')
 			print('- do you want to see the differences? (yes/[no])')
 			if io.read('*line')=='yes' then
 				print('\n\n-------------------git difftool:-------------------')
-				os.execute('git difftool'..added)
+				os.execute(git()..' difftool'..added)
 			end
 		else
 			print('-no changes----------------------------------------')
