@@ -20,6 +20,13 @@ g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plo
 
 g_debug=false
 
+if os.isWindows() then
+	os.execute_original=os.execute -- os.execute is buggy
+	function os.execute(cmd)
+		local fn= os.createUnnamedBatchFile({cmd})
+		os.execute_original('"'..fn..'"')
+	end
+end
 if g_debug then
 	os.execute_old=os.execute
 	function os.execute(cmd)

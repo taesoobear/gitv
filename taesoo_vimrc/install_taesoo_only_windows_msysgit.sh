@@ -1,10 +1,7 @@
 cd ..
 sh install_windows_msysgit.sh
 cd taesoo_vimrc
-cp vimrc ~/_vimrc
-sed -i "s/source/\"source/g" ~/_vimrc
-sed -i "s/unnamedplus/unnamed/g" ~/_vimrc
-sed -i "s/let\ hangeul/\"let\ hangeul/g" ~/_vimrc
+cp vimrc_win ~/_vimrc
 currdir=`pwd`
 echo $currdir 
 cd /share/vim/vim73
