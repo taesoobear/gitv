@@ -2170,7 +2170,7 @@ function os.createUnnamedBatchFile(list, echoOff)
 	else
 		tmppath='/tmp'
 	end
-	local fn=tmppath..'/_temp'..tostring(math.random(1,10000))..'.bat'
+	local fn=tmppath..'/_temp'..tostring(math.random(1,100))..'.bat'
 	os.createBatchFile(fn, list)
 	return fn
 end
