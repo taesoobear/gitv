@@ -2171,7 +2171,7 @@ function os.createUnnamedBatchFile(list, echoOff)
 		tmppath='/tmp'
 	end
 	local fn=tmppath..'/_temp'..tostring(math.random(1,10000))..'.bat'
-	os.createBatchFile(fn, list)
+	os.createBatchFile(fn, list, echoOff)
 	return fn
 end
 function os.execute2(...) -- excute multiple serial operations

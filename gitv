@@ -257,8 +257,8 @@ end
 function git_tools.capture(cmd, isRaw)
 	if os.isWindows() then
 		local tokens=git_tools.tokenize_cmd(cmd)
-		os.createBatchFile('_temp.bat', tokens, true)
-		return os.capture('_temp.bat', isRaw)	
+		local fn=os.createUnnamedBatchFile(tokens, true)
+		return os.capture('"'..fn..'"', isRaw)	
 	else
 		return os.capture(cmd, isRaw)
 	end
@@ -266,9 +266,9 @@ end
 function git_tools.execute(cmd)
 	if os.isWindows() then
 		local tokens=git_tools.tokenize_cmd(cmd)
-		os.createBatchFile('_temp.bat', tokens, true)
+		local fn=os.createUnnamedBatchFile(tokens, true)
 		--os.execute('type _temp.bat')
-		return os.execute('_temp.bat')	
+		return os.execute_original('"'..fn..'"')
 	else
 		return os.execute(cmd)
 	end
@@ -900,8 +900,8 @@ function gvimFile(servername, chosen)
 		if not serverLaunched(servername) then
 			local cmd=g_gvimpath..' --servername '..servername..' "'..chosenfile..'"'
 			-- launch gvim
-			os.createBatchFile('_temp2.bat', {cmd})
-			os.execute('start /b cmd /c _temp2.bat')
+			local fn=os.createUnnamedBatchFile({cmd})
+			os.execute_original('start /b cmd /c "'..fn..'"')
 		else
 			os.execute(g_gvimpath..' --servername '..servername..' --remote-silent "'..chosenfile..'"')
 		end
