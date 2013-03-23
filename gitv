@@ -20,6 +20,16 @@ g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plo
 
 g_debug=false
 
+
+if os.isWindows() then
+	-- on some systems, os.execute doesn't work perfectly. so  this is a workaround.
+	os.execute_original=os.execute
+	function os.execute(cmd)
+		local fn= os.createUnnamedBatchFile({cmd})
+		os.execute_original('"'..fn..'"')
+	end
+end
+
 if g_debug then
 	os.execute_old=os.execute
 	function os.execute(cmd)
@@ -254,8 +264,8 @@ end
 function git_tools.capture(cmd, isRaw)
 	if os.isWindows() then
 		local tokens=git_tools.tokenize_cmd(cmd)
-		os.createBatchFile('_temp.bat', tokens, true)
-		return os.capture('_temp.bat', isRaw)	
+		local fn=os.createUnnamedBatchFile(tokens, true)
+		return os.capture('"'..fn..'"', isRaw)	
 	else
 		return os.capture(cmd, isRaw)
 	end
@@ -263,9 +273,9 @@ end
 function git_tools.execute(cmd)
 	if os.isWindows() then
 		local tokens=git_tools.tokenize_cmd(cmd)
-		os.createBatchFile('_temp.bat', tokens, true)
+		local fn=os.createUnnamedBatchFile(tokens, true)
 		--os.execute('type _temp.bat')
-		return os.execute('_temp.bat')	
+		return os.execute_original('"'..fn..'"')
 	else
 		return os.execute(cmd)
 	end
@@ -898,8 +908,8 @@ function gvimFile(servername, chosen)
 		if not serverLaunched(servername) then
 			local cmd=g_gvimpath..' --servername '..servername..' "'..chosenfile..'"'
 			-- launch gvim
-			os.createBatchFile('_temp2.bat', {cmd})
-			os.execute('start /b cmd /c _temp2.bat')
+			local fn=os.createUnnamedBatchFile({cmd})
+			os.execute_original('start /b cmd /c "'..fn..'"')
 		else
 			os.execute(g_gvimpath..' --servername '..servername..' --remote-silent "'..chosenfile..'"')
 		end
@@ -939,9 +949,6 @@ end
 function os.vi_remote(filename, line)
 	local servername=serverLaunched()
 	local vimpath=g_vimpath
-	if os.isWindows() then
-		vimpath='"'..vimpath
-	end
 	if servername then
 		print("sent "..filename.." to the vim server")
 		if line then
@@ -989,11 +996,7 @@ function main(...)
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
 		if chosen then
-			if os.isWindows() then
-				os.execute('"'..g_vimpath..' "'..chosen[1]..'"') -- obviously a bug of lua.
-			else
-				os.execute(g_vimpath..' "'..chosen[1]..'"')
-			end
+			os.execute(g_vimpath..' "'..chosen[1]..'"')
 		end
 	elseif arg[1]=="vir" then
 		local keys=array.sub(arg,2)

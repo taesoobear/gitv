@@ -1,7 +1,7 @@
 set nocompatible
 filetype plugin on
 syntax on
-"source $VIMRUNTIME/vimrc_example.vim
+source $VIMRUNTIME/vimrc_example.vim
 " The % key will switch between opening and closing brackets. By sourcing matchit.vim, the key can also switch among e.g. if/elsif/else/end, between opening and closing XML tags, and more. 
 runtime macros/matchit.vim
 set fileencodings=utf-8
