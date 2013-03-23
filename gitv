@@ -129,25 +129,29 @@ function git_tools.compareFileName(f1, f2)
 		return count3<count4
 	end
 end
-function string.linesContaining(str, pattern)
+function string.linesContaining(filename, pattern)
+	local fout, msg=io.open(filename, "r")
+	if fout==nil then
+		print(msg)
+		return
+	end
 	pattern=string.gsub(pattern,'[%$%^]','')
-	assert(type(str)=='string')
-	local t = {}
 	local lastFileTag=''
-	local function helper(line) 
+	local t = {}
+	while true do
+		local line=fout:read('*line')
+		if line==nil then break end
 		if select(1, string.find(string.lower(line),string.lower(pattern))) then 
 			table.insert(t, lastFileTag) 
 			table.insert(t, line) 
 		elseif not select(1, string.find(line, string.char(127))) then
 			lastFileTag=line
 		end
-		return "" 
 	end
-	helper((str:gsub("(.-)\r?\n", helper)))
 	return t
 end
 function git_tools.searchTag(filename, searchKey) 
-	local t=string.linesContaining(util.readFile(filename), searchKey)
+	local t=string.linesContaining(filename, searchKey)
 	--local t=string.lines(util.readFile(filename))
 	local currFile
 	local tags={}
