@@ -991,6 +991,9 @@ function git_tools.tagList(keywords)
 end
 
 function main(...)
+	if os.isFileExist(git_top()..'/.gitvconfig') then
+		dofile(git_top()..'/.gitvconfig')
+	end
 	local arg={...}
 	if arg[1]=="vi" then
 		local keys=array.sub(arg,2)
@@ -1292,6 +1295,73 @@ function main(...)
 			print('Cannot find ~/.gitv_conf')
 			print('  list git repositories seperated by new lines in ~/.gitv_conf')
 		end
+	elseif arg[1]=='iconvcheck' then
+		-- convert EUCKR encoding to UTF-8
+		local option=''
+		local force=false
+		if arg[2]=='.' then
+			option='-l'
+		elseif arg[2]=='.f' then
+			option='-l'
+			force=true
+		elseif arg[2]=='-f' then
+			force=true
+		end
+
+		if force then
+			if force then
+				print('Force convert!')
+			end
+			if option~='-l' then
+				print('All files!')
+			end
+			print('Are you sure? (YES/[no])')
+			ioread=io.read('*line')
+			if ioread~='YES' then
+				force=false
+			end
+		end
+
+		local files=lsFiles(option)
+
+		local fn={}
+		for ifile, file in ipairs(files) do
+			if string.isMatched(file,g_vimSrc)  then
+				local output=os.capture('iconv -f UTF-8 "'..file..'" -o /dev/null 2>&1')
+				if output~='' then
+					local trySourceEncodings={
+						--koreans
+						'EUCKR', 'CP949', 'MSCP949', 'ISO-2022-KR',
+					}
+					local autoConv=false
+					for ienc, enc in ipairs(trySourceEncodings) do
+						local output2=os.capture('iconv -f '..enc..' -t UTF8 "'..file..'" -o /dev/null 2>&1')
+						if output2=='' then
+							print("automatically converting "..file)
+							os.execute2('cp "'..file..'" "'..file..'.bak"',
+							'iconv -f '..enc..' -t UTF8 "'..file..'.bak" -o "'..file..'"' )
+							autoConv=true
+							break
+						end
+					end
+					if not autoConv then
+						if force then
+							print("force converting "..file)
+							os.execute2('cp "'..file..'" "'..file..'.bak"',
+							'iconv -f UTF8 -t UTF8 "'..file..'.bak" -c -o "'..file..'"' )
+						else
+							print(file, output)
+							local tokens=string.tokenize(output, '%s')
+							local byte=tonumber(tokens[#tokens])
+							print('---------------------------------')
+							print(string.sub(util.readFile(file), byte-100, byte+100))
+							print('---------------------------------')
+						end
+					end
+				end
+			end
+		end
+
 	else
 		printHelp()
 	end
