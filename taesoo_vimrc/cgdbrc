@@ -1,0 +1,7 @@
+map s :step<CR>
+map u :up<CR>
+map d :down<CR>
+map f :finish<CR>
+map <F2> :step<CR>
+map <F3> :finish<CR>
+map <F4> <space>:continue<CR><space>
