@@ -105,6 +105,10 @@ function git_top()
 		local t= string.lines(os.capture(git()..' rev-parse --show-toplevel', true))[1]
 		cache_git_top=t
 	end
+	if cache_git_top=='' then
+		print('Searching the current folder...')
+		return '.'
+	end
 	return cache_git_top
 end 
 git_tools={}
@@ -678,7 +682,11 @@ end
 
 function lsFiles(option)
 	local cpt
-	if option=='-l' then	
+	if cache_git_top=='' then
+		--cpt=os.capture(git()..' ls-files .', true)
+		cpt=os.glob('*',true,true)
+		printTable(cpt)
+	elseif option=='-l' then	
 		cpt=os.capture(git()..' ls-files .', true)
 	elseif option=='-g' then
 		-- use absolute
@@ -687,7 +695,12 @@ function lsFiles(option)
 		cpt=os.capture(git()..' ls-files '..git_top(), true)
 	end
 
-	local files=string.lines(cpt)
+	local files
+	if type(cpt)=='string' then
+		files=string.lines(cpt)
+	else
+		files=cpt
+	end
 	local files=array.sub(files,1,-2)
 	if option=='-g' then
 		for i,v in ipairs(files) do
