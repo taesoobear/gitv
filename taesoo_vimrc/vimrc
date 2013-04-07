@@ -8,7 +8,7 @@ set fileencodings=utf-8
 
 " support korean keyboard. (Toggle han/eng using \<space>)
 " Enter insert mode using C-i, C-a, or C-o to use korean
-let hangeul_enabled=1
+"let hangeul_enabled=1
 
 let g:vimwiki_file_exts='pdf,chm'
 """""""""""""""""""""""""""""""""""""""""""""
