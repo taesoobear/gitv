@@ -1217,6 +1217,21 @@ function main(...)
 		git_tools.commit(git_top())
 	elseif arg[1]=='cif' then
 		git_tools.commit(git_top(), true)
+	elseif arg[1]=='undo-commit' then
+		print("Do not undo commit if you pushed your last commit!")
+		print("Are you sure? (yes/[no])")
+		ioread=io.read('*line')
+		if ioread=='yes' or ioread=='YES' then
+			local cmd='git reset --soft HEAD^'
+			print(cmd)
+			os.execute(cmd)
+			cmd='git reset'
+			print(cmd)
+			os.execute(cmd)
+			print("Undoing finished.")
+		else
+			print("Undoing canceled.")
+		end
 	elseif arg[1]=='fetch' then
 		git_tools.fetch(git_top())
 	elseif arg[1]=="etags" then
