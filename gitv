@@ -318,6 +318,9 @@ function git_tools.getFilesToCommit(path)
 end
 function git_tools.commit(path,force)
 	if os.isFileExist(path..'/.git/HEAD') then
+		if hookBeforeCommit then
+			hookBeforeCommit(arg)
+		end
 		local untracked=git_tools.getUntracked(path)
 		if #untracked>=1 then
 			print('Untracked files:')
@@ -411,6 +414,9 @@ function git_tools.commit(path,force)
 					os.execute('cd "'..path..'";git svn dcommit')
 				end
 			end
+		end
+		if hookAfterCommit then
+			hookAfterCommit(arg)
 		end
 	end
 end
