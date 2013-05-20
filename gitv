@@ -100,9 +100,14 @@ end
 function git()
 	return g_gitpath or 'git'
 end
-function git_top()
+function git_top() -- git_root
 	if cache_git_top==nil then
-		local t= string.lines(os.capture(git()..' rev-parse --show-toplevel', true))[1]
+		local t
+		if os.isUnix() then
+			t= string.lines(os.capture(git()..' rev-parse --show-toplevel 2>&1', true))[1]
+		else
+			t= string.lines(os.capture(git()..' rev-parse --show-toplevel', true))[1]
+		end
 		cache_git_top=t
 	end
 	if cache_git_top=='' then
@@ -221,10 +226,16 @@ function git_tools.searchTag(filename, searchKey)
 	return tags
 end
 function git_tools.pull(path)
+	local password
 	if os.isFileExist(path..'/.git/HEAD') then
 		local remotes=array.filter(function (a) return string.len(a)>1 end, string.lines(git_tools.capture('cd "'..path..'";git remote',true)))
+
 		if arg[2] then
-			remotes=array.filter(function (a) return select(1,string.find(a,arg[2])) end, remotes)
+			if string.sub(arg[2],1,1)==':' then
+				password=string.sub(arg[2],2)
+			else
+				remotes=array.filter(function (a) return select(1,string.find(a,arg[2])) end, remotes)
+			end
 		end
 		local curr_branch=array.filter(function (a) return string.sub(a,1,1)=='*' end ,  string.lines(git_tools.capture('cd "'..path..'";git branch',true)))[1]
 		curr_branch=string.sub(curr_branch,2)
@@ -233,7 +244,7 @@ function git_tools.pull(path)
 			print(v)
 			local cmd='cd "'..path..'";git pull '..v..curr_branch
 			print('> '..cmd)
-			git_tools.execute(cmd)
+			git_tools.execute(cmd, password)
 		end
 	else
 		print(path..'/.git/HEAD' .." doesn't exist")
@@ -274,14 +285,40 @@ function git_tools.capture(cmd, isRaw)
 		return os.capture(cmd, isRaw)
 	end
 end
-function git_tools.execute(cmd)
+function git_tools.execute(cmd, password)
 	if os.isWindows() then
 		local tokens=git_tools.tokenize_cmd(cmd)
 		local fn=os.createUnnamedBatchFile(tokens, true)
 		--os.execute('type _temp.bat')
 		return os.execute_original('"'..fn..'"')
 	else
-		return os.execute(cmd)
+		if password then
+			local cmd2=string.tokenize(cmd, ';')
+		local script=[[
+import pexpect
+child=pexpect.spawn("]]..cmd2[#cmd2]..[[")
+tbl=['password:', 'up-to-date', 'Counting objects:','unexpectedly']
+try:
+	i=child.expect(tbl)
+	print child.before,
+	if i==0:
+		child.sendline(']]..password..[[')
+		print tbl[i]
+		print '****'
+		i=child.expect(tbl)
+		print child.before,
+	print tbl[i]
+except:
+	print '???'
+]]
+			util.writeFile('/tmp/temp.py', script)
+			local fn= os.createUnnamedBatchFile({unpack(array.sub(cmd2,1,#cmd2-1)), 'python /tmp/temp.py'})
+			os.execute('ssh localhost bash '..fn)
+			os.execute('rm /tmp/temp.py')
+			--return os.execute2()
+		else
+			return os.execute(cmd)
+		end
 	end
 end
 function git_tools.getUntracked(path)
@@ -301,16 +338,24 @@ function git_tools.getFilesToCommit(path)
 		status= string.lines( git_tools.capture('cd "'..path..'";git status .', true))
 		local modified={}
 		for il, line in ipairs(status) do
+			local output='modified: '
 			local s,e,c=string.find(line, '#%s+modified:%s+(.+)')
 			if not c then
 				s,e,c=string.find(line, '#%s+new file:%s+(.+)')
+				output='new file: '
 			end
 			if not c then
 				s,e,c=string.find(line, '#%s+renamed:%s+(.+)')
+				output='renamed: '
+			end
+			if not c then
+				s,e,c=string.find(line, '#%s+both modified:%s+(.+)')
+				output='both modified: '
 			end
 			if c then 
 				if not string.isMatched(os.filename(c), g_commitIgnorePattern) then
 					modified[#modified+1]=c
+					print(output .. c)
 				end
 			end
 		end
@@ -363,7 +408,7 @@ function git_tools.commit(path,force)
 		end
 		local modified=git_tools.getFilesToCommit(path)
 		if #modified>=1 then
-			printTable(modified)
+			--printTable(modified)
 			local bDone
 			repeat
 				bDone=true
@@ -421,17 +466,22 @@ function git_tools.commit(path,force)
 	end
 end
 function git_tools.push(path)
+	local password
 	if os.isFileExist(path..'/.git/HEAD') then
 		local remotes=array.filter(function (a) return string.len(a)>1 end, string.lines(git_tools.capture('cd "'..path..'";git remote',true)))
 		if arg[2] then
-			remotes=array.filter(function (a) return select(1,string.find(a,arg[2])) end, remotes)
+			if string.sub(arg[2],1,1)==':' then
+				password=string.sub(arg[2],2)
+			else
+				remotes=array.filter(function (a) return select(1,string.find(a,arg[2])) end, remotes)
+			end
 		end
 		local curr_branch=array.filter(function (a) return string.sub(a,1,1)=='*' end ,  string.lines(git_tools.capture('cd "'..path..'";git branch',true)))[1]
 		curr_branch=string.sub(curr_branch,2)
 		for k,v in ipairs(remotes) do
 			local cmd='cd "'..path..'";git push '..v..curr_branch
 			print('> '..cmd)
-			git_tools.execute(cmd)
+			git_tools.execute(cmd, password)
 		end
 	end
 end
@@ -984,17 +1034,23 @@ function os.vi_remote(filename, line)
 		end
 	end
 end
-function git_tools.tagChoose(keyword)
+function git_tools.tagChoose(keyword, keyword2)
 	if keyword==nil then
 		printHelp()
 		return nil
 	end
-	print('Searching '..keyword)
-	if not os.isFileExist(git_top()..'/TAGS') then
-		print('Generating '..git_top()..'/TAGS...')
-		main('etags', git_top())
+
+	local path=git_top()
+	if keyword=='-l' then
+		path='.'
+		keyword=keyword2
 	end
-	local chosen=interactiveTagChoose(git_tools.searchTag(git_top()..'/TAGS', keyword))
+	print('Searching '..keyword)
+	if not os.isFileExist(path..'/TAGS') then
+		print('Generating '..path..'/TAGS...')
+		main('etags', path)
+	end
+	local chosen=interactiveTagChoose(git_tools.searchTag(path..'/TAGS', keyword))
 	return chosen
 end
 function git_tools.tagList(keywords)
@@ -1027,7 +1083,7 @@ function main(...)
 			os.vi_remote(chosen[1])
 		end
 	elseif arg[1]=="ts" then
-		local chosen=git_tools.tagChoose(arg[2])
+		local chosen=git_tools.tagChoose(arg[2], arg[3])
 		if chosen then
 			os.vi_remote(chosen[3],chosen[4])
 		end
@@ -1216,6 +1272,9 @@ function main(...)
 		git_tools.pull(git_top())
 	elseif arg[1]=='push' then
 		git_tools.push(git_top())
+		if hookAfterPush then
+			hookAfterPush(arg)
+		end
 	elseif arg[1]=='backup' then
 		print('> git stash save; git stash apply')
 		os.execute2(git()..' stash save', git() .. ' stash apply')
@@ -1290,11 +1349,15 @@ function main(...)
 		local added=''
 		if arg[2] then added=' '..arg[2] end
 		if arg[3] then added=' "'..arg[3]..'"' end
-		print('\n git diff --stat'..added)
-		print('---------------------------------------------------')
-		local str= os.capture(git()..' diff --stat'..added, true)
-		print(string.sub(str,1,-2))
+		local cmd=git()..' diff --stat'..added..' 2>&1'
+		local str= os.capture(cmd, true)
+		if string.sub(str, 1, 10)=='usage: git' then
+			return
+		end
+		print('> git diff --stat'..added)
 		if #string.lines(str)>1 then
+			print('---------------------------------------------------')
+			print(string.sub(str,1,-2))
 			print('---------------------------------------------------')
 			print('- do you want to see the differences? (yes/[no])')
 			if io.read('*line')=='yes' then
@@ -1302,7 +1365,7 @@ function main(...)
 				os.execute(git()..' difftool'..added)
 			end
 		else
-			print('-no changes----------------------------------------')
+			print('- no changes ')
 		end
 	elseif arg[1]=='kill' then
 		local out=string.lines(os.capture('pgrep '..arg[2]))

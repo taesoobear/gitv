@@ -4,6 +4,7 @@ cd taesoo_vimrc
 cp vimrc ~/.vimrc
 mkdir -p ~/.cgdb
 cp cgdbrc ~/.cgdb/
+cp tmux.cof ~/.tmux.conf
 sudo cp convkr.sh /usr/local/bin/convkr
 sudo chmod 707 /usr/local/bin/convkr
 sudo bash -c 'echo "set completion-ignore-case on">> /etc/inputrc'
