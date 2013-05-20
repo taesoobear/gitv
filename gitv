@@ -100,9 +100,14 @@ end
 function git()
 	return g_gitpath or 'git'
 end
-function git_top()
+function git_top() -- git_root
 	if cache_git_top==nil then
-		local t= string.lines(os.capture(git()..' rev-parse --show-toplevel', true))[1]
+		local t
+		if os.isUnix() then
+			t= string.lines(os.capture(git()..' rev-parse --show-toplevel 2>&1', true))[1]
+		else
+			t= string.lines(os.capture(git()..' rev-parse --show-toplevel', true))[1]
+		end
 		cache_git_top=t
 	end
 	if cache_git_top=='' then
@@ -1338,11 +1343,15 @@ function main(...)
 		local added=''
 		if arg[2] then added=' '..arg[2] end
 		if arg[3] then added=' "'..arg[3]..'"' end
-		print('\n git diff --stat'..added)
-		print('---------------------------------------------------')
-		local str= os.capture(git()..' diff --stat'..added, true)
-		print(string.sub(str,1,-2))
+		local cmd=git()..' diff --stat'..added..' 2>&1'
+		local str= os.capture(cmd, true)
+		if string.sub(str, 1, 10)=='usage: git' then
+			return
+		end
+		print('> git diff --stat'..added)
 		if #string.lines(str)>1 then
+			print('---------------------------------------------------')
+			print(string.sub(str,1,-2))
 			print('---------------------------------------------------')
 			print('- do you want to see the differences? (yes/[no])')
 			if io.read('*line')=='yes' then
@@ -1350,7 +1359,7 @@ function main(...)
 				os.execute(git()..' difftool'..added)
 			end
 		else
-			print('-no changes----------------------------------------')
+			print('- no changes ')
 		end
 	elseif arg[1]=='kill' then
 		local out=string.lines(os.capture('pgrep '..arg[2]))
