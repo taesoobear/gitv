@@ -333,16 +333,24 @@ function git_tools.getFilesToCommit(path)
 		status= string.lines( git_tools.capture('cd "'..path..'";git status .', true))
 		local modified={}
 		for il, line in ipairs(status) do
+			local output='modified: '
 			local s,e,c=string.find(line, '#%s+modified:%s+(.+)')
 			if not c then
 				s,e,c=string.find(line, '#%s+new file:%s+(.+)')
+				output='new file: '
 			end
 			if not c then
 				s,e,c=string.find(line, '#%s+renamed:%s+(.+)')
+				output='renamed: '
+			end
+			if not c then
+				s,e,c=string.find(line, '#%s+both modified:%s+(.+)')
+				output='both modified: '
 			end
 			if c then 
 				if not string.isMatched(os.filename(c), g_commitIgnorePattern) then
 					modified[#modified+1]=c
+					print(output .. c)
 				end
 			end
 		end
@@ -392,7 +400,7 @@ function git_tools.commit(path,force)
 		end
 		local modified=git_tools.getFilesToCommit(path)
 		if #modified>=1 then
-			printTable(modified)
+			--printTable(modified)
 			local bDone
 			repeat
 				bDone=true
