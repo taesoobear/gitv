@@ -1284,6 +1284,22 @@ function main(...)
 		local added=''
 		if arg[2] then added=' '..arg[2] end
 		if arg[3] then added=' "'..arg[3]..'"' end
+		local stashlist=string.lines(os.capture(git()..' stash list', true))
+		if #stashlist>1 then
+			print(tostring(#stashlist-1)..' stashed backups.')
+			local cmd=git()..' diff stash --stat'..added
+			print('> '..cmd)
+			print('---------------------------------------------------')
+			local str1=os.capture(cmd, true)
+			print(str1)
+			print('---------------------------------------------------')
+			print('> git diff --stat'..added)
+			print('---------------------------------------------------')
+			os.execute('git diff --stat')
+			return
+		end
+
+
 		print('\n git diff --stat'..added)
 		print('---------------------------------------------------')
 		local str= os.capture(git()..' diff --stat'..added, true)
@@ -1322,6 +1338,13 @@ function main(...)
 		else
 			print('Cannot find ~/.gitv_conf')
 			print('  list git repositories seperated by new lines in ~/.gitv_conf')
+		end
+	elseif arg[1]=='post-change-message' then
+		if arg[2] then
+			local cmd=
+			'git commit --amend -m "'..arg[2]..'"'
+			print(cmd)
+			os.execute(cmd)
 		end
 	elseif arg[1]=='iconvcheck' then
 		-- convert EUCKR encoding to UTF-8

@@ -11,6 +11,10 @@ dofile(gitvPath.."/gitv")
 
 g_gitPaths={"~/taesooLib", "~/Documents/papers", "~/taesoo_cmu", "~/taesoo"}
 
+if os.isFileExist(os.home_path()..'/.gitvconfig') then
+	dofile(os.home_path()..'/.gitvconfig')
+end
+
 lsFiles_single=lsFiles
 function lsFiles(option)
 	local files={}
