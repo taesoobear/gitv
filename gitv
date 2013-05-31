@@ -846,7 +846,7 @@ local function serverWithFileOpened(serverlist, fn)
 		for i=1,#out do
 			local cmd=g_vimpath..' --servername '..out[i]..' --remote-expr "bufexists(\\\"'..fn..'\\\")"'
 			local opened
-			if os.isWindows then
+			if os.isWindows() then
 				opened=os.capture('"'..cmd)=='1'
 			else
 				opened=os.capture(cmd)=='1'
@@ -876,6 +876,7 @@ function makeEditable(servername, fullfn)
 	end
 end
 function makeReadOnlyAll(servers, fullfn)
+	local debugMode=false
 	local function isSwapExist(fullfn)
 		if os.isFileExist(path..'/.'..fn..'.swo') then return true end
 		if os.isFileExist(path..'/.'..fn..'.swp') then return true end
@@ -893,17 +894,20 @@ function makeReadOnlyAll(servers, fullfn)
 	local function makeReadOnly(servername, fullfn)
 		-- 1. select the buffer after setting a global marker
 		local cmd=g_vimpath..' --servername '..servername..' --remote-send "<ESC>mZ:b '..fullfn..'<CR>"'
-		--print(cmd)
+		if debugMode then print(cmd) end
 		os.execute(cmd)
 		-- 2. check if readonly
 		cmd=g_vimpath..' --servername '..servername..' --remote-expr "&readonly"'
+		if debugMode then print(cmd) end
 		if os.capture(cmd)=='1' then
 			-- already readonly. simply go back to the marker position
 			local cmd=g_vimpath..' --servername '..servername..' --remote-send "\'Z"'
+			if debugMode then print(cmd) end
 			os.execute(cmd)
 		else
 			-- write 
 			local cmd=g_vimpath..' --servername '..servername..' --remote-send ":w<CR>:setlocal readonly<CR>:setlocal nomodifiable<CR>:setlocal autoread<CR>\'Z"'
+			if debugMode then print(cmd) end
 			os.execute(cmd)
 		end
 	end
@@ -949,7 +953,13 @@ function os.gvim_remote(servername, filename)
 	local otherServers=array.filter(function(v)return v~=servername  end, out)
 	local thisServer=array.filter(function(v)return v==servername  end, out)
 	otherServers[#otherServers]=nil
-	thisServer[#thisServer]=nil
+	--[[
+	printTable(out)
+	print('otherServers')
+	printTable(otherServers)
+	print('thisServer')
+	printTable(thisServer)
+	]]--
 	local fullfn=os.relativeToAbsolutePath(filename)
 	makeReadOnlyAll(otherServers, fullfn)
 	if #thisServer>0 and #serverWithFileOpened(thisServer, fullfn)>0 then
@@ -1267,6 +1277,16 @@ function main(...)
 			for i,f in ipairs(files) do
 				if string.isMatched(f,g_grepSrc) then
 					util.grepFile(f, arg[2],'',true)
+				end
+			end
+		end
+	elseif arg[1]=='fgrep' then
+		print('searching '..arg[2]..'...')
+		local files=lsFiles()
+		if arg[2] then
+			for i,f in ipairs(files) do
+				if string.isMatched(f,g_grepSrc) then
+					util.grepFile(f, arg[2],'',false)
 				end
 			end
 		end
