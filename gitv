@@ -19,7 +19,7 @@ g_ignorePattern={'^BaseLib/image/FreeImage/Dist/','^dependencies/'}
 g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plot%.', 'OgreFltkConsole.exe', 'console.xml', 'OgreFltkConsoleJIT.exe','optimizelog'}
 
 g_debug=false
-
+g_useEmacs=false
 
 if os.isWindows() then
 	-- on some systems, os.execute doesn't work perfectly. so  this is a workaround.
@@ -49,6 +49,7 @@ Usage: gitv <command> [option] [<args>]
 
 The most commonly used gitv commands are:
   --help     Show this page.
+  --emacs    Use emacs instead of vim. (works for "vir", "ts" and "open" commands)
   vi         Open a file in the git repository whose name contains 
              the keyword using vim. When no keyword is given, history will be shown.
                $ gitv vi [option] keyword
@@ -288,11 +289,17 @@ function git_tools.execute(cmd, password)
 		return os.execute_original('"'..fn..'"')
 	else
 		if password then
+			local tt=string.tokenize(password,':')
+			local passphrase
+			if tt[2] then
+				password=tt[1]
+				passphrase=tt[2]
+			end
 			local cmd2=string.tokenize(cmd, ';')
 		local script=[[
 import pexpect
 child=pexpect.spawn("]]..cmd2[#cmd2]..[[")
-tbl=['password:', 'up-to-date', 'Counting objects:','unexpectedly']
+tbl=['password:', 'passphrase for key', 'up-to-date', 'Counting objects:','unexpectedly']
 try:
 	i=child.expect(tbl)
 	print child.before,
@@ -304,6 +311,7 @@ try:
 		print child.before,
 	print tbl[i]
 except:
+	print child.before
 	print '???'
 ]]
 			util.writeFile('/tmp/temp.py', script)
@@ -996,7 +1004,34 @@ function os.gvim_remote(servername, filename)
 		gvimFile(servername, filename)
 	end
 end
+
 function os.vi_remote(filename, line)
+	if g_useEmacs then
+		local cmd
+		if line then
+			cmd='emacsclient -n +'..line..' "'..filename..'"'
+		else
+			cmd='emacsclient -n "'..filename..'"'
+		end
+		local output=os.capture(cmd..' 2>&1')
+		if select(1, string.find(output, 'To start the server')) then 
+			os.execute('emacs --eval "(server-start)"&')
+			-- now have to wait, so removing -n option
+			cmd=string.gsub(cmd, 'client -n', 'client')
+			local c=1
+			for i=1,100 do -- try 100 times
+				os.sleep(1)
+				local output=os.capture(cmd..' 2>&1')
+				if not select(1, string.find(output, 'To start the server')) then 
+					c=c+1
+					if c==3 then -- heuristic.
+						return
+					end
+				end
+			end
+		end
+		return
+	end
 	local servername=serverLaunched()
 	local vimpath=g_vimpath
 	if servername then
@@ -1063,6 +1098,8 @@ function main(...)
 		if chosen then
 			os.vi_remote(chosen[1])
 		end
+	elseif arg[1]=='open' then
+		os.vi_remote(arg[2])
 	elseif arg[1]=="ts" then
 		local chosen=git_tools.tagChoose(arg[2], arg[3])
 		if chosen then
@@ -1467,7 +1504,12 @@ if string.sub(arg[0],-4)~='gitv' then
 	return
 end
 if arg[1] then
-	main(unpack(arg))
+	if arg[1]=='--emacs' then
+	   g_useEmacs=true
+		main(unpack(array.sub(arg,2)))
+	else
+		main(unpack(arg))
+	end
 else
 	printHelp()
 end
