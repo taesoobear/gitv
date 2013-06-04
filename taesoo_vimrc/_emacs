@@ -161,7 +161,7 @@ nil
 (+ 1 (current-column)))))
 (global-set-key [f2] 'jao-selective-display)
 
-(load-file "/home/taesoobear/.emacs.d/xclip.el")
+(require 'xclip)
 
 (defun command-line-diff (switch)
       (let ((file1 (pop command-line-args-left))
