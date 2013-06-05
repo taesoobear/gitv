@@ -559,6 +559,12 @@ Do not rename the page originally referred to."
          t t))
     (error "There is no valid link at point")))
 
+(defun translate-link (link)
+  (if (string-match "\\." link) 
+	link
+	(format "%s%s" link ".wiki") 
+  )
+)
 (defun muse-visit-link-default (link &optional other-window)
   "Visit the URL or link named by LINK.
 If ANCHOR is specified, search for it after opening LINK.
@@ -578,7 +584,7 @@ in `muse-project-alist'."
                        nil
                      (substring link 0 (match-beginning 0)))))
       (when link
-        (setq base-buffer (get-buffer link))
+        (setq base-buffer (get-buffer (translate-link link)))
         (if (and base-buffer (not (buffer-file-name base-buffer)))
             ;; If file is temporary (no associated file), just switch to
             ;; the buffer
@@ -587,12 +593,13 @@ in `muse-project-alist'."
               (switch-to-buffer base-buffer))
           (let ((project (muse-project-of-file)))
             (if project
-                (muse-project-find-file link project
+                (muse-project-find-file (translate-link link) project
                                         (and other-window
                                              'find-file-other-window))
               (if other-window
-                  (find-file-other-window link)
-                (find-file link))))))
+                  (find-file-other-window (translate-link link))
+				  (find-file (translate-link link))				
+				)))))
       (when anchor
         (let ((pos (point))
               (regexp (concat "^\\W*" (regexp-quote anchor) "\\b"))
