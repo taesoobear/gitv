@@ -1,5 +1,6 @@
 (add-to-list 'load-path "~/.emacs.d")
 (add-to-list 'load-path "~/.emacs.d/muse-3.20/lisp")
+(remove-hook 'find-file-hooks 'vc-find-file-hook)
 (if (window-system) (set-frame-size (selected-frame) 144 50)) 
 (require 'vimpulse)
 (require 'hide-region)
