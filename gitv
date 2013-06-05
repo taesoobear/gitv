@@ -348,6 +348,12 @@ function git_tools.getFilesToCommit(path)
 			if not c then
 				s,e,c=string.find(line, '#%s+renamed:%s+(.+)')
 			end
+			if not c then
+				s,e,c=string.find(line, '#%s+both modified:%s+(.+)')
+				if c then
+					print('warning! '..c..' is an unmerged path')
+				end
+			end
 			if c then 
 				if not string.isMatched(os.filename(c), g_commitIgnorePattern) then
 					modified[#modified+1]=c
@@ -361,8 +367,10 @@ function git_tools.commit(path,force)
 		local untracked=git_tools.getUntracked(path)
 		if #untracked>=1 then
 			print('Untracked files:')
+			print('----------------------------------')
 			for i,v in ipairs(untracked) do print(v) end
-			print('Do you want to add these untracked files to git repository? (YES/edit/[no]/ignore)')
+			print('----------------------------------')
+			print('Do you want to add these untracked files to git repository? Press enter if you are not sure. (YES/edit/[no]/ignore)')
 			local cmd=''
 			for i, v in ipairs(untracked) do 
 				cmd=cmd.. git()..' add "'..v..'"\n'
