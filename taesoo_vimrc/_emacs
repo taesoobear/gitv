@@ -17,6 +17,7 @@
 (vimpulse-map (kbd "M-h") 'windmove-left)
 (vimpulse-global-set-key 'vi-state (kbd "M-i") '(lambda () (interactive)(hide-region-hide)(vimpulse-visual-toggle-line)))
 (vimpulse-global-set-key 'vi-state (kbd "M-o") 'hide-region-unhide)
+(vimpulse-global-set-key 'vi-state (kbd "M-k") 'toggle-selective-display-column )
 
 (vimpulse-global-set-key 'vi-state (kbd "M-n") 'gud-next)
 (vimpulse-global-set-key 'vi-state (kbd "M-m") 'gud-step)
@@ -129,6 +130,11 @@
  '(show-paren-mode t)
  '(tool-bar-mode nil))
 
+(defun toggle-selective-display-column ()
+  "set selective display fold everything greater than the current column, or toggle off if active"
+  (interactive)
+  (set-selective-display
+   (if selective-display nil (or (+ (current-column) 1) 1))))
 ; needed for emacs -nw users like me
 (defun yank-to-x-clipboard ()
   (interactive)
@@ -151,6 +157,7 @@
 (global-set-key [f8] 'yank-to-x-clipboard)
 (defun t_save() (interactive)(save-buffer)(viper-change-state-to-vi)) 
 (global-set-key (kbd "\C-s") 't_save)
+(global-set-key (kbd "\C-c") 'viper-change-state-to-vi)
 (global-set-key [f9] 'save-buffers-kill-terminal)
 (defun jao-selective-display ()
 "Activate selective display based on the column at point"
