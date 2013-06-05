@@ -1104,7 +1104,8 @@ function main(...)
 		end
 	elseif arg[1]=="vir" then
 		local keys=array.sub(arg,2)
-		local chosen=choose(keys)
+		local chosen
+		if keys[1]==arg[2] then chosen={keys[1]} else chosen=choose(keys) end
 		if chosen then
 			os.vi_remote(chosen[1])
 		end
