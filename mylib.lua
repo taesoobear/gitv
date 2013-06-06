@@ -2038,6 +2038,9 @@ function os.find(mask, bRecurse, nomessage, printFunc)
 			containsRelPath=true
 		end
 		local cmd='ls -1 -p '..mask..' 2>/dev/null'
+		if not containsRelPath then
+			cmd='ls -1 -p "'..mask..'" 2>/dev/null'
+		end
 		local tbl=string.tokenize(os.capture(cmd,true), "\n")
 		local lenfolder=string.len(folder)
 		--print(cmd,mask,#tbl,lenfolder)

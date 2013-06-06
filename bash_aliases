@@ -1,10 +1,20 @@
 stty -ixon
 # use vim to open a file. e.g. v luna.c
-alias v='gitv gvimr GVIM'
+alias v='gitv vi'
+# use gvim 
+alias b='gitv gvimr GVIM'
+# or you can now use emacs client
+alias b='gitv --emacs vir'
+# send to another gvim instance # gitv gvimr support multiple instances of gvim # even when the same file is open in both gvim (an experimental feature).
+alias b2='gitv gvimr GVIM2'
+# emacsclient + auto launch server
+alias e='gitv --emacs open'
 # tag search. e.g. t main$
 alias t='gitv ts'
-# use remote gvim to open a file
+# or using emacs
+alias t='gitv --emacs ts'
 
+# use remote gvim to open a file
 function gitv-cd {
   before="$(pwd)"
   gitv chooseFolder "$@" 
@@ -17,11 +27,6 @@ function gitv-cd {
 alias gg='gitv-cd'
 
 
-alias b='gitv gvimr GVIM'
-# send to another gvim instance
-# gitv gvimr support multiple instances of gvim 
-# even when the same file is open in both gvim (an experimental feature).
-alias b2='gitv gvimr GVIM2'
 
 # put the following line in .bashrc 
 export PATH=$PATH:~/bin
