@@ -206,6 +206,6 @@ Optional arg MINIBUF is used only if selected frame has a minibuffer."
 ;    (if (string= (buffer-file-name) (file-chase-links dotemacs))
 ;      (byte-compile-file dotemacs))))
 ; 
-; 
 ;(add-hook 'after-save-hook 'autocompile)
-
+(set-language-environment "UTF-8") 
+(set-fontset-font "fontset-default" '(#x1100 . #xffdc)  '("NANumGothicCoding" . "unicode-bmp")) ;;; 유니코드 한글영역...NanumGothicCoding에다가 원하는폰트를 적는다
