@@ -1132,7 +1132,12 @@ function main(...)
 	elseif arg[1]=="vir" then
 		local keys=array.sub(arg,2)
 		local chosen
-		if keys[1]==arg[2] then chosen={keys[1]} else chosen=choose(keys) end
+		local fn=nonInteractiveChoose(keys)
+		if #fn>=1 and fn[1][1]==arg[2] then 
+			chosen={arg[2]} 
+		else 
+			chosen=interactiveChoose(fn) 
+		end
 		if chosen then
 			os.vi_remote(chosen[1])
 		end
