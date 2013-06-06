@@ -88,6 +88,8 @@ Optional arg MINIBUF is used only if selected frame has a minibuffer."
   (interactive)
   (vimpulse-inner-word 1)
   (setq myStr (buffer-substring (region-beginning) (region-end)))
+  (deactivate-mark)
+  (bookmark-set "tagsearch")
   (shell)
   (server-force-delete)
   (server-start)
@@ -174,7 +176,9 @@ Optional arg MINIBUF is used only if selected frame has a minibuffer."
 	)
   )
 
-(global-set-key [f5] 'shell)
+(global-set-key [f3] '(lambda ()(interactive)(bookmark-jump "tagsearch")(vimpulse-visual-mode -1)))
+(global-set-key [f4] 'shell)
+(global-set-key [f5] 'auto-tags-appros)
 (global-set-key [f6] 'list-buffers)
 (defun t_serverstart() (interactive) (server-start) (message "server started"))
 (global-set-key [f7] 't_serverstart)
@@ -183,14 +187,7 @@ Optional arg MINIBUF is used only if selected frame has a minibuffer."
 (global-set-key (kbd "\C-s") 't_save)
 (global-set-key (kbd "\C-c") 'viper-change-state-to-vi)
 (global-set-key [f9] 'save-buffers-kill-terminal)
-(defun jao-selective-display ()
-"Activate selective display based on the column at point"
-(interactive)
-(set-selective-display
-(if (equal selective-display (+ 1 (current-column)))
-nil
-(+ 1 (current-column)))))
-(global-set-key [f2] 'jao-selective-display)
+(global-set-key [f2] 'toggle-selective-display-column)
 
 (require 'xclip)
 
@@ -201,14 +198,14 @@ nil
     
 ;; Usage: emacs -diff file1 file2
 (add-to-list 'command-switch-alist '("-diff" . command-line-diff))
-(defun autocompile nil
-  "compile itself if ~/.emacs"
-  (interactive)
-  (require 'bytecomp)
-  (let ((dotemacs (expand-file-name "~/.emacs")))
-    (if (string= (buffer-file-name) (file-chase-links dotemacs))
-      (byte-compile-file dotemacs))))
-
-
-(add-hook 'after-save-hook 'autocompile)
+;(defun autocompile nil
+;  "compile itself if ~/.emacs"
+;  (interactive)
+;  (require 'bytecomp)
+;  (let ((dotemacs (expand-file-name "~/.emacs")))
+;    (if (string= (buffer-file-name) (file-chase-links dotemacs))
+;      (byte-compile-file dotemacs))))
+; 
+; 
+;(add-hook 'after-save-hook 'autocompile)
 
