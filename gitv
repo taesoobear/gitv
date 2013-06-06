@@ -1380,7 +1380,7 @@ function main(...)
 		if os.isWindows() then
 			os.execute('ctags -e '..string.gsub(cmd,'\\','/') )
 		else
-			os.execute('etags '..cmd)
+			os.execute('ctags -e '..cmd)
 		end
 	elseif arg[1]=='grep' then
 		print('searching '..arg[2]..'...')
