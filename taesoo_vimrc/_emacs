@@ -145,7 +145,6 @@ Optional arg MINIBUF is used only if selected frame has a minibuffer."
 (tool-bar-mode -1)
 ;(scroll-bar-mode -1)
 ;(menu-bar-mode 0)
-(prefer-coding-system 'utf-8)
 (custom-set-variables
   ;; custom-set-variables was added by Custom.
   ;; If you edit it by hand, you could mess it up, so be careful.
@@ -185,7 +184,6 @@ Optional arg MINIBUF is used only if selected frame has a minibuffer."
 (global-set-key [f8] 'yank-to-x-clipboard)
 (defun t_save() (interactive)(save-buffer)(viper-change-state-to-vi)) 
 (global-set-key (kbd "\C-s") 't_save)
-(global-set-key (kbd "\C-c") 'viper-change-state-to-vi)
 (global-set-key [f9] 'save-buffers-kill-terminal)
 (global-set-key [f2] 'toggle-selective-display-column)
 
@@ -207,5 +205,7 @@ Optional arg MINIBUF is used only if selected frame has a minibuffer."
 ;      (byte-compile-file dotemacs))))
 ; 
 ;(add-hook 'after-save-hook 'autocompile)
-(set-language-environment "UTF-8") 
+(set-language-environment "Korean") 
+(prefer-coding-system 'utf-8)
 (set-fontset-font "fontset-default" '(#x1100 . #xffdc)  '("NANumGothicCoding" . "unicode-bmp")) ;;; 유니코드 한글영역...NanumGothicCoding에다가 원하는폰트를 적는다
+(set-input-method "korean-hangul")
