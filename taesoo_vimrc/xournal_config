@@ -33,11 +33,11 @@ use_erasertip=true
 # buttons 2 and 3 switch mappings instead of drawing (useful for some tablets) (true/false)
 buttons_switch_mappings=false
 # automatically load filename.pdf.xoj instead of filename.pdf (true/false)
-autoload_pdf_xoj=false
+autoload_pdf_xoj=true
 # automatically export filename.pdf.xoj.pdf when saving the .xoj file (true/false)
 autoexport_pdf=false
 # default path for open/save (leave blank for current directory)
-default_path=/home/taesoobear/taesoo/course/OOP_taesoo
+#default_path=/home/taesoobear/taesoo/course/OOP_taesoo
 # use pressure sensitivity to control pen stroke width (true/false)
 pressure_sensitivity=true
 # minimum width multiplier

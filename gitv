@@ -101,9 +101,14 @@ end
 function git()
 	return g_gitpath or 'git'
 end
-function git_top()
+function git_top() -- git_root
 	if cache_git_top==nil then
-		local t= string.lines(os.capture(git()..' rev-parse --show-toplevel', true))[1]
+		local t
+		if os.isUnix() then
+			t= string.lines(os.capture(git()..' rev-parse --show-toplevel 2>&1', true))[1]
+		else
+			t= string.lines(os.capture(git()..' rev-parse --show-toplevel', true))[1]
+		end
 		cache_git_top=t
 	end
 	if cache_git_top=='' then
@@ -341,16 +346,30 @@ function git_tools.getFilesToCommit(path)
 		status= string.lines( git_tools.capture('cd "'..path..'";git status .', true))
 		local modified={}
 		for il, line in ipairs(status) do
+			local output='modified: '
 			local s,e,c=string.find(line, '#%s+modified:%s+(.+)')
 			if not c then
 				s,e,c=string.find(line, '#%s+new file:%s+(.+)')
+				output='new file: '
 			end
 			if not c then
 				s,e,c=string.find(line, '#%s+renamed:%s+(.+)')
+				output='renamed: '
+			end
+			if not c then
+				s,e,c=string.find(line, '#%s+both modified:%s+(.+)')
+				output='both modified: '
+			end
+			if not c then
+				s,e,c=string.find(line, '#%s+both modified:%s+(.+)')
+				if c then
+					print('warning! '..c..' is an unmerged path')
+				end
 			end
 			if c then 
 				if not string.isMatched(os.filename(c), g_commitIgnorePattern) then
 					modified[#modified+1]=c
+					print(output .. c)
 				end
 			end
 		end
@@ -358,11 +377,16 @@ function git_tools.getFilesToCommit(path)
 end
 function git_tools.commit(path,force)
 	if os.isFileExist(path..'/.git/HEAD') then
+		if hookBeforeCommit then
+			hookBeforeCommit(arg)
+		end
 		local untracked=git_tools.getUntracked(path)
 		if #untracked>=1 then
 			print('Untracked files:')
+			print('----------------------------------')
 			for i,v in ipairs(untracked) do print(v) end
-			print('Do you want to add these untracked files to git repository? (YES/edit/[no]/ignore)')
+			print('----------------------------------')
+			print('Do you want to add these untracked files to git repository? Press enter if you are not sure. (YES/edit/[no]/ignore)')
 			local cmd=''
 			for i, v in ipairs(untracked) do 
 				cmd=cmd.. git()..' add "'..v..'"\n'
@@ -400,7 +424,7 @@ function git_tools.commit(path,force)
 		end
 		local modified=git_tools.getFilesToCommit(path)
 		if #modified>=1 then
-			printTable(modified)
+			--printTable(modified)
 			local bDone
 			repeat
 				bDone=true
@@ -451,6 +475,9 @@ function git_tools.commit(path,force)
 					os.execute('cd "'..path..'";git svn dcommit')
 				end
 			end
+		end
+		if hookAfterCommit then
+			hookAfterCommit(arg)
 		end
 	end
 end
@@ -1109,7 +1136,13 @@ function main(...)
 		end
 	elseif arg[1]=="vir" then
 		local keys=array.sub(arg,2)
-		local chosen=choose(keys)
+		local chosen
+		local fn=nonInteractiveChoose(keys)
+		if #fn>=1 and fn[1][1]==arg[2] then 
+			chosen={arg[2]} 
+		else 
+			chosen=interactiveChoose(fn) 
+		end
 		if chosen then
 			os.vi_remote(chosen[1])
 		end
@@ -1352,7 +1385,7 @@ function main(...)
 		if os.isWindows() then
 			os.execute('ctags -e '..string.gsub(cmd,'\\','/') )
 		else
-			os.execute('etags '..cmd)
+			os.execute('ctags -e '..cmd)
 		end
 	elseif arg[1]=='grep' then
 		print('searching '..arg[2]..'...')
@@ -1414,13 +1447,15 @@ function main(...)
 		print(string.sub(str,1,-2))
 		if #string.lines(str)>1 then
 			print('---------------------------------------------------')
+			print(string.sub(str,1,-2))
+			print('---------------------------------------------------')
 			print('- do you want to see the differences? (yes/[no])')
 			if io.read('*line')=='yes' then
 				print('\n\n-------------------git difftool:-------------------')
 				os.execute(git()..' difftool'..added)
 			end
 		else
-			print('-no changes----------------------------------------')
+			print('- no changes ')
 		end
 	elseif arg[1]=='kill' then
 		local out=string.lines(os.capture('pgrep '..arg[2]))

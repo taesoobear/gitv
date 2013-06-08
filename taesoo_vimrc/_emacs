@@ -1,10 +1,23 @@
 (add-to-list 'load-path "~/.emacs.d")
+(add-to-list 'load-path "~/.emacs.d/muse-3.20/lisp")
+(remove-hook 'find-file-hooks 'vc-find-file-hook)
+(setq vc-handled-backends nil)
+(if (window-system) (set-frame-size (selected-frame) 144 50)) 
 (require 'vimpulse)
 (require 'hide-region)
+(require 'muse)
+(require 'muse-colors)
+(require 'muse-mode)
+(require 'muse-wiki)
 (require 'grab-and-drag)
 (grab-and-drag-mode 1)
 (setq grab-and-drag-pointer-shape nil)
-(vimpulse-global-set-key 'vi-state (kbd "C-d") 'save-buffers-kill-terminal)
+(vimpulse-global-set-key 'vi-state (kbd "C-d") '(lambda ()(interactive)(if 
+															 (= (count-windows) 1) 
+															 (save-buffers-kill-terminal)
+															 (delete-window)
+															 )
+												  ))
 (vimpulse-global-set-key 'vi-state (kbd ";") 'viper-ex)
 (vimpulse-global-set-key 'vi-state (kbd "C-e") 'viper-goto-eol)
 (vimpulse-global-set-key 'vi-state (kbd "M-C-h") 'shrink-window-horizontally)
@@ -17,6 +30,7 @@
 (vimpulse-map (kbd "M-h") 'windmove-left)
 (vimpulse-global-set-key 'vi-state (kbd "M-i") '(lambda () (interactive)(hide-region-hide)(vimpulse-visual-toggle-line)))
 (vimpulse-global-set-key 'vi-state (kbd "M-o") 'hide-region-unhide)
+(vimpulse-global-set-key 'vi-state (kbd "M-k") 'toggle-selective-display-column )
 
 (vimpulse-global-set-key 'vi-state (kbd "M-n") 'gud-next)
 (vimpulse-global-set-key 'vi-state (kbd "M-m") 'gud-step)
@@ -24,6 +38,16 @@
 (vimpulse-global-set-key 'vi-state (kbd "M-C-n") 'gud-down)
 (add-to-list 'ex-token-alist '("b" (t_selectbuffer)))
 (add-to-list 'ex-token-alist '("t" (t_tagsearch)))
+
+(defun count-windows (&optional minibuf)
+  "Return the number of visible windows in selected frame.
+Optional arg MINIBUF is used only if selected frame has a minibuffer."
+  (let ((count 0))
+    (walk-windows (function (lambda (w) (setq count (+ count 1))))
+                  (and (memq (cdr (assoc 'minibuffer (frame-parameters)))
+                             '(only t)) ; If this frame has a minibuffer,
+                       minibuf))        ; pass the arg.  (Else pass nil.)
+    count))
 (defun auto-tags-appros ()
   (interactive)
   (if (region-active-p)
@@ -64,6 +88,8 @@
   (interactive)
   (vimpulse-inner-word 1)
   (setq myStr (buffer-substring (region-beginning) (region-end)))
+  (deactivate-mark)
+  (bookmark-set "tagsearch")
   (shell)
   (server-force-delete)
   (server-start)
@@ -76,6 +102,7 @@
 (require 'lua-mode)
 (require 'python-mode)
 (add-to-list 'auto-mode-alist '("\\.lua$" . lua-mode)) 
+(add-to-list 'auto-mode-alist '("\\.wiki$" . muse-mode))
 (autoload 'lua-mode "lua-mode" "Lua editing mode." t)
 (add-hook 'lua-mode-hook 'hs-minor-mode)
 (defun taesoo-c++-indent-setup()
@@ -118,7 +145,6 @@
 (tool-bar-mode -1)
 ;(scroll-bar-mode -1)
 ;(menu-bar-mode 0)
-(prefer-coding-system 'utf-8)
 (custom-set-variables
   ;; custom-set-variables was added by Custom.
   ;; If you edit it by hand, you could mess it up, so be careful.
@@ -129,6 +155,11 @@
  '(show-paren-mode t)
  '(tool-bar-mode nil))
 
+(defun toggle-selective-display-column ()
+  "set selective display fold everything greater than the current column, or toggle off if active"
+  (interactive)
+  (set-selective-display
+   (if selective-display nil (or (+ (current-column) 1) 1))))
 ; needed for emacs -nw users like me
 (defun yank-to-x-clipboard ()
   (interactive)
@@ -144,7 +175,9 @@
 	)
   )
 
-(global-set-key [f5] 'shell)
+(global-set-key [f3] '(lambda ()(interactive)(bookmark-jump "tagsearch")(vimpulse-visual-mode -1)))
+(global-set-key [f4] 'shell)
+(global-set-key [f5] 'auto-tags-appros)
 (global-set-key [f6] 'list-buffers)
 (defun t_serverstart() (interactive) (server-start) (message "server started"))
 (global-set-key [f7] 't_serverstart)
@@ -152,14 +185,7 @@
 (defun t_save() (interactive)(save-buffer)(viper-change-state-to-vi)) 
 (global-set-key (kbd "\C-s") 't_save)
 (global-set-key [f9] 'save-buffers-kill-terminal)
-(defun jao-selective-display ()
-"Activate selective display based on the column at point"
-(interactive)
-(set-selective-display
-(if (equal selective-display (+ 1 (current-column)))
-nil
-(+ 1 (current-column)))))
-(global-set-key [f2] 'jao-selective-display)
+(global-set-key [f2] 'toggle-selective-display-column)
 
 (require 'xclip)
 
@@ -170,3 +196,16 @@ nil
     
 ;; Usage: emacs -diff file1 file2
 (add-to-list 'command-switch-alist '("-diff" . command-line-diff))
+;(defun autocompile nil
+;  "compile itself if ~/.emacs"
+;  (interactive)
+;  (require 'bytecomp)
+;  (let ((dotemacs (expand-file-name "~/.emacs")))
+;    (if (string= (buffer-file-name) (file-chase-links dotemacs))
+;      (byte-compile-file dotemacs))))
+; 
+;(add-hook 'after-save-hook 'autocompile)
+(set-language-environment "Korean") 
+(prefer-coding-system 'utf-8)
+(set-fontset-font "fontset-default" '(#x1100 . #xffdc)  '("NANumGothicCoding" . "unicode-bmp")) ;;; 유니코드 한글영역...NanumGothicCoding에다가 원하는폰트를 적는다
+(set-input-method "korean-hangul")
