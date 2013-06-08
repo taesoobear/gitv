@@ -526,8 +526,13 @@ function interactiveChoose(fn, fromHistory)
 	do
 		local fn2={}
 		local c=1
-		for i,v in ipairs(hcache._list) do
-			fn2[#fn2+1]=v
+		--for i,v in ipairs(hcache._list) do
+		--	fn2[#fn2+1]=v
+		--end
+		for i,v in ipairs(fn) do
+			if hcache[v[1]] then 
+				fn2[#fn2+1]=v
+			end
 		end
 		for i,v in ipairs(fn) do
 			if not hcache[v[1]] then 
