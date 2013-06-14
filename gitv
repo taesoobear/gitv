@@ -29,6 +29,37 @@ if os.isWindows() then
 		os.execute_original('"'..fn..'"')
 	end
 end
+-- uncomment
+function macro(fn, key)
+	key=key or 'dos'
+	print('macro '..key..' : uncommenting --##'..key)
+	local contents=util.readFile(fn)
+	util.writeFile(fn..".bak", contents)
+	contents=string.gsub(contents,"--##"..key.." ", "--##"..key.."\n")
+	util.writeFile(fn, contents)
+end
+
+-- comment out again
+function unmacro(fn, key)
+	key=key or 'dos'
+	print('unmacro '..key)
+	local function printSample(contents)
+		local a=string.find(contents, "--##"..key) or string.find(contents, "--##"..key)
+		if a==nil then
+			print('no change will be made')
+		else
+			print(string.sub(contents, a, a+30))
+		end
+	end
+	local contents=util.readFile(fn)
+	printSample(contents)
+	util.writeFile(fn..".bak", contents)
+	contents=string.gsub(contents,"--##"..key.."\n", "--##"..key.." ")
+	contents=string.gsub(contents,"--##"..key.."\r\n", "--##"..key.." ")
+	print('-->')
+	printSample(contents)
+	util.writeFile(fn, contents)
+end
 
 if g_debug then
 	os.execute_old=os.execute
@@ -89,6 +120,8 @@ The most commonly used gitv commands are:
   diff       Show differences between commits. 
                $ gitv diff
                $ gitv diff HEAD~10
+  undo-commit Revert the last commit (while retaining the local copy). 
+              Do not undo-commit if you pushed your last commit!
   ]])
 end
 
@@ -1165,6 +1198,14 @@ function main(...)
 				'edit '..chosen[1]..'\n:1')
 			end
 		end
+	elseif arg[1]=="macro_commentout" then
+		local fn=arg[2]
+		local key=arg[3]
+		unmacro(fn,key)
+	elseif arg[1]=="activate_macro" then
+		local fn=arg[2]
+		local key=arg[3]
+		macro(fn,key)
 	elseif arg[1]=="gedit" then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
