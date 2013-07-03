@@ -7,6 +7,7 @@ runtime macros/matchit.vim
 set fileencodings=utf-8
 
 " automatic disable of korean input method in Edit mode.
+set guioptions-=T
 if !has('gui_running')
     let g:ibusinit = 0
     let g:imstatus = 0
