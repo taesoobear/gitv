@@ -9,7 +9,7 @@ require("mylib")
  
 -- order doesn't matter
 g_etagsSrc={ "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
-g_vimSrc={"%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={"Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
 g_cache_folder='/tmp/'
 g_vimpath='vim'
@@ -20,6 +20,7 @@ g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plo
 
 g_debug=false
 g_useEmacs=false
+g_useSublime=false
 
 if os.isWindows() then
 	-- on some systems, os.execute doesn't work perfectly. so  this is a workaround.
@@ -28,6 +29,37 @@ if os.isWindows() then
 		local fn= os.createUnnamedBatchFile({cmd})
 		os.execute_original('"'..fn..'"')
 	end
+end
+-- uncomment
+function macro(fn, key)
+	key=key or 'dos'
+	print('macro '..key..' : uncommenting --##'..key)
+	local contents=util.readFile(fn)
+	util.writeFile(fn..".bak", contents)
+	contents=string.gsub(contents,"--##"..key.." ", "--##"..key.."\n")
+	util.writeFile(fn, contents)
+end
+
+-- comment out again
+function unmacro(fn, key)
+	key=key or 'dos'
+	print('unmacro '..key)
+	local function printSample(contents)
+		local a=string.find(contents, "--##"..key) or string.find(contents, "--##"..key)
+		if a==nil then
+			print('no change will be made')
+		else
+			print(string.sub(contents, a, a+30))
+		end
+	end
+	local contents=util.readFile(fn)
+	printSample(contents)
+	util.writeFile(fn..".bak", contents)
+	contents=string.gsub(contents,"--##"..key.."\n", "--##"..key.." ")
+	contents=string.gsub(contents,"--##"..key.."\r\n", "--##"..key.." ")
+	print('-->')
+	printSample(contents)
+	util.writeFile(fn, contents)
 end
 
 if g_debug then
@@ -50,6 +82,7 @@ Usage: gitv <command> [option] [<args>]
 The most commonly used gitv commands are:
   --help     Show this page.
   --emacs    Use emacs instead of vim. (works for "vir", "ts" and "open" commands)
+  --sublime  Use sublime text instead of vim. (works for "vir", "ts" and "open" commands)
   vi         Open a file in the git repository whose name contains 
              the keyword using vim. When no keyword is given, history will be shown.
                $ gitv vi [option] keyword
@@ -86,9 +119,12 @@ The most commonly used gitv commands are:
   etags .    Generate TAGS for all tracked files in the current folder recursively
                $ gitv etags .
   etags      Generate TAGS for all tracked files in the git repository
+  ctags      Generate .tags for all tracked files in the git repository
   diff       Show differences between commits. 
                $ gitv diff
                $ gitv diff HEAD~10
+  undo-commit Revert the last commit (while retaining the local copy). 
+              Do not undo-commit if you pushed your last commit!
   ]])
 end
 
@@ -1068,6 +1104,15 @@ function os.vi_remote(filename, line)
 			end
 		end
 		return
+	elseif g_useSublime then
+		local cmd
+		if line then
+			cmd='/opt/sublime_text/sublime_text "'..filename..'":'..line
+		else
+			cmd='/opt/sublime_text/sublime_text "'..filename..'"'
+		end
+		os.execute(cmd)
+		return
 	end
 	local servername=serverLaunched()
 	local vimpath=g_vimpath
@@ -1165,6 +1210,14 @@ function main(...)
 				'edit '..chosen[1]..'\n:1')
 			end
 		end
+	elseif arg[1]=="macro_commentout" then
+		local fn=arg[2]
+		local key=arg[3]
+		unmacro(fn,key)
+	elseif arg[1]=="activate_macro" then
+		local fn=arg[2]
+		local key=arg[3]
+		macro(fn,key)
 	elseif arg[1]=="gedit" then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
@@ -1360,7 +1413,7 @@ function main(...)
 		end
 	elseif arg[1]=='fetch' then
 		git_tools.fetch(git_top())
-	elseif arg[1]=="etags" then
+	elseif arg[1]=="etags" or arg[1]=="ctags" then
 		local isSourceCode=function(str)
 			return string.isMatched(str,g_etagsSrc)
 		end
@@ -1377,10 +1430,14 @@ function main(...)
 		util.writeFile(g_cache_folder..'gitvsrclist', table.concat(files,'\n'))
 		local cmd='--extra=+f --langmap=c++:.inl.h.hpp.c.cpp.cc.cxx -L '..g_cache_folder..'gitvsrclist'
 		print(cmd)
+		
 		if os.isWindows() then
-			os.execute('ctags -e '..string.gsub(cmd,'\\','/') )
+			cmd=string.gsub(cmd,'\\','/')
+		end
+		if arg[1]=="ctags" then
+			os.execute('ctags '..cmd ..' -f .tags')
 		else
-			os.execute('ctags -e '..cmd)
+			os.execute('ctags -e '..string.gsub(cmd,'\\','/') )
 		end
 	elseif arg[1]=='grep' then
 		print('searching '..arg[2]..'...')
@@ -1561,6 +1618,9 @@ end
 if arg[1] then
 	if arg[1]=='--emacs' then
 	   g_useEmacs=true
+		main(unpack(array.sub(arg,2)))
+   elseif arg[1]=='--sublime' then
+	   g_useSublime=true
 		main(unpack(array.sub(arg,2)))
 	else
 		main(unpack(arg))
