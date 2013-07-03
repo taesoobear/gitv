@@ -1111,7 +1111,7 @@ function os.vi_remote(filename, line)
 		else
 			cmd='/opt/sublime_text/sublime_text "'..filename..'"'
 		end
-		os.execute(cmd)
+		os.execute(cmd..'&')
 		return
 	end
 	local servername=serverLaunched()
