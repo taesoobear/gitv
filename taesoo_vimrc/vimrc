@@ -6,9 +6,55 @@ source $VIMRUNTIME/vimrc_example.vim
 runtime macros/matchit.vim
 set fileencodings=utf-8
 
-" support korean keyboard. (Toggle han/eng using \<space>)
-" Enter insert mode using C-i, C-a, or C-o to use korean
-"let hangeul_enabled=1
+" automatic disable of korean input method in Edit mode.
+if !has('gui_running')
+    let g:ibusinit = 0
+    let g:imstatus = 0
+
+    function! InitIBus()
+        if g:ibusinit
+            return
+        endif
+        let g:ibusinit = 1
+        python <<EOF
+import ibus
+import vim
+im_bus = ibus.Bus()
+im_ic = ibus.InputContext(im_bus, im_bus.current_input_contxt())
+def im_is_active():
+    if im_ic.is_enabled():
+        return 1
+    else:
+        return 0
+def im_escape():
+    vim.command('let g:imstatus = %d' % im_is_active())
+    im_ic.disable()
+def im_enable():
+    im_ic.enable()
+def im_disable():
+    im_ic.disable()
+EOF
+    endfunction
+
+    function! ImEscape()
+        py im_escape()
+    endfunction
+    function! ImEnter()
+        if g:imstatus
+            py im_enable()
+        endif
+    endfunction
+
+    autocmd VimEnter * call InitIBus()
+
+    inoremap <silent> <ESC> <ESC>:call ImEscape()<CR>
+    nnoremap <silent> i :call ImEnter()<CR>i
+    nnoremap <silent> I :call ImEnter()<CR>I
+    nnoremap <silent> o :call ImEnter()<CR>o
+    nnoremap <silent> O :call ImEnter()<CR>O
+    nnoremap <silent> a :call ImEnter()<CR>a
+    nnoremap <silent> A :call ImEnter()<CR>A
+endif
 
 let g:vimwiki_file_exts='pdf,chm'
 """""""""""""""""""""""""""""""""""""""""""""
@@ -16,6 +62,7 @@ let g:vimwiki_file_exts='pdf,chm'
 """""""""""""""""""""""""""""""""""""""""""""
 set t_Co=256
 colorscheme pyte
+set guifont=Monospace\ 13
 
 set ignorecase
 set clipboard=unnamed 
@@ -53,6 +100,7 @@ nmap <C-d> :q<CR>
 " in terminal, works only when "stty -ixon" is defined in .bashrc
 nmap <C-s> :w<CR>
 imap <C-s> <ESC>:w<CR>
+nmap <C-tab> :Bs.<CR>
 
 """""""""""""""""""""""""""""""""""""""""""""
 " commands
@@ -136,22 +184,3 @@ fun Ranger()
   redraw!
 endfun
 
-if !exists('hangeul_enabled')
-	finish
-endif
-"map <leader>i i<Plug>ForceHanMode
-"map <leader>a a<Plug>ForceHanMode
-"map <leader>o o<Plug>ForceHanMode
-"map <leader>O O<Plug>ForceHanMode
-nmap <C-i> i<Plug>ForceHanMode
-nmap <C-a> a<Plug>ForceHanMode
-nmap <C-o> o<Plug>ForceHanMode
-nmap i i<Plug>ForceEngMode
-nmap a a<Plug>ForceEngMode<space><backspace>
-nmap A A<Plug>ForceEngMode<space><backspace>
-nmap o o<Plug>ForceEngMode
-nmap O O<Plug>ForceEngMode
-" toggle han/eng
-"imap <C-i> <Plug>HanMode
-imap <silent><leader><space> <Plug>HanMode
-set guifont=Monospace\ 14
