@@ -9,6 +9,9 @@ require("mylib")
  
 -- order doesn't matter
 g_etagsSrc={ "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
+g_customEtagsSrc={"%.lua$"}
+g_customEtagsPattern=
+	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
 g_vimSrc={"Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
 g_cache_folder='/tmp/'
@@ -1438,6 +1441,29 @@ function main(...)
 			os.execute('ctags '..cmd ..' -f .tags')
 		else
 			os.execute('ctags -e '..string.gsub(cmd,'\\','/') )
+		end
+		local isCustomSourceCode=function(str)
+			return string.isMatched(str,g_customEtagsSrc)
+		end
+ 
+		local files=array.filter(isCustomSourceCode,lsFiles())
+		if arg[2]=='.' then
+			files=array.filter(function (f) local s=string.find(f, '^%.%.') return not s end, files)
+		elseif arg[2] then
+			return
+		end
+		table.sort(files, git_tools.compareFileName)
+		util.writeFile(g_cache_folder..'gitvsrclist', table.concat(files,'\n'))
+		local cmd='--append=yes '..g_customEtagsPattern..' -L '..g_cache_folder..'gitvsrclist'
+		print(cmd)
+		
+		if os.isWindows() then
+			cmd=string.gsub(cmd,'\\','/')
+		end
+		if arg[1]=="ctags" then
+			os.execute('ctags '..cmd ..' -f .tags')
+		else
+			os.execute('ctags -e '..cmd)
 		end
 	elseif arg[1]=='grep' then
 		print('searching '..arg[2]..'...')
