@@ -1,0 +1,10 @@
+[
+	{ "keys": ["ctrl+c"], "command": "exit_insert_mode",
+		"context":
+		[
+			{ "key": "setting.command_mode", "operand": false },
+			{ "key": "setting.is_widget", "operand": false }
+		]
+	},
+	{ "keys": ["ctrl+y"], "command": "copy" }
+]

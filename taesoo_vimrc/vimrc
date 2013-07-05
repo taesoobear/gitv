@@ -5,10 +5,7 @@ source $VIMRUNTIME/vimrc_example.vim
 " The % key will switch between opening and closing brackets. By sourcing matchit.vim, the key can also switch among e.g. if/elsif/else/end, between opening and closing XML tags, and more. 
 runtime macros/matchit.vim
 set fileencodings=utf-8
-
-" support korean keyboard. (Toggle han/eng using \<space>)
-" Enter insert mode using C-i, C-a, or C-o to use korean
-"let hangeul_enabled=1
+set guioptions-=T
 
 let g:vimwiki_file_exts='pdf,chm'
 """""""""""""""""""""""""""""""""""""""""""""
@@ -16,6 +13,7 @@ let g:vimwiki_file_exts='pdf,chm'
 """""""""""""""""""""""""""""""""""""""""""""
 set t_Co=256
 colorscheme pyte
+set guifont=Monospace\ 13
 
 set ignorecase
 set clipboard=unnamed 
@@ -53,6 +51,7 @@ nmap <C-d> :q<CR>
 " in terminal, works only when "stty -ixon" is defined in .bashrc
 nmap <C-s> :w<CR>
 imap <C-s> <ESC>:w<CR>
+nmap <C-tab> :Bs.<CR>
 
 """""""""""""""""""""""""""""""""""""""""""""
 " commands
@@ -136,22 +135,3 @@ fun Ranger()
   redraw!
 endfun
 
-if !exists('hangeul_enabled')
-	finish
-endif
-"map <leader>i i<Plug>ForceHanMode
-"map <leader>a a<Plug>ForceHanMode
-"map <leader>o o<Plug>ForceHanMode
-"map <leader>O O<Plug>ForceHanMode
-nmap <C-i> i<Plug>ForceHanMode
-nmap <C-a> a<Plug>ForceHanMode
-nmap <C-o> o<Plug>ForceHanMode
-nmap i i<Plug>ForceEngMode
-nmap a a<Plug>ForceEngMode<space><backspace>
-nmap A A<Plug>ForceEngMode<space><backspace>
-nmap o o<Plug>ForceEngMode
-nmap O O<Plug>ForceEngMode
-" toggle han/eng
-"imap <C-i> <Plug>HanMode
-imap <silent><leader><space> <Plug>HanMode
-set guifont=Monospace\ 14

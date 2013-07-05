@@ -9,7 +9,10 @@ require("mylib")
  
 -- order doesn't matter
 g_etagsSrc={ "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
-g_vimSrc={"%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_customEtagsSrc={"%.lua$"}
+g_customEtagsPattern=
+	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
+g_vimSrc={"Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
 g_cache_folder='/tmp/'
 g_vimpath='vim'
@@ -20,6 +23,7 @@ g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plo
 
 g_debug=false
 g_useEmacs=false
+g_useSublime=false
 
 if os.isWindows() then
 	-- on some systems, os.execute doesn't work perfectly. so  this is a workaround.
@@ -81,6 +85,7 @@ Usage: gitv <command> [option] [<args>]
 The most commonly used gitv commands are:
   --help     Show this page.
   --emacs    Use emacs instead of vim. (works for "vir", "ts" and "open" commands)
+  --sublime  Use sublime text instead of vim. (works for "vir", "ts" and "open" commands)
   vi         Open a file in the git repository whose name contains 
              the keyword using vim. When no keyword is given, history will be shown.
                $ gitv vi [option] keyword
@@ -117,6 +122,7 @@ The most commonly used gitv commands are:
   etags .    Generate TAGS for all tracked files in the current folder recursively
                $ gitv etags .
   etags      Generate TAGS for all tracked files in the git repository
+  ctags      Generate .tags for all tracked files in the git repository
   diff       Show differences between commits. 
                $ gitv diff
                $ gitv diff HEAD~10
@@ -1106,6 +1112,15 @@ function os.vi_remote(filename, line)
 			end
 		end
 		return
+	elseif g_useSublime then
+		local cmd
+		if line then
+			cmd='/opt/sublime_text/sublime_text "'..filename..'":'..line
+		else
+			cmd='/opt/sublime_text/sublime_text "'..filename..'"'
+		end
+		os.execute(cmd..'&')
+		return
 	end
 	local servername=serverLaunched()
 	local vimpath=g_vimpath
@@ -1171,7 +1186,7 @@ function main(...)
 		local keys=array.sub(arg,2)
 		local chosen
 		local fn=nonInteractiveChoose(keys)
-		if #fn>=1 and fn[1][1]==arg[2] then 
+		if #fn>=1 and #array.filter(function(f) return f[1]==arg[2] end, fn)>=1 then 
 			chosen={arg[2]} 
 		else 
 			chosen=interactiveChoose(fn) 
@@ -1406,7 +1421,7 @@ function main(...)
 		end
 	elseif arg[1]=='fetch' then
 		git_tools.fetch(git_top())
-	elseif arg[1]=="etags" then
+	elseif arg[1]=="etags" or arg[1]=="ctags" then
 		local isSourceCode=function(str)
 			return string.isMatched(str,g_etagsSrc)
 		end
@@ -1423,8 +1438,35 @@ function main(...)
 		util.writeFile(g_cache_folder..'gitvsrclist', table.concat(files,'\n'))
 		local cmd='--extra=+f --langmap=c++:.inl.h.hpp.c.cpp.cc.cxx -L '..g_cache_folder..'gitvsrclist'
 		print(cmd)
+		
 		if os.isWindows() then
+			cmd=string.gsub(cmd,'\\','/')
+		end
+		if arg[1]=="ctags" then
+			os.execute('ctags '..cmd ..' -f .tags')
+		else
 			os.execute('ctags -e '..string.gsub(cmd,'\\','/') )
+		end
+		local isCustomSourceCode=function(str)
+			return string.isMatched(str,g_customEtagsSrc)
+		end
+ 
+		local files=array.filter(isCustomSourceCode,lsFiles())
+		if arg[2]=='.' then
+			files=array.filter(function (f) local s=string.find(f, '^%.%.') return not s end, files)
+		elseif arg[2] then
+			return
+		end
+		table.sort(files, git_tools.compareFileName)
+		util.writeFile(g_cache_folder..'gitvsrclist', table.concat(files,'\n'))
+		local cmd='--append=yes '..g_customEtagsPattern..' -L '..g_cache_folder..'gitvsrclist'
+		print(cmd)
+		
+		if os.isWindows() then
+			cmd=string.gsub(cmd,'\\','/')
+		end
+		if arg[1]=="ctags" then
+			os.execute('ctags '..cmd ..' -f .tags')
 		else
 			os.execute('ctags -e '..cmd)
 		end
@@ -1607,6 +1649,9 @@ end
 if arg[1] then
 	if arg[1]=='--emacs' then
 	   g_useEmacs=true
+		main(unpack(array.sub(arg,2)))
+   elseif arg[1]=='--sublime' then
+	   g_useSublime=true
 		main(unpack(array.sub(arg,2)))
 	else
 		main(unpack(arg))
