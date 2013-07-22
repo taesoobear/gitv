@@ -93,3 +93,4 @@ hi DiffAdd guifg=NONE guibg=#c0e0d0 gui=italic,bold
 hi DiffDelete guifg=NONE guibg=#f0e0b0 gui=italic,bold
 
 
+highlight Folded guifg=#606060 guibg=#d9d9d9

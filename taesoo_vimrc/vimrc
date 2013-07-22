@@ -106,7 +106,7 @@ command! -nargs=0 Sh :ConqueTerm bash
 command! -nargs=1 RunL :!l <args> 
 
 
-highlight Folded guifg=#606060 guibg=#d9d9d9
+"highlight Folded guifg=#606060 guibg=#d9d9d9
 
 " Toggle fold state between closed and opened. 
 " 
