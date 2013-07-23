@@ -119,6 +119,8 @@ The most commonly used gitv commands are:
              directory) will be searched. Files with allowed extensions will only
              be searched. (see ~/bin/gitv.) Lua patterns are used.
                $ gitv grep keyword
+  findgrep   Find files and then grep
+               $ gitv findgrep filepattern greppattern
   etags .    Generate TAGS for all tracked files in the current folder recursively
                $ gitv etags .
   etags      Generate TAGS for all tracked files in the git repository
@@ -450,8 +452,11 @@ function git_tools.commit(path,force)
 				os.deleteFiles('gitscript')
 			elseif string.sub(ioread, 1,6)=='ignore' then
 				local files=table.concat(untracked, '\n')
-				local gitignore=util.readFile(git_top()..'/.gitignore')
-				util.writeFile(git_top()..'/.gitignore.bak', gitignore)
+				local gitignore=''	
+				if os.isFileExist(git_top()..'/.gitignore') then
+					gitignore=util.readFile(git_top()..'/.gitignore')
+					util.writeFile(git_top()..'/.gitignore.bak', gitignore)
+				end
 				if string.sub(gitignore, -1,-1)~='\n' then
 					gitignore=gitignore..'\n'
 				end
@@ -1300,21 +1305,9 @@ function main(...)
 			util.writeFile(g_cache_folder..'gitv_script', 'edit '..chosen[1]..
 			'\n:setlocal noreadonly\n:setlocal modifiable\n:setlocal noautoread')
 		end
-	elseif arg[1]=="find" then
+	elseif arg[1]=='find' then
 		local keys=array.sub(arg,2)
-		local files=lsFiles()
-		local fn={}
-		for ifile, file in ipairs(files) do
-			local passed=true
-			for j=1,#keys do
-				if not select(1,string.find(string.lower(file), string.lower(keys[j]))) then
-					passed=false
-				end
-			end
-			if passed then
-				print(file)
-			end
-		end
+		findFile(keys, print)
 	elseif arg[1]=="print" then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
@@ -1473,16 +1466,18 @@ function main(...)
 		print('searching '..arg[2]..'...')
 		local files=lsFiles()
 		if arg[2] then
-			if select(1, string.find(arg[2], '"')) and not select(1, string.find(arg[2],'%[')) then
-				-- treat " and ' same. (convenient for many script languages)
-				arg[2]=string.gsub(arg[2], '"', '["\']')
-			end
 			for i,f in ipairs(files) do
-				if string.isMatched(f,g_grepSrc) then
-					util.grepFile(f, arg[2],'',true)
-				end
+				grepFile(f, arg[2])
 			end
 		end
+	elseif arg[1]=='findgrep' then
+		print('searching '..arg[3]..' in '..arg[2]..' ...')
+		local files=lsFiles()
+		local filefunc=function(f)
+			grepFile(f, arg[3])
+		end
+		findFile({arg[2]}, filefunc)
+
 	elseif arg[1]=='fgrep' then
 		print('searching '..arg[2]..'...')
 		local files=lsFiles()
@@ -1640,6 +1635,30 @@ function main(...)
 
 	else
 		printHelp()
+	end
+end
+function findFile(keys, filefunc)
+		local files=lsFiles()
+		local fn={}
+		for ifile, file in ipairs(files) do
+			local passed=true
+			for j=1,#keys do
+				if not select(1,string.find(string.lower(file), string.lower(keys[j]))) then
+					passed=false
+				end
+			end
+			if passed then
+				filefunc(file)
+			end
+		end
+end
+function grepFile(f, key)
+	if select(1, string.find(key, '"')) and not select(1, string.find(key,'%[')) then
+		-- treat " and ' same. (convenient for many script languages)
+		key=string.gsub(key, '"', '["\']')
+	end
+	if string.isMatched(f,g_grepSrc) then
+		util.grepFile(f, key,'',true)
 	end
 end
 if string.sub(arg[0],-4)~='gitv' then
