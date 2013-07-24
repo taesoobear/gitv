@@ -808,7 +808,7 @@ function lsFiles(option)
 		-- use absolute
 		cpt=os.capture('cd '..git_top()..';git ls-files .', true)
 	else
-		cpt=os.capture(git()..' ls-files '..git_top(), true)
+		cpt=os.capture(git()..' ls-files "'..git_top()..'"', true)
 	end
 
 	local files
