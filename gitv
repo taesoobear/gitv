@@ -109,6 +109,9 @@ The most commonly used gitv commands are:
   clear-hist Clear history. $GIT_ROOT/TAGS will be removed too.
   sync       Commit, pull, and then push. 
   sync .     Commit only the current folder (without recursing), pull, and then push.
+  cp_repo    Copy files in a repository to another. 
+               $ cp_repo path1 path2
+
   pull       Pull the current branch from all remotes
   fetch      Fetch the current branch from all remotes
   push       Push the current branch to all remotes
@@ -810,7 +813,10 @@ function lsFiles(option)
 	else
 		cpt=os.capture(git()..' ls-files "'..git_top()..'"', true)
 	end
+	return _lsFiles(cpt, option)
+end
 
+function _lsFiles(cpt, option)
 	local files
 	if type(cpt)=='string' then
 		files=string.lines(cpt)
@@ -1308,6 +1314,28 @@ function main(...)
 	elseif arg[1]=='find' then
 		local keys=array.sub(arg,2)
 		findFile(keys, print)
+	elseif arg[1]=='cp_repo' then
+		local path1=arg[2]
+		local path2=arg[3]
+		if not path1 or not path2 then
+			print('usage: gitv cp_repo path1 path2')
+			return
+		end
+		local cpt1=os.capture('cd "'..path1..'";git ls-files .', true)
+		if string.sub(path1,-1)~='/' then
+			path1=path1..'/'
+		end
+		if string.sub(path2,-1)~='/' then
+			path2=path2..'/'
+		end
+		local tbl=_lsFiles(cpt1)
+		local tbl2={}
+		for i=1, #tbl do
+			tbl2[i]='cp "'..path1..tbl[i]..'" "'..path2..tbl[i]..'"'
+		end
+
+		util.writeFile('_copy.sh', table.concat(tbl2,'\n'))
+		print('Run "sh _copy.sh" to copy!')
 	elseif arg[1]=="print" then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
