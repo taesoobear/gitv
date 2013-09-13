@@ -133,6 +133,8 @@ The most commonly used gitv commands are:
                $ gitv diff HEAD~10
   undo-commit Revert the last commit (while retaining the local copy). 
               Do not undo-commit if you pushed your last commit!
+  other experimental features: type gitv "command name" to see usage.
+	  diff_repo  cp_repo    
   ]])
 end
 
@@ -1314,10 +1316,26 @@ function main(...)
 	elseif arg[1]=='find' then
 		local keys=array.sub(arg,2)
 		findFile(keys, print)
+	elseif arg[1]=='diff_repo' then
+		local filen=arg[2]
+		local other_repo=arg[3]
+		if not filen or not other_repo then
+            print('Diff a file in a repository to another.')
+			print('usage: gitv diff_repo file1 path_to_other_repo')
+			return
+		end
+		local file1=os.relativeToAbsolutePath(filen)
+		local path1=git_top()
+		local path2=string.gsub(file1, path1, other_repo)
+		local cmd='vimdiff "'..file1..'" "'..path2..'"'
+		print(cmd)
+		os.execute(cmd)
+
 	elseif arg[1]=='cp_repo' then
 		local path1=arg[2]
 		local path2=arg[3]
 		if not path1 or not path2 then
+            print('Copy files in a repository to another.')
 			print('usage: gitv cp_repo path1 path2')
 			return
 		end
