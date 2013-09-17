@@ -109,9 +109,6 @@ The most commonly used gitv commands are:
   clear-hist Clear history. $GIT_ROOT/TAGS will be removed too.
   sync       Commit, pull, and then push. 
   sync .     Commit only the current folder (without recursing), pull, and then push.
-  cp_repo    Copy files in a repository to another. 
-               $ cp_repo path1 path2
-
   pull       Pull the current branch from all remotes
   fetch      Fetch the current branch from all remotes
   push       Push the current branch to all remotes
@@ -134,7 +131,7 @@ The most commonly used gitv commands are:
   undo-commit Revert the last commit (while retaining the local copy). 
               Do not undo-commit if you pushed your last commit!
   other experimental features: type gitv "command name" to see usage.
-	  diff_repo  cp_repo    
+	  backup diff_repo  cp_repo    
   ]])
 end
 
