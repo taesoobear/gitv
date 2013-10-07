@@ -117,7 +117,7 @@ function dbg.traceBack(level)
    end
 end
 function os.findVIM()
-	if os.isWindows() then
+	if os.isWindows() and not os.isCygwin() then
 		local search={
 			"c:\\Program Files\\Vim\\vim73\\vim.exe",
 			"c:\\Program Files (x86)\\Vim\\vim73\\vim.exe",
@@ -137,7 +137,7 @@ function os.findVIM()
 	return 'vim', 'gvim'
 end
 function os.findGIT()
-	if os.isWindows() then
+	if os.isWindows() and not os.isCygwin() then
 		local search={
 			"c:\\Program Files\\Git\\bin\\git.exe",
 			"c:\\Program Files (x86)\\Git\\bin\\git.exe",
@@ -834,6 +834,10 @@ end
 
 function os.isMsysgit()
 	local isMsysgit=string.find(string.lower(os.getenv('PATH') or 'nil'), 'msysgit')~=nil
+	return isMsysgit
+end
+function os.isCygwin()
+	local isMsysgit=string.find(string.lower(os.getenv('PATH') or 'nil'), 'cygdrive')~=nil
 	return isMsysgit
 end
 function os.isWindows()
@@ -1791,7 +1795,7 @@ end
 
 function os.createDir(path)
 
-   if os.isUnix() then
+   if os.isUnix() or os.isCygwin() then
       os.execute('mkdir "'..path..'"')
    else
       os.execute("md "..os.toWindowsFileName(path))
@@ -1800,7 +1804,7 @@ end
 
 function os.rename(name1, name2)
 
-   if os.isUnix() then
+   if os.isUnix() or os.isCygwin() then
       os.execute('mv "'..name1..'" "'..name2..'"')
    else
       local cmd="move "..os.toWindowsFileName(name1).." "..os.toWindowsFileName(name2)
@@ -1811,7 +1815,7 @@ end
 
 function os.deleteFiles(mask)
 
-   if os.isUnix() then
+   if os.isUnix() or os.isCygwin() then
       os.execute("rm "..mask)
    else
       os.execute("del "..os.toWindowsFileName(mask))
@@ -1867,7 +1871,7 @@ function os.currentDirectory()
 end
 function os.copyFile(mask, mask2)
 
-   if os.isUnix() or os.isMsysgit() then
+   if os.isUnix() or os.isMsysgit() or os.isCygwin() then
 	   if mask2 then
 		   os.execute('cp "'..mask..'" "'..mask2..'"')
 	   else
@@ -2150,7 +2154,7 @@ function os.createBatchFile(fn, list, echoOff)
 	local fout, msg=io.open(fn, "w")
 	if fout==nil then print(msg) end
 
-	if os.isWindows() then
+	if os.isWindows() and not os.isCygwin() then
 		if echoOff then
 			fout:write("@echo off\necho off\n")
 		end
@@ -2168,7 +2172,7 @@ function os.createUnnamedBatchFile(list, echoOff)
 		math.seeded=true
 	end
 	local tmppath
-	if os.isWindows() then
+	if os.isWindows() and not os.isCygwin() then
 		tmppath=os.home_path() 
 	else
 		tmppath='/tmp'
@@ -2201,7 +2205,7 @@ end
 function os.pexecute(...) -- excute multiple serial operations
 	local list={...}
 	local fn=os.createUnnamedBatchFile(list)
-	if os.isWindows() then
+	if os.isWindows() and not os.isCygwin() then
 		os.execute('start /b cmd /c "'..fn..'"')
 	else
 		os.execute(fn.."&")
