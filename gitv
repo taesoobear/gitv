@@ -9,8 +9,11 @@ end
 require("mylib")
  
 -- order doesn't matter
-g_etagsSrc={ "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
-g_vimSrc={"Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_etagsSrc={ "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
+g_customEtagsSrc={"%.lua$"}
+g_customEtagsPattern=
+	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
+g_vimSrc={"%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
 g_cache_folder='/tmp/'
 g_vimpath='vim'
@@ -119,6 +122,8 @@ The most commonly used gitv commands are:
              directory) will be searched. Files with allowed extensions will only
              be searched. (see ~/bin/gitv.) Lua patterns are used.
                $ gitv grep keyword
+  findgrep   Find files and then grep
+               $ gitv findgrep filepattern greppattern
   etags .    Generate TAGS for all tracked files in the current folder recursively
                $ gitv etags .
   etags      Generate TAGS for all tracked files in the git repository
@@ -128,6 +133,8 @@ The most commonly used gitv commands are:
                $ gitv diff HEAD~10
   undo-commit Revert the last commit (while retaining the local copy). 
               Do not undo-commit if you pushed your last commit!
+  other experimental features: type gitv "command name" to see usage.
+	  backup diff_repo  cp_repo    
   ]])
 end
 
@@ -450,8 +457,11 @@ function git_tools.commit(path,force)
 				os.deleteFiles('gitscript')
 			elseif string.sub(ioread, 1,6)=='ignore' then
 				local files=table.concat(untracked, '\n')
-				local gitignore=util.readFile(git_top()..'/.gitignore')
-				util.writeFile(git_top()..'/.gitignore.bak', gitignore)
+				local gitignore=''	
+				if os.isFileExist(git_top()..'/.gitignore') then
+					gitignore=util.readFile(git_top()..'/.gitignore')
+					util.writeFile(git_top()..'/.gitignore.bak', gitignore)
+				end
 				if string.sub(gitignore, -1,-1)~='\n' then
 					gitignore=gitignore..'\n'
 				end
@@ -592,8 +602,13 @@ function interactiveChoose(fn, fromHistory)
 	do
 		local fn2={}
 		local c=1
-		for i,v in ipairs(hcache._list) do
-			fn2[#fn2+1]=v
+		--for i,v in ipairs(hcache._list) do
+		--	fn2[#fn2+1]=v
+		--end
+		for i,v in ipairs(fn) do
+			if hcache[v[1]] then 
+				fn2[#fn2+1]=v
+			end
 		end
 		for i,v in ipairs(fn) do
 			if not hcache[v[1]] then 
@@ -803,9 +818,12 @@ function lsFiles(option)
 		-- use absolute
 		cpt=os.capture('cd '..git_top()..';git ls-files .', true)
 	else
-		cpt=os.capture(git()..' ls-files '..git_top(), true)
+		cpt=os.capture(git()..' ls-files "'..git_top()..'"', true)
 	end
+	return _lsFiles(cpt, option)
+end
 
+function _lsFiles(cpt, option)
 	local files
 	if type(cpt)=='string' then
 		files=string.lines(cpt)
@@ -919,12 +937,25 @@ function nonInteractiveChoose(keys)
 		option='-l'
 		keys=table.isubset(keys,2)
 	end
+	if #keys==0 then return {} end
+	local useFull=false
+	for ikey,key in ipairs(keys) do
+		if select(1, string.find(key, '/')) then
+			useFull=true
+			keys[ikey]=string.gsub(key,'%.%./','')
+			keys[ikey]=string.gsub(keys[ikey],'%./','')
+		end
+	end
+	if useFull then option='-g' end
 	local files=lsFiles(option)
 
 	local fn={}
 	for ifile, file in ipairs(files) do
 		if string.isMatched(file,g_vimSrc)  then
 			local filename=os.filename(file)
+			if useFull then
+				filename=file
+			end
 			for ikey,key in ipairs(keys) do
 				if select(1,string.find(string.lower(filename), string.lower(key))) then
 					fn[#fn+1]={file}
@@ -1177,6 +1208,10 @@ function main(...)
 		if chosen then
 			os.execute(g_vimpath..' "'..chosen[1]..'"')
 		end
+	elseif arg[1]=='stat' then
+		os.execute('git diff --stat')
+		print('press Enter') io.read('*l')
+		os.execute('git status .')
 	elseif arg[1]=="vir" then
 		local keys=array.sub(arg,2)
 		local chosen
@@ -1296,21 +1331,47 @@ function main(...)
 			util.writeFile(g_cache_folder..'gitv_script', 'edit '..chosen[1]..
 			'\n:setlocal noreadonly\n:setlocal modifiable\n:setlocal noautoread')
 		end
-	elseif arg[1]=="find" then
+	elseif arg[1]=='find' then
 		local keys=array.sub(arg,2)
-		local files=lsFiles()
-		local fn={}
-		for ifile, file in ipairs(files) do
-			local passed=true
-			for j=1,#keys do
-				if not select(1,string.find(string.lower(file), string.lower(keys[j]))) then
-					passed=false
-				end
-			end
-			if passed then
-				print(file)
-			end
+		findFile(keys, print)
+	elseif arg[1]=='diff_repo' then
+		local filen=arg[2]
+		local other_repo=arg[3]
+		if not filen or not other_repo then
+            print('Diff a file in a repository to another.')
+			print('usage: gitv diff_repo file1 path_to_other_repo')
+			return
 		end
+		local file1=os.relativeToAbsolutePath(filen)
+		local path1=git_top()
+		local path2=string.gsub(file1, path1, other_repo)
+		local cmd='vimdiff "'..file1..'" "'..path2..'"'
+		print(cmd)
+		os.execute(cmd)
+
+	elseif arg[1]=='cp_repo' then
+		local path1=arg[2]
+		local path2=arg[3]
+		if not path1 or not path2 then
+            print('Copy files in a repository to another.')
+			print('usage: gitv cp_repo path1 path2')
+			return
+		end
+		local cpt1=os.capture('cd "'..path1..'";git ls-files .', true)
+		if string.sub(path1,-1)~='/' then
+			path1=path1..'/'
+		end
+		if string.sub(path2,-1)~='/' then
+			path2=path2..'/'
+		end
+		local tbl=_lsFiles(cpt1)
+		local tbl2={}
+		for i=1, #tbl do
+			tbl2[i]='cp "'..path1..tbl[i]..'" "'..path2..tbl[i]..'"'
+		end
+
+		util.writeFile('_copy.sh', table.concat(tbl2,'\n'))
+		print('Run "sh _copy.sh" to copy!')
 	elseif arg[1]=="print" then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
@@ -1442,20 +1503,45 @@ function main(...)
 		else
 			os.execute('ctags -e '..string.gsub(cmd,'\\','/') )
 		end
+		local isCustomSourceCode=function(str)
+			return string.isMatched(str,g_customEtagsSrc)
+		end
+ 
+		local files=array.filter(isCustomSourceCode,lsFiles())
+		if arg[2]=='.' then
+			files=array.filter(function (f) local s=string.find(f, '^%.%.') return not s end, files)
+		elseif arg[2] then
+			return
+		end
+		table.sort(files, git_tools.compareFileName)
+		util.writeFile(g_cache_folder..'gitvsrclist', table.concat(files,'\n'))
+		local cmd='--append=yes '..g_customEtagsPattern..' -L '..g_cache_folder..'gitvsrclist'
+		print(cmd)
+		
+		if os.isWindows() then
+			cmd=string.gsub(cmd,'\\','/')
+		end
+		if arg[1]=="ctags" then
+			os.execute('ctags '..cmd ..' -f .tags')
+		else
+			os.execute('ctags -e '..cmd)
+		end
 	elseif arg[1]=='grep' then
 		print('searching '..arg[2]..'...')
 		local files=lsFiles()
 		if arg[2] then
-			if select(1, string.find(arg[2], '"')) and not select(1, string.find(arg[2],'%[')) then
-				-- treat " and ' same. (convenient for many script languages)
-				arg[2]=string.gsub(arg[2], '"', '["\']')
-			end
 			for i,f in ipairs(files) do
-				if string.isMatched(f,g_grepSrc) then
-					util.grepFile(f, arg[2],'',true)
-				end
+				grepFile(f, arg[2])
 			end
 		end
+	elseif arg[1]=='findgrep' then
+		print('searching '..arg[3]..' in '..arg[2]..' ...')
+		local files=lsFiles()
+		local filefunc=function(f)
+			grepFile(f, arg[3])
+		end
+		findFile({arg[2]}, filefunc)
+
 	elseif arg[1]=='fgrep' then
 		print('searching '..arg[2]..'...')
 		local files=lsFiles()
@@ -1613,6 +1699,30 @@ function main(...)
 
 	else
 		printHelp()
+	end
+end
+function findFile(keys, filefunc)
+		local files=lsFiles()
+		local fn={}
+		for ifile, file in ipairs(files) do
+			local passed=true
+			for j=1,#keys do
+				if not select(1,string.find(string.lower(file), string.lower(keys[j]))) then
+					passed=false
+				end
+			end
+			if passed then
+				filefunc(file)
+			end
+		end
+end
+function grepFile(f, key)
+	if select(1, string.find(key, '"')) and not select(1, string.find(key,'%[')) then
+		-- treat " and ' same. (convenient for many script languages)
+		key=string.gsub(key, '"', '["\']')
+	end
+	if string.isMatched(f,g_grepSrc) then
+		util.grepFile(f, key,'',true)
 	end
 end
 if string.sub(arg[0],-4)~='gitv' then

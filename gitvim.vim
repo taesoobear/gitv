@@ -30,6 +30,9 @@ nmap <C-F3> :ts/\<
 nmap <F4> :grep [^\%a]<C-r><C-w>[^\%a]<CR>:copen<CR>
 " tag search the current word using gitv ts. Use <S-F5> instead of <C-t> to go back.
 nmap <F5> mZ:GitvTS ^<C-r><C-w>$<CR>
+nmap <c-h> mZ:GitvTS ^<C-r><C-w>$<CR>
+" select filename inside quotes and copy to register a, and then choose File
+nmap <c-j> mZvi""ay:Bg <c-r>a<CR>
 nmap <S-F5> 'Z
 " tag search the current word under the cursor. (More robust than c+])
 nmap <C-F5> :tag/\<<C-r><C-w>\><CR>
