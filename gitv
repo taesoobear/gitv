@@ -8,11 +8,11 @@ end
 require("mylib")
  
 -- order doesn't matter
-g_etagsSrc={ "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
+g_etagsSrc={ "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
 g_customEtagsSrc={"%.lua$"}
 g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
-g_vimSrc={"%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={"%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
 g_cache_folder='/tmp/'
 g_vimpath='vim'
@@ -934,12 +934,25 @@ function nonInteractiveChoose(keys)
 		option='-l'
 		keys=table.isubset(keys,2)
 	end
+	if #keys==0 then return {} end
+	local useFull=false
+	for ikey,key in ipairs(keys) do
+		if select(1, string.find(key, '/')) then
+			useFull=true
+			keys[ikey]=string.gsub(key,'%.%./','')
+			keys[ikey]=string.gsub(keys[ikey],'%./','')
+		end
+	end
+	if useFull then option='-g' end
 	local files=lsFiles(option)
 
 	local fn={}
 	for ifile, file in ipairs(files) do
 		if string.isMatched(file,g_vimSrc)  then
 			local filename=os.filename(file)
+			if useFull then
+				filename=file
+			end
 			for ikey,key in ipairs(keys) do
 				if select(1,string.find(string.lower(filename), string.lower(key))) then
 					fn[#fn+1]={file}
