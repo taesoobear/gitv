@@ -1336,18 +1336,30 @@ function main(...)
 		local other_repo=arg[3]
 		if not filen then
             print('Diff a file in a repository to another.')
-			print('usage: gitv diffrepo file1 path_to_other_repo')
+			print('usage: gitv diffrepo file1 path_to_other_repo_relative_to_git_root')
+			print('   or  gitv diffrepo file1 ')
+			print('   or  gitv diffrepo .')
 			return
 		end
 
 		other_repo=other_repo or g_diffTarget
+		if(other_repo==nil ) then
+			print('set g_diffTarget in your $GIT_ROOT/.gitvconfig')
+			print('For example,    g_diffTarget="../taesooLib"')
+			return
+		end
 		local file1=os.relativeToAbsolutePath(filen)
 		local path1=git_top()
 		local path2=string.gsub(file1, path1, other_repo)
 		path2=os.relativeToAbsolutePath(path2, path1)
-		local cmd='vimdiff "'..file1..'" "'..path2..'"'
-		print(cmd)
-		os.execute(cmd)
+
+		if filen=='.' then
+			os.execute('meld "'..file1..'" "'..path2..'"')
+		else
+			local cmd='vimdiff "'..file1..'" "'..path2..'"'
+			print(cmd)
+			os.execute(cmd)
+		end
 
 	elseif arg[1]=='test_win_filename' then
 		local cpt=string.lines(os.capture('cd '..git_top()..';git ls-files .', true))
