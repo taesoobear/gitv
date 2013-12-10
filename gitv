@@ -131,7 +131,7 @@ The most commonly used gitv commands are:
   undo-commit Revert the last commit (while retaining the local copy). 
               Do not undo-commit if you pushed your last commit!
   other experimental features: type gitv "command name" to see usage.
-	  backup diff_repo  cp_repo    
+	  backup diffrepo  cprepo test_win_filename
   ]])
 end
 
@@ -1331,22 +1331,36 @@ function main(...)
 	elseif arg[1]=='find' then
 		local keys=array.sub(arg,2)
 		findFile(keys, print)
-	elseif arg[1]=='diff_repo' then
+	elseif arg[1]=='diffrepo' then
 		local filen=arg[2]
 		local other_repo=arg[3]
-		if not filen or not other_repo then
+		if not filen then
             print('Diff a file in a repository to another.')
-			print('usage: gitv diff_repo file1 path_to_other_repo')
+			print('usage: gitv diffrepo file1 path_to_other_repo')
 			return
 		end
+
+		other_repo=other_repo or g_diffTarget
 		local file1=os.relativeToAbsolutePath(filen)
 		local path1=git_top()
 		local path2=string.gsub(file1, path1, other_repo)
+		path2=os.relativeToAbsolutePath(path2, path1)
 		local cmd='vimdiff "'..file1..'" "'..path2..'"'
 		print(cmd)
 		os.execute(cmd)
 
-	elseif arg[1]=='cp_repo' then
+	elseif arg[1]=='test_win_filename' then
+		local cpt=string.lines(os.capture('cd '..git_top()..';git ls-files .', true))
+		local key={}
+		for i,fn in ipairs(cpt) do
+			local lfn=string.lower(fn)
+			if key[lfn] then
+				print('duplicated '..fn)
+			else
+				key[lfn]=true
+			end
+		end
+	elseif arg[1]=='cprepo' then
 		local path1=arg[2]
 		local path2=arg[3]
 		if not path1 or not path2 then
