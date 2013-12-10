@@ -1512,10 +1512,22 @@ function main(...)
 		end
 	elseif arg[1]=='grep' then
 		print('searching '..arg[2]..'...')
-		local files=lsFiles()
+		local files
+		if arg[2]=='-l' then
+			arg=table.isubset(arg,2)
+			files=lsFiles('-l')
+		else
+			files=lsFiles()
+		end
 		if arg[2] then
+			if select(1, string.find(arg[2], '"')) and not select(1, string.find(arg[2],'%[')) then
+				-- treat " and ' same. (convenient for many script languages)
+				arg[2]=string.gsub(arg[2], '"', '["\']')
+			end
 			for i,f in ipairs(files) do
-				grepFile(f, arg[2])
+				if string.isMatched(f,g_grepSrc) then
+					util.grepFile(f, arg[2],'',true)
+				end
 			end
 		end
 	elseif arg[1]=='findgrep' then
