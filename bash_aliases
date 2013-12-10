@@ -16,7 +16,7 @@ alias t='gitv ts'
 # or using emacs
 alias t='gitv --emacs ts'
 
-# use gitv to change directory
+# use gitv to change directory. e.g. gg main.c
 function gitv-cd {
   before="$(pwd)"
   gitv chooseFolder "$@" 
