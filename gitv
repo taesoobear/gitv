@@ -1208,6 +1208,37 @@ function main(...)
 		if chosen then
 			os.execute(g_vimpath..' "'..chosen[1]..'"')
 		end
+	elseif arg[1]=='unzip' then -- iconv after unzip. only for Korean cygwin users.
+		if not os.isCygwin() then
+			print('Error! only for cygwin')
+			return
+		end
+		if not os.isFileExist('/usr/bin/unzip') then
+			print('Error! install unzip and convmv using cygwin setup.exe')
+			return
+		end
+
+		if not os.isFileExist('/usr/bin/convmv') then
+			print('Error! install convmv using cygwin setup.exe')
+			return
+		end
+		local fn=arg[2]
+		if string.lower(string.sub(fn,-4))~='.zip' then
+			if os.isFileExist(fn..'.zip') then
+				fn=fn..'.zip'
+			else
+				print('Error! not a zip file?')
+				return
+			end
+		end
+		local unzippath=string.sub(fn, 1,-5)
+		if os.isFileExist(unzippath) then
+			print('Error! '..unzippath..' exists')
+			return
+		end
+		os.execute('mkdir -p "'..unzippath..'"')
+		os.execute('cd "'..unzippath..'";unzip "../'..fn..'"')
+		os.execute('cd "'..unzippath..'";convmv -r --notest -f cp949 -t utf-8 .')
 	elseif arg[1]=='stat' then
 		os.execute('git diff --stat')
 		print('press Enter') io.read('*l')
