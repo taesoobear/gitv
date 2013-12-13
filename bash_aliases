@@ -1,4 +1,3 @@
-stty -ixon
 # to use vim to open a file. e.g. v luna.c
 alias v='gitv vi'
 # to use gvim 
@@ -39,6 +38,8 @@ alias gg='gitv-cd'
 alias rg=ranger-cd
 
 
+# to turn off flow control (C-s, C-q)
+stty -ixon
 
 # put the following line in .bashrc 
 export PATH=$PATH:~/bin
