@@ -2,6 +2,7 @@
 local isWin=string.find(string.lower(os.getenv('OS') or 'nil'),'windows')~=nil
 if isWin then
 	package.path =os.getenv('HOMEDRIVE')..os.getenv('HOMEPATH').."/bin/?.lua" .. ";"..package.path 
+	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
 else
 	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
 end
@@ -24,8 +25,10 @@ g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plo
 g_debug=false
 g_useEmacs=false
 g_useSublime=false
-
-if os.isWindows() then
+function isWindows() 
+	return os.isWindows() and not os.isCygwin()
+end
+if isWindows() then
 	-- on some systems, os.execute doesn't work perfectly. so  this is a workaround.
 	os.execute_original=os.execute
 	function os.execute(cmd)
@@ -138,7 +141,7 @@ end
 g_vimpath, g_gvimpath=os.findVIM()
 g_gitpath=os.findGIT()
 
-if os.isWindows() then
+if isWindows() then
 	g_cache_folder=os.home_path() ..'/'
 end
 function git()
@@ -254,7 +257,7 @@ function git_tools.searchTag(filename, searchKey)
 			--print(fn, path)
 			for i=1,#tags do
 				local t=tags[i][3]
-				if os.isWindows() then t=os.fromWindowsFileName(t) end
+				if isWindows() then t=os.fromWindowsFileName(t) end
 				t=os.relativeToAbsolutePath(t, tagRoot)
 				t=os.absoluteToRelativePath(t, currDir)
 				--print(tags[i][3], t)
@@ -321,7 +324,7 @@ function git_tools.tokenize_cmd(cmd)
 	return tokens
 end
 function git_tools.capture(cmd, isRaw)
-	if os.isWindows() then
+	if isWindows() then
 		local tokens=git_tools.tokenize_cmd(cmd)
 		local fn=os.createUnnamedBatchFile(tokens, true)
 		return os.capture('"'..fn..'"', isRaw)	
@@ -330,7 +333,7 @@ function git_tools.capture(cmd, isRaw)
 	end
 end
 function git_tools.execute(cmd, password)
-	if os.isWindows() then
+	if isWindows() then
 		local tokens=git_tools.tokenize_cmd(cmd)
 		local fn=os.createUnnamedBatchFile(tokens, true)
 		--os.execute('type _temp.bat')
@@ -711,7 +714,7 @@ function interactiveTagChoose(fn, inputs)
 	end
 	local maxColumn=60
 	local maxRow=20
-	if os.isWindows() then 
+	if isWindows() then 
 		maxColumn=40
 		maxRow=10
 	end
@@ -985,7 +988,7 @@ local function serverWithFileOpened(serverlist, fn)
 		for i=1,#out do
 			local cmd=g_vimpath..' --servername '..out[i]..' --remote-expr "bufexists(\\\"'..fn..'\\\")"'
 			local opened
-			if os.isWindows() then
+			if isWindows() then
 				opened=os.capture('"'..cmd)=='1'
 			else
 				opened=os.capture(cmd)=='1'
@@ -1059,7 +1062,7 @@ function makeReadOnlyAll(servers, fullfn)
 	end
 end
 function gvimFile(servername, chosen)
-	if os.isWindows() then
+	if isWindows() then
 		local chosenfile=os.toWindowsFileName(chosen)
 		if not serverLaunched(servername) then
 			local cmd=g_gvimpath..' --servername '..servername..' "'..chosenfile..'"'
@@ -1518,7 +1521,7 @@ function main(...)
 		local cmd='--extra=+f --langmap=c++:.inl.h.hpp.c.cpp.cc.cxx -L '..g_cache_folder..'gitvsrclist'
 		print(cmd)
 		
-		if os.isWindows() then
+		if isWindows() then
 			cmd=string.gsub(cmd,'\\','/')
 		end
 		if arg[1]=="ctags" then
