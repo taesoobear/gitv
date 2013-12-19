@@ -1365,15 +1365,23 @@ function main(...)
 	elseif arg[1]=='find' then
 		local keys=array.sub(arg,2)
 		findFile(keys, print)
-	elseif arg[1]=='diffrepo' then
+	elseif arg[1]=='diffrepo' or arg[1]=='cprepo' or arg[1]=='cprepo2' then
 		local filen=arg[2]
 		local other_repo=arg[3]
-		if not filen then
-            print('Diff a file in a repository to another.')
-			print('usage: gitv diffrepo file1 path_to_other_repo_relative_to_git_root')
-			print('   or  gitv diffrepo file1 ')
-			print('   or  gitv diffrepo .')
+		local function printHelp(verb, cmd)
+			print('Diff a file in a repository to another.')
+			print('usage: gitv ' .. cmd ..' file1 path_to_other_repo_relative_to_git_root')
+			print('   or  gitv ' .. cmd ..' file1 ')
+			print('   or  gitv ' .. cmd ..' .')
 			return
+		end
+		if not filen then
+			if arg[1]=='diffrepo' then
+				printHelp('Diff', 'diffrepo')
+			else
+				printHelp('Copy', 'cprepo')
+				print("You can use cprepo2 to copy the file to the target repo")
+			end
 		end
 
 		other_repo=other_repo or g_diffTarget
@@ -1387,14 +1395,39 @@ function main(...)
 		local path2=string.gsub(file1, path1, other_repo)
 		path2=os.relativeToAbsolutePath(path2, path1)
 
-		if filen=='.' then
-			os.execute('meld "'..file1..'" "'..path2..'"')
-		else
-			local cmd='vimdiff "'..file1..'" "'..path2..'"'
-			print(cmd)
-			os.execute(cmd)
-		end
+		if arg[1]=='cprepo' or arg[1]=='cprepo2' then
+			if filen=='.' then
+				local cpt1=os.capture('cd "'..path1..'";git ls-files .', true)
+				if string.sub(path1,-1)~='/' then
+					path1=path1..'/'
+				end
+				if string.sub(path2,-1)~='/' then
+					path2=path2..'/'
+				end
+				local tbl=_lsFiles(cpt1)
+				local tbl2={}
+				for i=1, #tbl do
+					tbl2[i]='cp "'..path1..tbl[i]..'" "'..path2..tbl[i]..'"'
+				end
 
+				util.writeFile('_copy.sh', table.concat(tbl2,'\n'))
+				print('Run "sh _copy.sh" to copy!')
+			else
+				if arg[1]=='cprepo' then
+					os.copyFile(path2, file1)
+				else
+					os.copyFile(file1, path2)
+				end
+			end
+		else
+			if filen=='.' then
+				os.execute('meld "'..file1..'" "'..path2..'"')
+			else
+				local cmd='vimdiff "'..file1..'" "'..path2..'"'
+				print(cmd)
+				os.execute(cmd)
+			end
+		end
 	elseif arg[1]=='test_win_filename' then
 		local cpt=string.lines(os.capture('cd '..git_top()..';git ls-files .', true))
 		local key={}
@@ -1406,29 +1439,6 @@ function main(...)
 				key[lfn]=true
 			end
 		end
-	elseif arg[1]=='cprepo' then
-		local path1=arg[2]
-		local path2=arg[3]
-		if not path1 or not path2 then
-            print('Copy files in a repository to another.')
-			print('usage: gitv cp_repo path1 path2')
-			return
-		end
-		local cpt1=os.capture('cd "'..path1..'";git ls-files .', true)
-		if string.sub(path1,-1)~='/' then
-			path1=path1..'/'
-		end
-		if string.sub(path2,-1)~='/' then
-			path2=path2..'/'
-		end
-		local tbl=_lsFiles(cpt1)
-		local tbl2={}
-		for i=1, #tbl do
-			tbl2[i]='cp "'..path1..tbl[i]..'" "'..path2..tbl[i]..'"'
-		end
-
-		util.writeFile('_copy.sh', table.concat(tbl2,'\n'))
-		print('Run "sh _copy.sh" to copy!')
 	elseif arg[1]=="print" then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
