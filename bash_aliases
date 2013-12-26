@@ -15,10 +15,19 @@ alias t='gitv ts'
 # or using emacs
 alias t='gitv --emacs ts'
 
-# use gitv to change directory. e.g. gg main.c
+# use gitv to change directory by file name. e.g. gg main.c
 function gitv-cd {
   before="$(pwd)"
   gitv chooseFolder "$@" 
+  after="$(cat /tmp/gitv_chosen)"
+  if [[ "$before" != "$after" ]]; then
+    cd "$after"
+  fi
+}
+# use gitv to change directory by directory name. e.g. gd home
+function gitv-cd2 {
+  before="$(pwd)"
+  gitv chooseFolder2 "$@" 
   after="$(cat /tmp/gitv_chosen)"
   if [[ "$before" != "$after" ]]; then
     cd "$after"
@@ -35,6 +44,7 @@ function ranger-cd {
 }
 # goto the folder containing a selected file. e.g. gg luna.c
 alias gg='gitv-cd'
+alias gd='gitv-cd2'
 alias rg=ranger-cd
 
 
