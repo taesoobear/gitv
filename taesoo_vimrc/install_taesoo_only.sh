@@ -1,3 +1,4 @@
+git clone https://github.com/gmarik/vundle.git ~/.vim/bundle/vundle
 cd ..
 sh install.sh
 cd taesoo_vimrc
