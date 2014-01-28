@@ -17,7 +17,6 @@ currdir=`pwd`
 echo $currdir
 cd ~/.vim
 unzip "$currdir/vimwiki-1-1-1.zip"
-unzip "$currdir/CSApprox.zip"
 cd ~/.vim/plugin
 unzip "$currdir/hangeul.zip"
 mkdir -p ~/.vim/colors

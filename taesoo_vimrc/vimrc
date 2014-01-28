@@ -1,5 +1,25 @@
 set nocompatible
-filetype plugin on
+filetype plugin off
+
+set rtp+=~/.vim/bundle/vundle/
+call vundle#rc()
+
+Bundle 'gmarik/vundle'
+
+"Bundle 'ctrlp.vim' -> to me, gitvim's Ctrl+g is more convenient.
+Bundle 'The-NERD-tree'
+
+"Vim plugin that displays tags in a window, ordered by class etc. 
+Bundle 'Tagbar'
+nmap <F8> :TagbarToggle<CR> 
+" Autotag re-run ctags on a source file when you save it.
+Bundle 'AutoTag'
+" The-NERD-Commenter comment out visual blocks using \cc
+Bundle 'The-NERD-Commenter' 
+Bundle 'AutoComplPop'
+Bundle 'Tex-PDF'
+Bundle 'CSApprox'
+
 syntax on
 source $VIMRUNTIME/vimrc_example.vim
 " The % key will switch between opening and closing brackets. By sourcing matchit.vim, the key can also switch among e.g. if/elsif/else/end, between opening and closing XML tags, and more. 
