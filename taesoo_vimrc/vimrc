@@ -6,6 +6,7 @@ call vundle#rc()
 
 Bundle 'gmarik/vundle'
 
+" The following bundles are installed when you run :BundleInstall in the vim
 "Bundle 'ctrlp.vim' -> to me, gitvim's Ctrl+g is more convenient.
 Bundle 'The-NERD-tree'
 
