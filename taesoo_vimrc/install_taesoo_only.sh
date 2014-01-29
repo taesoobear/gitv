@@ -22,3 +22,4 @@ cd ~/.vim/plugin
 unzip "$currdir/hangeul.zip"
 mkdir -p ~/.vim/colors
 cp "$currdir/pyte.vim" ~/.vim/colors
+cp "$currdir/linux" ~/.vim/colors

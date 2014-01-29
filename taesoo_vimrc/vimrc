@@ -11,7 +11,7 @@ Bundle 'The-NERD-tree'
 
 "Vim plugin that displays tags in a window, ordered by class etc. 
 Bundle 'Tagbar'
-nmap <F8> :TagbarToggle<CR> 
+"nmap <F10> :TagbarToggle<CR> 
 " Autotag re-run ctags on a source file when you save it.
 Bundle 'AutoTag'
 " The-NERD-Commenter comment out visual blocks using \cc
@@ -33,6 +33,9 @@ let g:vimwiki_file_exts='pdf,chm'
 """""""""""""""""""""""""""""""""""""""""""""
 set t_Co=256
 colorscheme pyte
+"colorscheme linux
+"colorscheme torte
+"colorscheme jellybeans
 set guifont=Monospace\ 13
 
 set ignorecase
