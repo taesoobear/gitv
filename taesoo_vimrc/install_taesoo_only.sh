@@ -10,7 +10,7 @@ cp -rf ~/_emacs.d/* ~/.emacs.d
 rm -rf ~/_emacs.d
 mkdir -p ~/.cgdb
 cp cgdbrc ~/.cgdb/
-cp tmux.cof ~/.tmux.conf
+cp tmux.conf ~/.tmux.conf
 sudo cp convkr.sh /usr/local/bin/convkr
 sudo chmod 707 /usr/local/bin/convkr
 sudo bash -c 'echo "set completion-ignore-case on">> /etc/inputrc'
@@ -19,7 +19,6 @@ echo $currdir
 cd ~/.vim
 unzip "$currdir/vimwiki-1-1-1.zip"
 cd ~/.vim/plugin
-unzip "$currdir/hangeul.zip"
 mkdir -p ~/.vim/colors
 cp "$currdir/pyte.vim" ~/.vim/colors
-cp "$currdir/linux" ~/.vim/colors
+cp "$currdir/linux.vim" ~/.vim/colors
