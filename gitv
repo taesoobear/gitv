@@ -21,7 +21,7 @@ g_gvimpath='gvim'
 -- ignore files that match following patterns even if they are in the repository.
 g_ignorePattern={'^BaseLib/image/FreeImage/Dist/','^dependencies/'}
 g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plot%.', 'OgreFltkConsole.exe', 'console.xml', 'OgreFltkConsoleJIT.exe','optimizelog'}
-
+g_tagFallbackPath={}
 g_debug=false
 g_useEmacs=false
 g_useSublime=false
@@ -1175,6 +1175,15 @@ function os.vi_remote(filename, line)
 		end
 	end
 end
+function git_tools.tagChooseFromFile(keyword, keyword2, path)
+	print('Searching '..keyword)
+	if not os.isFileExist(path..'/TAGS') then
+		print('Generating '..path..'/TAGS...')
+		main('etags', path)
+	end
+	local chosen=interactiveTagChoose(git_tools.searchTag(path..'/TAGS', keyword))
+	return chosen
+end
 function git_tools.tagChoose(keyword, keyword2)
 	if keyword==nil then
 		printHelp()
@@ -1186,12 +1195,16 @@ function git_tools.tagChoose(keyword, keyword2)
 		path='.'
 		keyword=keyword2
 	end
-	print('Searching '..keyword)
-	if not os.isFileExist(path..'/TAGS') then
-		print('Generating '..path..'/TAGS...')
-		main('etags', path)
+	local chosen= git_tools.tagChooseFromFile(keyword, keyword2, path)
+	if not chosen then
+		for i=1,#g_tagFallbackPath do
+			local path=g_tagFallbackPath [i]
+			chosen= git_tools.tagChooseFromFile(keyword, keyword2, path)
+			if chosen then
+				break
+			end
+		end
 	end
-	local chosen=interactiveTagChoose(git_tools.searchTag(path..'/TAGS', keyword))
 	return chosen
 end
 function git_tools.tagList(keywords)
