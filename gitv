@@ -1742,6 +1742,16 @@ function main(...)
 			force=true
 		elseif arg[2]=='-f' then
 			force=true
+		elseif arg[2]=='-a' then
+			local files=lsFiles(option)
+			local fn={}
+			for ifile, file in ipairs(files) do
+				if string.isMatched(file,g_vimSrc)  then
+					os.execute2('cp "'..file..'" "'..file..'.bak"',
+					'iconv -f UTF8 -t ANSI_X3.4 -c "'..file..'.bak" -o "'..file..'"' )
+				end
+			end
+			return
 		end
 
 		if force then
