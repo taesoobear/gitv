@@ -1,5 +1,26 @@
 set nocompatible
-filetype plugin on
+filetype plugin off
+
+set rtp+=~/.vim/bundle/vundle/
+call vundle#rc()
+
+Bundle 'gmarik/vundle'
+
+" The following bundles are installed when you run :BundleInstall in the vim
+"Bundle 'ctrlp.vim' -> to me, gitvim's Ctrl+g is more convenient.
+Bundle 'The-NERD-tree'
+
+"Vim plugin that displays tags in a window, ordered by class etc. 
+Bundle 'Tagbar'
+"nmap <F10> :TagbarToggle<CR> 
+" Autotag re-run ctags on a source file when you save it.
+Bundle 'AutoTag'
+" The-NERD-Commenter comment out visual blocks using \cc
+Bundle 'The-NERD-Commenter' 
+Bundle 'AutoComplPop'
+Bundle 'Tex-PDF'
+Bundle 'CSApprox'
+
 syntax on
 source $VIMRUNTIME/vimrc_example.vim
 " The % key will switch between opening and closing brackets. By sourcing matchit.vim, the key can also switch among e.g. if/elsif/else/end, between opening and closing XML tags, and more. 
@@ -13,6 +34,9 @@ let g:vimwiki_file_exts='pdf,chm'
 """""""""""""""""""""""""""""""""""""""""""""
 set t_Co=256
 colorscheme pyte
+"colorscheme linux
+"colorscheme torte
+"colorscheme jellybeans
 set guifont=Monospace\ 13
 
 set ignorecase
@@ -31,8 +55,42 @@ set clipboard=unnamedplus
 """""""""""""""""""""""""""""""""""""""""""""
 " maps
 """""""""""""""""""""""""""""""""""""""""""""
+function ToggleWrap()
+  if &wrap
+    echo "Wrap OFF"
+    setlocal nowrap
+    set virtualedit=all
+    silent! nunmap <buffer> <Up>
+    silent! nunmap <buffer> <Down>
+    silent! nunmap <buffer> <Home>
+    silent! nunmap <buffer> <End>
+    silent! nunmap <buffer> j
+    silent! nunmap <buffer> k
+    silent! iunmap <buffer> <Up>
+    silent! iunmap <buffer> <Down>
+    silent! iunmap <buffer> <Home>
+    silent! iunmap <buffer> <End>
+  else
+    echo "Wrap ON"
+    setlocal wrap linebreak nolist
+    set virtualedit=
+    setlocal display+=lastline
+    noremap  <buffer> <silent> <Up>   gk
+    noremap  <buffer> <silent> <Down> gj
+    noremap  <buffer> <silent> k gk
+    noremap  <buffer> <silent> j gj
+    noremap  <buffer> <silent> <Home> g<Home>
+    noremap  <buffer> <silent> <End>  g<End>
+    inoremap <buffer> <silent> <Up>   <C-o>gk
+    inoremap <buffer> <silent> <Down> <C-o>gj
+    inoremap <buffer> <silent> <Home> <C-o>g<Home>
+    inoremap <buffer> <silent> <End>  <C-o>g<End>
+  endif
+endfunction
+
 " Map toggle function to Space key. 
 noremap <space> :call ToggleFold()<CR>
+noremap <silent> <Leader>w :call ToggleWrap()<CR>
 " Unfold all
 noremap zr zR
 " use ;; instead of ;
@@ -52,6 +110,9 @@ nmap <C-d> :q<CR>
 nmap <C-s> :w<CR>
 imap <C-s> <ESC>:w<CR>
 nmap <C-tab> :Bs.<CR>
+nmap <C-r> :!stdbuf -i0 -o0 make run<CR>
+
+"some other keybindings are defined in .vim/plugins/gitvim.vim
 
 """""""""""""""""""""""""""""""""""""""""""""
 " commands
