@@ -1226,6 +1226,7 @@ function main(...)
 		if string.lower(string.sub(fn,-4))~='.zip' then
 			if os.isFileExist(fn..'.zip') then
 				fn=fn..'.zip'
+				print(fn)
 			else
 				print('Error! not a zip file?')
 				return
@@ -1554,6 +1555,9 @@ function main(...)
 		
 		if isWindows() then
 			cmd=string.gsub(cmd,'\\','/')
+		end
+		if g_customCtagsParam then
+			cmd=g_customCtagsParam  .. ' '..cmd
 		end
 		if arg[1]=="ctags" then
 			os.execute('ctags '..cmd ..' -f .tags')
