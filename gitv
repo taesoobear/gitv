@@ -597,9 +597,17 @@ function interactiveChoose(fn, fromHistory)
 	local currDir=os.currentDirectory()
 	local history, hcache=loadHistory(currDir)
 	if #fn==0 then
-		print('Choose from History:')
-		fn=history
-		hcache._list=fn
+		for i=1,#g_tagFallbackPath do
+			local path=git_top()..'/'..g_tagFallbackPath [i]
+			local keys={'-g', unpack(table.isubset(arg,2))}
+			fn=nonInteractiveChoose(keys, path)
+			if #fn>0 then break end
+		end
+		if #fn==0 then
+			print('Choose from History:')
+			fn=history
+			hcache._list=fn
+		end
 	end
 	-- reorder fn based on history
 	local nhist=#hcache._list
@@ -810,7 +818,8 @@ function findFileFromGit(key, ...)
 	return interactiveChoose(fn, fromHistory)
 end
 
-function lsFiles(option)
+function lsFiles(option, path)
+	path=path or git_top()
 	local cpt
 	if cache_git_top=='' then
 		--cpt=os.capture(git()..' ls-files .', true)
@@ -820,7 +829,7 @@ function lsFiles(option)
 		cpt=os.capture(git()..' ls-files .', true)
 	elseif option=='-g' then
 		-- use absolute
-		cpt=os.capture('cd '..git_top()..';git ls-files .', true)
+		cpt=os.capture('cd '..path..';git ls-files .', true)
 	else
 		cpt=os.capture(git()..' ls-files "'..git_top()..'" 2>&1', true)
 		if select(1, string.find(cpt, 'fatal:')) then
@@ -828,11 +837,12 @@ function lsFiles(option)
 			cpt=os.capture('cd '..git_top()..';git ls-files .', true)
 		end
 	end
-	return _lsFiles(cpt, option)
+	return _lsFiles(cpt, option, path)
 end
 
-function _lsFiles(cpt, option)
+function _lsFiles(cpt, option, path)
 	local files
+	path=path or git_top()
 	if type(cpt)=='string' then
 		files=string.lines(cpt)
 	else
@@ -841,7 +851,7 @@ function _lsFiles(cpt, option)
 	local files=array.sub(files,1,-2)
 	if option=='-g' then
 		for i,v in ipairs(files) do
-			files[i]=git_top()..'/'..v
+			files[i]=path..'/'..v
 		end
 	end
 	if #g_ignorePattern>0 then
@@ -940,7 +950,7 @@ function chooseFile(keys)
 	local chosen=interactiveChoose(fn)
 	return chosen
 end
-function nonInteractiveChoose(keys)
+function nonInteractiveChoose(keys, path)
 	local option
 	if keys[1]=='-l' then
 		option='-l'
@@ -956,7 +966,12 @@ function nonInteractiveChoose(keys)
 		end
 	end
 	if useFull then option='-g' end
-	local files=lsFiles(option)
+	if keys[1]=='-g' then
+		option='-g'
+		keys=table.isubset(keys,2)
+		useFull=true
+	end
+	local files=lsFiles(option, path)
 
 	local fn={}
 	for ifile, file in ipairs(files) do
