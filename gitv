@@ -276,12 +276,11 @@ function git_tools.searchTag(filename, searchKey)
 	end)
 	return tags
 end
-function git_tools.pull(path)
-	local password
+function git_tools.pull(path, password)
 	if os.isFileExist(path..'/.git/HEAD') then
 		local remotes=array.filter(function (a) return string.len(a)>1 end, string.lines(git_tools.capture('cd "'..path..'";git remote',true)))
 
-		if arg[2] then
+		if arg[2] and arg[2]~='-p' then
 			if string.sub(arg[2],1,1)==':' then
 				password=string.sub(arg[2],2)
 			else
@@ -353,6 +352,7 @@ function git_tools.execute(cmd, password)
 			local cmd2=string.tokenize(cmd, ';')
 		local script=[[
 import pexpect
+import sys
 child=pexpect.spawn("]]..cmd2[#cmd2]..[[")
 tbl=['password:', 'passphrase for key', 'up-to-date', 'Counting objects:','unexpectedly']
 try:
@@ -364,14 +364,19 @@ try:
 		print '****'
 		i=child.expect(tbl)
 		print child.before,
-	print tbl[i]
+	print tbl[i],
+	child.expect(pexpect.EOF)
+	print(child.before)
 except:
-	print child.before
-	print '???'
+	print('Pexpec Error after :')
+	print child.before,
+	print '::::'
+	print(str(child))
 ]]
 			util.writeFile('/tmp/temp.py', script)
-			local fn= os.createUnnamedBatchFile({unpack(array.sub(cmd2,1,#cmd2-1)), 'python /tmp/temp.py'})
-			os.execute('ssh localhost bash '..fn)
+			--local fn= os.createUnnamedBatchFile({unpack(array.sub(cmd2,1,#cmd2-1)), 'python /tmp/temp.py'})
+			--os.execute('ssh localhost bash '..fn)
+			os.execute('python /tmp/temp.py')
 			os.execute('rm /tmp/temp.py')
 			--return os.execute2()
 		else
@@ -534,11 +539,10 @@ function git_tools.commit(path,force)
 		end
 	end
 end
-function git_tools.push(path)
-	local password
+function git_tools.push(path, password)
 	if os.isFileExist(path..'/.git/HEAD') then
 		local remotes=array.filter(function (a) return string.len(a)>1 end, string.lines(git_tools.capture('cd "'..path..'";git remote',true)))
-		if arg[2] then
+		if arg[2] and arg[2]~='-p' then
 			if string.sub(arg[2],1,1)==':' then
 				password=string.sub(arg[2],2)
 			else
@@ -1540,15 +1544,35 @@ function main(...)
 			print("------------------------")
 			git_tools.push(git_top())
 		else
+			local password
+			if arg[2]=='-p' then
+				print("Input password:")
+				function getch_unix()
+					os.execute("stty cbreak </dev/tty >/dev/tty 2>&1")
+					local key = io.read(1)
+					os.execute("stty -cbreak </dev/tty >/dev/tty 2>&1");
+					return(key);      
+				end 
+				password=''
+				while true do
+					local c=getch_unix()
+					if c =='\n' then
+						break
+					else
+						password=password..c
+						io.write('\r')
+					end
+				end
+			end
 			print("------------------------")
 			print("Commit:")
 			git_tools.commit(git_top())
 			print("------------------------")
 			print("Pull:")
-			git_tools.pull(git_top())
+			git_tools.pull(git_top(),password)
 			print("------------------------")
 			print("Push:")
-			git_tools.push(git_top())
+			git_tools.push(git_top(),password)
 		end
 	elseif arg[1]=='pull' then
 		git_tools.pull(git_top())
