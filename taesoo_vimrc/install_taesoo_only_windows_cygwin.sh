@@ -19,4 +19,7 @@ cd ~/.vim/plugin
 unzip "$currdir/hangeul.zip"
 mkdir -p ~/.vim/colors
 cp "$currdir/pyte.vim" ~/.vim/colors
+cp cygwin_win_gvim/_vimrc ~/_vimrc
+cp -rf ~/.vim ~/vimfiles
+cp cygwin_win_gvim/gitvim.vim ~/vimfiles/plugin/
 echo "Note!!! please manually edit ~/.vimrc and remove the line containing clipboard=unnamedplus"
