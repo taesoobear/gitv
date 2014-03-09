@@ -117,20 +117,35 @@ function dbg.traceBack(level)
    end
 end
 function os.findVIM()
-	if os.isWindows() and not os.isCygwin() then
-		local search={
-			"c:\\Program Files\\Vim\\vim73\\vim.exe",
-			"c:\\Program Files (x86)\\Vim\\vim73\\vim.exe",
-			"c:\\Program Files\\Git\\share\\vim\\vim73\\vim.exe",
-			"c:\\Program Files (x86)\\Git\\share\\vim\\vim73\\vim.exe",
-			'c:\\msysgit\\msysgit\\share\\vim\\vim73\\vim',
-		}
+	if os.isWindows() then
+		if os.isCygwin() then
+			local search={
+				"/cygdrive/c/Program Files/Vim/vim73/vim.exe",
+				"/cygdrive/c/Program Files (x86)/Vim/vim73/vim.exe",
+			}
 
-		for i,v in ipairs(search) do
-			if os.isFileExist(v) then
-				local vimpath= '"'..v..'"'
-				local gvimpath= '"'..string.gsub(v, 'vim.exe', 'gvim.exe')..'"'
-				return vimpath, gvimpath
+			for i,v in ipairs(search) do
+				if os.isFileExist(v) then
+					local vimpath= '"'..v..'"'
+					local gvimpath= '"'..string.gsub(v, 'vim.exe', 'gvim.exe')..'"'
+					return 'vim', gvimpath
+				end
+			end
+		else
+			local search={
+				"c:\\Program Files\\Vim\\vim73\\vim.exe",
+				"c:\\Program Files (x86)\\Vim\\vim73\\vim.exe",
+				"c:\\Program Files\\Git\\share\\vim\\vim73\\vim.exe",
+				"c:\\Program Files (x86)\\Git\\share\\vim\\vim73\\vim.exe",
+				'c:\\msysgit\\msysgit\\share\\vim\\vim73\\vim',
+			}
+
+			for i,v in ipairs(search) do
+				if os.isFileExist(v) then
+					local vimpath= '"'..v..'"'
+					local gvimpath= '"'..string.gsub(v, 'vim.exe', 'gvim.exe')..'"'
+					return vimpath, gvimpath
+				end
 			end
 		end
 	end
