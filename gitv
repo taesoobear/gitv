@@ -1086,7 +1086,7 @@ function gvimFile(servername, chosen)
 			os.execute(g_gvimpath..' --servername '..servername..' --remote-silent "'..chosenfile..'"')
 		end
 	else
-		if not serverLaunched(servername) then
+		if os.isCygwin() or not serverLaunched(servername) then
 			-- launch gvim
 			os.execute(g_gvimpath..' --servername '..servername..' -f "'..chosen..'"&')
 		else
@@ -1378,7 +1378,12 @@ function main(...)
 		local keys=array.sub(arg,3)
 		local chosen=chooseFile(keys)
 		if chosen then
-			local out=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
+			local out
+			if os.isCygwin() then
+				out={servername}
+			else
+				out=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
+			end
 			local otherServers=array.filter(function(v)return v~=servername  end, out)
 			local thisServer=array.filter(function(v)return v==servername  end, out)
 			otherServers[#otherServers]=nil
