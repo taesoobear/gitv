@@ -364,6 +364,13 @@ try:
 		print '****'
 		i=child.expect(tbl)
 		print child.before,
+	elif i==1:
+		child.sendline('put key password here')
+		print tbl[i]
+		print '****'
+		i=child.expect(tbl)
+		print child.before,
+
 	print tbl[i],
 	child.expect(pexpect.EOF)
 	print(child.before)
