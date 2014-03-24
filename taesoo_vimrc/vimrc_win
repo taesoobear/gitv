@@ -36,7 +36,6 @@ set nowrap
 set fdm=indent
 set foldlevel=1
 " use system clipboard
-set clipboard=unnamed
 """""""""""""""""""""""""""""""""""""""""""""
 " maps
 """""""""""""""""""""""""""""""""""""""""""""

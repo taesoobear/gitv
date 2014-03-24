@@ -19,14 +19,30 @@ Bundle 'AutoTag'
 Bundle 'The-NERD-Commenter' 
 Bundle 'AutoComplPop'
 Bundle 'Tex-PDF'
-Bundle 'CSApprox'
+"Bundle 'CSApprox'
+
+set shell=C:/cygwin/bin/bash
+"set shellcmdflag=--login\ -c
+set shellxquote=\"
 
 syntax on
 source $VIMRUNTIME/vimrc_example.vim
 " The % key will switch between opening and closing brackets. By sourcing matchit.vim, the key can also switch among e.g. if/elsif/else/end, between opening and closing XML tags, and more. 
 runtime macros/matchit.vim
 set fileencodings=utf-8
-set guioptions-=T
+set encoding=utf-8
+if has("gui_running")
+    set guifont=Consolas:h12
+	"set guifont=NanumGothicCoding:h12
+    set guioptions-=T
+	"au GUIEnter * simalt ~x "x on an English Windows version. n on a French one
+    au GUIEnter * winsize 180 54
+    au GUIEnter * winpos 0 0
+endif
+
+
+
+
 
 let g:vimwiki_file_exts='pdf,chm'
 """""""""""""""""""""""""""""""""""""""""""""
@@ -37,7 +53,7 @@ colorscheme pyte
 "colorscheme linux
 "colorscheme torte
 "colorscheme jellybeans
-set guifont=Monospace\ 13
+"set guifont=Monospace\ 13
 
 set ignorecase
 set clipboard=unnamed 
@@ -51,7 +67,6 @@ set nowrap
 set fdm=indent
 set foldlevel=1
 " use system clipboard
-set clipboard=unnamedplus
 """""""""""""""""""""""""""""""""""""""""""""
 " maps
 """""""""""""""""""""""""""""""""""""""""""""
@@ -195,4 +210,5 @@ fun Ranger()
   endif
   redraw!
 endfun
+
 

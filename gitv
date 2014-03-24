@@ -21,7 +21,7 @@ g_gvimpath='gvim'
 -- ignore files that match following patterns even if they are in the repository.
 g_ignorePattern={'^BaseLib/image/FreeImage/Dist/','^dependencies/'}
 g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plot%.', 'OgreFltkConsole.exe', 'console.xml', 'OgreFltkConsoleJIT.exe','optimizelog'}
-
+g_tagFallbackPath={}
 g_debug=false
 g_useEmacs=false
 g_useSublime=false
@@ -151,14 +151,18 @@ function git_top() -- git_root
 	if cache_git_top==nil then
 		local t
 		if os.isUnix() then
-			t= string.lines(os.capture(git()..' rev-parse --show-toplevel 2>&1', true))[1]
+			local str=os.capture(git()..' rev-parse --show-toplevel 2>&1', true)
+			if select(1,string.find(str, 'fatal:')) then
+				str=''
+			end
+			t= string.lines(str)[1]
 		else
 			t= string.lines(os.capture(git()..' rev-parse --show-toplevel', true))[1]
 		end
 		cache_git_top=t
 	end
 	if cache_git_top=='' then
-		print('Searching the current folder...')
+		print('Not a git repository. Searching the current folder...')
 		return '.'
 	end
 	return cache_git_top
@@ -272,12 +276,11 @@ function git_tools.searchTag(filename, searchKey)
 	end)
 	return tags
 end
-function git_tools.pull(path)
-	local password
+function git_tools.pull(path, password)
 	if os.isFileExist(path..'/.git/HEAD') then
 		local remotes=array.filter(function (a) return string.len(a)>1 end, string.lines(git_tools.capture('cd "'..path..'";git remote',true)))
 
-		if arg[2] then
+		if arg[2] and arg[2]~='-p' then
 			if string.sub(arg[2],1,1)==':' then
 				password=string.sub(arg[2],2)
 			else
@@ -349,6 +352,7 @@ function git_tools.execute(cmd, password)
 			local cmd2=string.tokenize(cmd, ';')
 		local script=[[
 import pexpect
+import sys
 child=pexpect.spawn("]]..cmd2[#cmd2]..[[")
 tbl=['password:', 'passphrase for key', 'up-to-date', 'Counting objects:','unexpectedly']
 try:
@@ -360,14 +364,26 @@ try:
 		print '****'
 		i=child.expect(tbl)
 		print child.before,
-	print tbl[i]
+	elif i==1:
+		child.sendline('put key password here')
+		print tbl[i]
+		print '****'
+		i=child.expect(tbl)
+		print child.before,
+
+	print tbl[i],
+	child.expect(pexpect.EOF)
+	print(child.before)
 except:
-	print child.before
-	print '???'
+	print('Pexpec Error after :')
+	print child.before,
+	print '::::'
+	print(str(child))
 ]]
 			util.writeFile('/tmp/temp.py', script)
-			local fn= os.createUnnamedBatchFile({unpack(array.sub(cmd2,1,#cmd2-1)), 'python /tmp/temp.py'})
-			os.execute('ssh localhost bash '..fn)
+			--local fn= os.createUnnamedBatchFile({unpack(array.sub(cmd2,1,#cmd2-1)), 'python /tmp/temp.py'})
+			--os.execute('ssh localhost bash '..fn)
+			os.execute('python /tmp/temp.py')
 			os.execute('rm /tmp/temp.py')
 			--return os.execute2()
 		else
@@ -534,11 +550,10 @@ function git_tools.commit(path,force)
 		end
 	end
 end
-function git_tools.push(path)
-	local password
+function git_tools.push(path, password)
 	if os.isFileExist(path..'/.git/HEAD') then
 		local remotes=array.filter(function (a) return string.len(a)>1 end, string.lines(git_tools.capture('cd "'..path..'";git remote',true)))
-		if arg[2] then
+		if arg[2] and arg[2]~='-p' then
 			if string.sub(arg[2],1,1)==':' then
 				password=string.sub(arg[2],2)
 			else
@@ -822,7 +837,11 @@ function lsFiles(option)
 		-- use absolute
 		cpt=os.capture('cd '..git_top()..';git ls-files .', true)
 	else
-		cpt=os.capture(git()..' ls-files "'..git_top()..'"', true)
+		cpt=os.capture(git()..' ls-files "'..git_top()..'" 2>&1', true)
+		if select(1, string.find(cpt, 'fatal:')) then
+			option='-g'
+			cpt=os.capture('cd '..git_top()..';git ls-files .', true)
+		end
 	end
 	return _lsFiles(cpt, option)
 end
@@ -875,7 +894,8 @@ function chooseFolder(keys)
 	local fn={}
 	for ifolder, folder in ipairs(folders) do
 		for ikey,key in ipairs(keys) do
-			if select(1,string.find(string.lower(folder), string.lower(key))) then
+			local fname=os.filename(folder)
+			if select(1,string.find(string.lower(fname), string.lower(key))) then
 				fn[#fn+1]=folder
 				break
 			end
@@ -930,7 +950,7 @@ function chooseFolder(keys)
 	end
 	return fn[index]
 end
-function choose(keys)
+function chooseFile(keys)
 	local fn=nonInteractiveChoose(keys)
 	local chosen=interactiveChoose(fn)
 	return chosen
@@ -1077,7 +1097,7 @@ function gvimFile(servername, chosen)
 			os.execute(g_gvimpath..' --servername '..servername..' --remote-silent "'..chosenfile..'"')
 		end
 	else
-		if not serverLaunched(servername) then
+		if os.isCygwin() or not serverLaunched(servername) then
 			-- launch gvim
 			os.execute(g_gvimpath..' --servername '..servername..' -f "'..chosen..'"&')
 		else
@@ -1170,6 +1190,15 @@ function os.vi_remote(filename, line)
 		end
 	end
 end
+function git_tools.tagChooseFromFile(keyword, keyword2, path)
+	print('Searching '..keyword)
+	if not os.isFileExist(path..'/TAGS') then
+		print('Generating '..path..'/TAGS...')
+		main('etags', path)
+	end
+	local chosen=interactiveTagChoose(git_tools.searchTag(path..'/TAGS', keyword))
+	return chosen
+end
 function git_tools.tagChoose(keyword, keyword2)
 	if keyword==nil then
 		printHelp()
@@ -1181,12 +1210,16 @@ function git_tools.tagChoose(keyword, keyword2)
 		path='.'
 		keyword=keyword2
 	end
-	print('Searching '..keyword)
-	if not os.isFileExist(path..'/TAGS') then
-		print('Generating '..path..'/TAGS...')
-		main('etags', path)
+	local chosen= git_tools.tagChooseFromFile(keyword, keyword2, path)
+	if not chosen then
+		for i=1,#g_tagFallbackPath do
+			local path=g_tagFallbackPath [i]
+			chosen= git_tools.tagChooseFromFile(keyword, keyword2, path)
+			if chosen then
+				break
+			end
+		end
 	end
-	local chosen=interactiveTagChoose(git_tools.searchTag(path..'/TAGS', keyword))
 	return chosen
 end
 function git_tools.tagList(keywords)
@@ -1208,7 +1241,7 @@ function main(...)
 	local arg={...}
 	if arg[1]=="vi" then
 		local keys=array.sub(arg,2)
-		local chosen=choose(keys)
+		local chosen=chooseFile(keys)
 		if chosen then
 			os.execute(g_vimpath..' "'..chosen[1]..'"')
 		end
@@ -1277,7 +1310,7 @@ function main(...)
 			local key=string.gsub(arg[2],"%$", "")
 			local key=string.gsub(key,"%^", "")
 			print("Tags "..key.." not found. Fallback to the file chooser!")
-			local chosen=choose({ key})
+			local chosen=chooseFile({ key})
 			if chosen then
 				util.writeFile(g_cache_folder..'gitv_script', 
 				'edit '..chosen[1]..'\n:1')
@@ -1293,13 +1326,13 @@ function main(...)
 		macro(fn,key)
 	elseif arg[1]=="gedit" then
 		local keys=array.sub(arg,2)
-		local chosen=choose(keys)
+		local chosen=chooseFile(keys)
 		if chosen then
 			os.execute('gedit "'..chosen[1]..'"&')
 		end
 	elseif arg[1]=="gvim" then
 		local keys=array.sub(arg,2)
-		local chosen=choose(keys)
+		local chosen=chooseFile(keys)
 		if chosen then
 			gvimFile('GVIM', chosen[1])
 		end
@@ -1307,7 +1340,7 @@ function main(...)
 		local servername=arg[2]
 		local keys=array.sub(arg,3)
 		if keys[1]==nil then printHelp() return end
-		local chosen=choose(keys)
+		local chosen=chooseFile(keys)
 		if chosen then
 			os.gvim_remote(servername, chosen[1])
 		end
@@ -1317,7 +1350,7 @@ function main(...)
 		os.gvim_remote(arg[2], arg[3])
 	elseif arg[1]=="choose" then
 		local keys=array.sub(arg,2)
-		local chosen=choose(keys)
+		local chosen=chooseFile(keys)
 		if chosen then
 			util.writeFile(g_cache_folder..'gitv_script', 'edit '..chosen[1])
 		end
@@ -1335,7 +1368,7 @@ function main(...)
 		end
 	elseif arg[1]=="chooseFolder" then
 		local keys=array.sub(arg,2)
-		local chosen=choose(keys)
+		local chosen=chooseFile(keys)
 		if chosen then
 			local fn, path=os.processFileName(chosen[1])
 			util.writeFile(g_cache_folder..'gitv_chosen', path)
@@ -1354,9 +1387,14 @@ function main(...)
 	elseif arg[1]=="chooser" then
 		local servername=arg[2]
 		local keys=array.sub(arg,3)
-		local chosen=choose(keys)
+		local chosen=chooseFile(keys)
 		if chosen then
-			local out=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
+			local out
+			if os.isCygwin() then
+				out={servername}
+			else
+				out=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
+			end
 			local otherServers=array.filter(function(v)return v~=servername  end, out)
 			local thisServer=array.filter(function(v)return v==servername  end, out)
 			otherServers[#otherServers]=nil
@@ -1369,15 +1407,23 @@ function main(...)
 	elseif arg[1]=='find' then
 		local keys=array.sub(arg,2)
 		findFile(keys, print)
-	elseif arg[1]=='diffrepo' then
+	elseif arg[1]=='diffrepo' or arg[1]=='cprepo' or arg[1]=='cprepo2' then
 		local filen=arg[2]
 		local other_repo=arg[3]
-		if not filen then
-            print('Diff a file in a repository to another.')
-			print('usage: gitv diffrepo file1 path_to_other_repo_relative_to_git_root')
-			print('   or  gitv diffrepo file1 ')
-			print('   or  gitv diffrepo .')
+		local function printHelp(verb, cmd)
+			print('Diff a file in a repository to another.')
+			print('usage: gitv ' .. cmd ..' file1 path_to_other_repo_relative_to_git_root')
+			print('   or  gitv ' .. cmd ..' file1 ')
+			print('   or  gitv ' .. cmd ..' .')
 			return
+		end
+		if not filen then
+			if arg[1]=='diffrepo' then
+				printHelp('Diff', 'diffrepo')
+			else
+				printHelp('Copy', 'cprepo')
+				print("You can use cprepo2 to copy the file to the target repo")
+			end
 		end
 
 		other_repo=other_repo or g_diffTarget
@@ -1391,14 +1437,39 @@ function main(...)
 		local path2=string.gsub(file1, path1, other_repo)
 		path2=os.relativeToAbsolutePath(path2, path1)
 
-		if filen=='.' then
-			os.execute('meld "'..file1..'" "'..path2..'"')
-		else
-			local cmd='vimdiff "'..file1..'" "'..path2..'"'
-			print(cmd)
-			os.execute(cmd)
-		end
+		if arg[1]=='cprepo' or arg[1]=='cprepo2' then
+			if filen=='.' then
+				local cpt1=os.capture('cd "'..path1..'";git ls-files .', true)
+				if string.sub(path1,-1)~='/' then
+					path1=path1..'/'
+				end
+				if string.sub(path2,-1)~='/' then
+					path2=path2..'/'
+				end
+				local tbl=_lsFiles(cpt1)
+				local tbl2={}
+				for i=1, #tbl do
+					tbl2[i]='cp "'..path1..tbl[i]..'" "'..path2..tbl[i]..'"'
+				end
 
+				util.writeFile('_copy.sh', table.concat(tbl2,'\n'))
+				print('Run "sh _copy.sh" to copy!')
+			else
+				if arg[1]=='cprepo' then
+					os.copyFile(path2, file1)
+				else
+					os.copyFile(file1, path2)
+				end
+			end
+		else
+			if filen=='.' then
+				os.execute('meld "'..file1..'" "'..path2..'"')
+			else
+				local cmd='vimdiff "'..file1..'" "'..path2..'"'
+				print(cmd)
+				os.execute(cmd)
+			end
+		end
 	elseif arg[1]=='test_win_filename' then
 		local cpt=string.lines(os.capture('cd '..git_top()..';git ls-files .', true))
 		local key={}
@@ -1410,32 +1481,9 @@ function main(...)
 				key[lfn]=true
 			end
 		end
-	elseif arg[1]=='cprepo' then
-		local path1=arg[2]
-		local path2=arg[3]
-		if not path1 or not path2 then
-            print('Copy files in a repository to another.')
-			print('usage: gitv cp_repo path1 path2')
-			return
-		end
-		local cpt1=os.capture('cd "'..path1..'";git ls-files .', true)
-		if string.sub(path1,-1)~='/' then
-			path1=path1..'/'
-		end
-		if string.sub(path2,-1)~='/' then
-			path2=path2..'/'
-		end
-		local tbl=_lsFiles(cpt1)
-		local tbl2={}
-		for i=1, #tbl do
-			tbl2[i]='cp "'..path1..tbl[i]..'" "'..path2..tbl[i]..'"'
-		end
-
-		util.writeFile('_copy.sh', table.concat(tbl2,'\n'))
-		print('Run "sh _copy.sh" to copy!')
 	elseif arg[1]=="print" then
 		local keys=array.sub(arg,2)
-		local chosen=choose(keys)
+		local chosen=chooseFile(keys)
 		if chosen then
 			os.execute('vim -c ":hardcopy" -c ":q" "'..chosen[1]..'"')
 			os.execute('nautilus ~/PDF')
@@ -1497,15 +1545,35 @@ function main(...)
 			print("------------------------")
 			git_tools.push(git_top())
 		else
+			local password
+			if arg[2]=='-p' then
+				print("Input password:")
+				function getch_unix()
+					os.execute("stty cbreak </dev/tty >/dev/tty 2>&1")
+					local key = io.read(1)
+					os.execute("stty -cbreak </dev/tty >/dev/tty 2>&1");
+					return(key);      
+				end 
+				password=''
+				while true do
+					local c=getch_unix()
+					if c =='\n' then
+						break
+					else
+						password=password..c
+						io.write('\r')
+					end
+				end
+			end
 			print("------------------------")
 			print("Commit:")
 			git_tools.commit(git_top())
 			print("------------------------")
 			print("Pull:")
-			git_tools.pull(git_top())
+			git_tools.pull(git_top(),password)
 			print("------------------------")
 			print("Push:")
-			git_tools.push(git_top())
+			git_tools.push(git_top(),password)
 		end
 	elseif arg[1]=='pull' then
 		git_tools.pull(git_top())
@@ -1714,6 +1782,16 @@ function main(...)
 			force=true
 		elseif arg[2]=='-f' then
 			force=true
+		elseif arg[2]=='-a' then
+			local files=lsFiles(option)
+			local fn={}
+			for ifile, file in ipairs(files) do
+				if string.isMatched(file,g_vimSrc)  then
+					os.execute2('cp "'..file..'" "'..file..'.bak"',
+					'iconv -f UTF8 -t ANSI_X3.4 -c "'..file..'.bak" -o "'..file..'"' )
+				end
+			end
+			return
 		end
 
 		if force then
