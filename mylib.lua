@@ -82,7 +82,7 @@ function dbg.listLunaClasses(line)
 								end
 							end
 						end
-						out2=out2..'\n\n Tip! you can see the function parameter types by typing "'..usrCnam..'.'..lastFn..'()"!'
+						out2=out2..'\n\n You can see a function signature by typing for example "'..usrCnam..'.'..lastFn..'()"!'
 						out2=out2..'\n Known bug: property names can be incorrectly displayed. "'
 					end
 				end
@@ -117,7 +117,7 @@ function dbg.traceBack(level)
    end
 end
 function os.findVIM()
-	if os.isWindows() then
+	if os.isWindows() and not os.isCygwin() then
 		local search={
 			"c:\\Program Files\\Vim\\vim73\\vim.exe",
 			"c:\\Program Files (x86)\\Vim\\vim73\\vim.exe",
@@ -137,7 +137,7 @@ function os.findVIM()
 	return 'vim', 'gvim'
 end
 function os.findGIT()
-	if os.isWindows() then
+	if os.isWindows() and not os.isCygwin() then
 		local search={
 			"c:\\Program Files\\Git\\bin\\git.exe",
 			"c:\\Program Files (x86)\\Git\\bin\\git.exe",
@@ -197,19 +197,20 @@ function os.openTerminal(folder)
 end
 
 function os.vi_check(fn)
-	local L = require "functional.list"
 	local otherVim='vim'
 	local servers=string.tokenize(os.capture(otherVim..' --serverlist 2>&1',true), "\n")
-	local out=L.filter(function (x) return string.upper(fn)==x end,servers)
-	local out_error=L.filter(function (x) return string.find(x,"Unknown option argument")~=nil end,servers)
+	local out=array.filter(function (x) return string.upper(fn)==x end,servers)
+	local out_error=array.filter(function (x) return string.find(x,"Unknown option argument")~=nil end,servers)
 	if #out_error>=1 then return nil end
 	return #out>=1
 end
 
+function os.fileinfo(fn)
+	return os.capture('ls -l "'..fn..'"')
+end
 function os.vi_console_close_all()
-	local L = require "functional.list"
 	local servers=string.tokenize(os.capture('vim --serverlist',true), "\n")
-	local out=L.filter(function (x) return fn~="GVIM" end,servers)
+	local out=array.filter(function (x) return fn~="GVIM" end,servers)
 	for i,v in ipairs(out) do
 		os.execute('vim --servername "'..v..'" --remote-send ":q<CR>"')
 	end
@@ -403,6 +404,15 @@ function dbg.showCode(fn,ln)
 	)
 end
 
+-- e.g. dbg.setFunctionHook(RE, 'createVRMLskin')
+function dbg.setFunctionHook(table, functionName)
+	dbg[functionName..'_old']=table[functionName]
+	table[functionName]=function (...)
+		print('Function :'..functionName)
+		dbg.console()
+		return dbg[functionName..'_old'](...)
+	end
+end
 function dbg.console(msg, stackoffset)
 
 	stackoffset=stackoffset or 0
@@ -473,10 +483,15 @@ function dbg.console(msg, stackoffset)
 		end
 
 		if cmd=="h" or string.sub(line,1,4)=="help" then --help
+			if string.sub(line,1,5)=='help ' then
+				dbg.listLunaClasses(' '..line)		
+			else
 			print('bt[level=3]      : backtrace. Prints callstack')
 			print(';(lua statement) : eval lua statements. Usually, ";" can be omitted. e.g.) print(a) ')
+            print('                   print or printTable can be omitted too            e.g.) a ')
 			print(':(lua statement) : eval lua statements and exit debug console. e.g.) :dbg.startCount(10)')
 			print('s[number=1]      : proceed n steps')
+            print('fi               : finish the current function')
 			print('r filename [lineno]  : run until execution of a line. filename can be a postfix substring. e.g.) r syn.lua 32')
 			print('c[level=2]       : print source code at a stack level')
 			print('e[level=2]       : show current line (at callstack level 2) in gedit editor')
@@ -490,11 +505,12 @@ function dbg.console(msg, stackoffset)
 			print('global variables : Simply type "a" to print the content of a global variable "a".')
 			print('local variables  : Simply type "`a" to print the content of a local variable "a".')
 			print('lua statement    : run it')
+		end
 		elseif line=="cont" then break
 		elseif string.sub(line,1,2)=="bt" then dbg.callstack(tonumber(string.sub(line,3)) or 3)
 		elseif line=="clist" or string.sub(line,1,6)=='clist ' then
 			dbg.listLunaClasses(line)		
-		elseif cmd=="c" then
+		elseif cmd=="c" or cmd=="v" then
 			if cmd_arg==nil then
 				local level=stackoffset
 				while true do
@@ -525,24 +541,17 @@ function dbg.console(msg, stackoffset)
 				else
 					local ln=info.currentline
 					print(string.sub(info.source,2))
-					dbg.showCode(string.sub(info.source,2),ln)
-					dbg._saveLocals=dbg.locals(level+1,true)
+					if cmd=="v" then
+						local fn=string.sub(info.source,2)
+						fn=os.relativeToAbsolutePath(fn)
+						os.vi_line(fn,info.currentline)
+					else
+						dbg.showCode(string.sub(info.source,2),ln)
+						dbg._saveLocals=dbg.locals(level+1,true)
+					end
 				end
 			else
 				print('no such level')
-			end
-		elseif cmd=="v" then
-			local info=debug.getinfo((cmd_arg or 1)+stackoffset-1)
-			if info and info.source=="=(tail call)" then
-				info=debug.getinfo((cmd_arg or 1)+stackoffset)
-			end
-			if info then
-				--os.vi_line(string.sub(info.source,2), info.currentline)
-				local fn=string.sub(info.source,2)
-				fn=os.relativeToAbsolutePath(fn)
-				--fn=os.absoluteToRelativePath(fn, os.relativeToAbsolutePath("../.."))
-				--os.luaExecute([[os.vi_line("]]..fn..[[",]]..info.currentline..[[)]])
-				os.vi_line(fn,info.currentline)
 			end
 		elseif cmd=="e" then
 			local info=debug.getinfo((cmd_arg or 1)+stackoffset-1)
@@ -561,6 +570,9 @@ function dbg.console(msg, stackoffset)
 		elseif cmd=="r" then
 			event={"r", string.sub(line, 3)}
 			break
+		elseif line=="f" or line=="fi" or line=="fin" or line=="fini" or line=="finish" then
+			event={"fi"}
+			break
 		elseif cmd=="l" then
 			local level=(cmd_arg or 1)
 			dbg._saveLocals=dbg.locals(level)
@@ -577,6 +589,8 @@ function dbg.console(msg, stackoffset)
 			return dbg.step(event[2]) 
 		elseif event[1]=="r" then
 			return dbg.run(event[2])
+		elseif event[1]=="fi" then
+			return dbg.finish(event[2])
 		end
 	end
 
@@ -586,13 +600,15 @@ function dbg._stepFunc (event, line)
    dbg._step=dbg._step+1
    if dbg._step==dbg._nstep then
       debug.sethook()
-	  local info=debug.getinfo(2)
+	  local level=2
+	  local info=debug.getinfo(level)
 	  if info then
-		  if select(1,string.find (info.source, 'mylib_debugger.lua')) then
+		  if select(1,string.find (info.source, 'mylib.lua')) then
 			  return dbg.step(1)
 		  end
-		  print(info.source, line)
-		  dbg.showCode(string.sub(info.source,2), line)
+		  print(info.source, info.currentline)
+		  dbg.showCode(string.sub(info.source,2), info.currentline)
+		  dbg._saveLocals=dbg.locals(level+1,true)
 	  end
       return dbg.console()
    end
@@ -618,6 +634,45 @@ function dbg.callstack(level)
 	end
 end
 
+function dbg._finishFunc(event, line)
+	for i=1,16 do
+		-- search the current function from stack 1 to 16
+		local info=debug.getinfo(i)
+		if info then
+			if info.func==dbg._finishFunc_until then
+				return
+			end
+		else
+			break
+		end
+	end
+	debug.sethook()
+	local level=2
+	local info=debug.getinfo(level)
+	if info then
+		if select(1,string.find (info.source, 'mylib.lua')) then
+			return dbg.step(1)
+		end
+		print(info.source, info.currentline)
+		dbg.showCode(string.sub(info.source,2), info.currentline)
+		dbg._saveLocals=dbg.locals(level+1,true)
+	end
+	return dbg.console()
+end
+
+function dbg.finish(n)
+	local info=debug.getinfo(3)
+	if info then
+		if info.source=="=(tail call)" then
+			info=debug.getinfo(4)
+		end
+		print('run until ', info.name, 'finishes :', info.source, info.func)
+		dbg._finishFunc_until=info.func
+		debug.sethook(dbg._finishFunc, "l")	
+	else
+		print('cannot find the current function')
+	end
+end
 
 function dbg.callstack0(level)
 	if level==nil then
@@ -733,6 +788,24 @@ function dbg.countHookF(event)
 	end
 	dbg._count=_count+1
 end
+function dbg.startTrace() -- minimal trace to trace.txt (much faster)
+   dbg.filePtr, msg=io.open("trace.txt", "w")
+   if dbg.filePtr==nil then
+      print(msg)
+      return
+   end
+   debug.sethook(dbg._mtraceHook, "c")	
+end
+
+function dbg._mtraceHook (event, line)
+	local info=debug.getinfo(2)
+	line =line or info.currentline or ''
+	if line~=-1 then
+		local s = info.short_src
+		dbg.filePtr:write(s..":"..line..'\n')
+	end
+	dbg.filePtr:flush()
+end
 
 -- collection of utility functions that depends only on standard LUA. (no dependency on baseLib or mainLib)
 -- all functions are platform independent
@@ -822,9 +895,9 @@ function string.findLastOf(str, pattern)
 	return lastS
 end
 function os.isUnix()  -- has posix commands
-	local isWin=string.find(string.lower(os.getenv('OS') or 'nil'),'windows')~=nil
+	local isWin=os.isWindows()
 	if isWin then
-		if string.find(string.lower(os.getenv('PATH') or 'nil'), ':/cygdrive') then
+		if os.isCygwin() then
 			return true
 		end
 		return false
@@ -836,9 +909,13 @@ function os.isMsysgit()
 	local isMsysgit=string.find(string.lower(os.getenv('PATH') or 'nil'), 'msysgit')~=nil
 	return isMsysgit
 end
+function os.isCygwin()
+	local isCygwin=string.find(string.lower(os.getenv('PATH') or 'nil'), 'cygdrive')~=nil
+	return isCygwin
+end
 function os.isWindows()
 	local isWin=string.find(string.lower(os.getenv('OS') or 'nil'),'windows')~=nil
-	return isWin
+	return isWin 
 end
 
 
@@ -1403,6 +1480,58 @@ function table.toHumanReadableString(t, spc)
 	end
 	return out..'}\n'
 end
+function table.toIndentedString(t, level)
+	-- does not check reference. so infinite loop can occur.  to prevent
+	-- such cases, use pickle() or util.saveTable() But compared to pickle,
+	-- the output of table.tostring is much more human readable.  if the
+	-- table contains userdata, use table.tostring2, fromstring2 though it's
+	-- slower.  (it preprocess the input using
+	-- util.convertToLuaNativeTable 
+	-- a=table.tostring(util.convertToLuaNativeTable(t)) convert to
+	-- string t=util.convertFromLuaNativeTable(table.fromstring(a)) 
+	-- convert back from the string)
+
+	local out={}
+	array.pushBack(out, '{')
+	level=level or 0
+
+	local N=table.getn(t)
+	local function packValue(v)
+		local tv=type(v)
+		if tv=="number" or tv=="boolean" then
+			return tostring(v)
+		elseif tv=="string" then
+			return '"'..tostring(v)..'"'
+		elseif tv=="table" then
+			return table.toIndentedString(v,level+1)
+		else 
+			return tostring(v)
+		end
+	end
+
+	for i,v in ipairs(t) do
+		array.pushBack(out, '\t'.. packValue(v)..",")
+	end
+
+	for k,v in pairsByKeys(t) do
+
+		local tk=type(k)
+		local str_k
+		if tk=="string" then
+			str_k="\t['"..k.."']="
+			array.pushBack(out,str_k..packValue(v)..', ')
+		elseif tk~="number" or k>N then	 
+			str_k='\t['..k..']='
+			array.pushBack(out,str_k..packValue(v)..', ')
+		end
+	end
+	array.pushBack(out,'}')
+	local spc=''
+	for i=1,level do
+		spc=spc..'\t'
+	end
+	return spc..table.concat(out,'\n')
+end
 function table.tostring(t)
 	-- does not check reference. so infinite loop can occur.  to prevent
 	-- such cases, use pickle() or util.saveTable() But compared to pickle,
@@ -1545,6 +1674,9 @@ function util.convertFromLuaNativeTable(t)
 end
 
 function util.readFile(fn)
+	if os.isWindows() and not os.isCygwin() then
+		fn=os.toWindowsFileName(fn)
+	end
 	local fout, msg=io.open(fn, "r")
 	if fout==nil then
 		print(msg)
@@ -1580,6 +1712,9 @@ end
 
 
 function util.writeFile(fn, contents)
+	if os.isWindows() and not os.isCygwin() then
+		fn=os.toWindowsFileName(fn)
+	end
 	local fout, msg=io.open(fn, "w")
 	if fout==nil then
 		print(msg)
@@ -1792,7 +1927,7 @@ end
 function os.createDir(path)
 
    if os.isUnix() then
-      os.execute('mkdir "'..path..'"')
+      os.execute('mkdir -p "'..path..'"')
    else
       os.execute("md "..os.toWindowsFileName(path))
    end
@@ -1842,6 +1977,9 @@ function os.relativeToAbsolutePath(folder,currDir)
 	return folder
 end
 function os.absoluteToRelativePath(folder, currDir) -- param1: folder or file name
+	if os.isWindows() and not os.isCygwin() then
+		folder=os.fromWindowsFileName(folder)
+	end
 	if(string.sub(folder,1,1)~="/") then return folder end
 	currDir=currDir or os.currentDirectory()
 	local n_ddot=0
@@ -2038,6 +2176,9 @@ function os.find(mask, bRecurse, nomessage, printFunc)
 			containsRelPath=true
 		end
 		local cmd='ls -1 -p '..mask..' 2>/dev/null'
+		if not containsRelPath then
+			cmd='ls -1 -p "'..mask..'" 2>/dev/null'
+		end
 		local tbl=string.tokenize(os.capture(cmd,true), "\n")
 		local lenfolder=string.len(folder)
 		--print(cmd,mask,#tbl,lenfolder)
@@ -2147,7 +2288,7 @@ function os.createBatchFile(fn, list, echoOff)
 	local fout, msg=io.open(fn, "w")
 	if fout==nil then print(msg) end
 
-	if os.isWindows() then
+	if os.isWindows() and not os.isCygwin() then
 		if echoOff then
 			fout:write("@echo off\necho off\n")
 		end
@@ -2165,7 +2306,7 @@ function os.createUnnamedBatchFile(list, echoOff)
 		math.seeded=true
 	end
 	local tmppath
-	if os.isWindows() then
+	if os.isWindows() and not os.isCygwin() then
 		tmppath=os.home_path() 
 	else
 		tmppath='/tmp'
@@ -2198,7 +2339,7 @@ end
 function os.pexecute(...) -- excute multiple serial operations
 	local list={...}
 	local fn=os.createUnnamedBatchFile(list)
-	if os.isWindows() then
+	if os.isWindows() and not os.isCygwin() then
 		os.execute('start /b cmd /c "'..fn..'"')
 	else
 		os.execute(fn.."&")

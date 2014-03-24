@@ -2,14 +2,18 @@
 local isWin=string.find(string.lower(os.getenv('OS') or 'nil'),'windows')~=nil
 if isWin then
 	package.path =os.getenv('HOMEDRIVE')..os.getenv('HOMEPATH').."/bin/?.lua" .. ";"..package.path 
+	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
 else
 	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
 end
 require("mylib")
  
 -- order doesn't matter
-g_etagsSrc={ "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
-g_vimSrc={"%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_etagsSrc={ "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
+g_customEtagsSrc={"%.lua$"}
+g_customEtagsPattern=
+	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
+g_vimSrc={"%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
 g_cache_folder='/tmp/'
 g_vimpath='vim'
@@ -19,15 +23,49 @@ g_ignorePattern={'^BaseLib/image/FreeImage/Dist/','^dependencies/'}
 g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plot%.', 'OgreFltkConsole.exe', 'console.xml', 'OgreFltkConsoleJIT.exe','optimizelog'}
 
 g_debug=false
-
-
-if os.isWindows() then
+g_useEmacs=false
+g_useSublime=false
+function isWindows() 
+	return os.isWindows() and not os.isCygwin()
+end
+if isWindows() then
 	-- on some systems, os.execute doesn't work perfectly. so  this is a workaround.
 	os.execute_original=os.execute
 	function os.execute(cmd)
 		local fn= os.createUnnamedBatchFile({cmd})
 		os.execute_original('"'..fn..'"')
 	end
+end
+-- uncomment
+function macro(fn, key)
+	key=key or 'dos'
+	print('macro '..key..' : uncommenting --##'..key)
+	local contents=util.readFile(fn)
+	util.writeFile(fn..".bak", contents)
+	contents=string.gsub(contents,"--##"..key.." ", "--##"..key.."\n")
+	util.writeFile(fn, contents)
+end
+
+-- comment out again
+function unmacro(fn, key)
+	key=key or 'dos'
+	print('unmacro '..key)
+	local function printSample(contents)
+		local a=string.find(contents, "--##"..key) or string.find(contents, "--##"..key)
+		if a==nil then
+			print('no change will be made')
+		else
+			print(string.sub(contents, a, a+30))
+		end
+	end
+	local contents=util.readFile(fn)
+	printSample(contents)
+	util.writeFile(fn..".bak", contents)
+	contents=string.gsub(contents,"--##"..key.."\n", "--##"..key.." ")
+	contents=string.gsub(contents,"--##"..key.."\r\n", "--##"..key.." ")
+	print('-->')
+	printSample(contents)
+	util.writeFile(fn, contents)
 end
 
 if g_debug then
@@ -49,6 +87,8 @@ Usage: gitv <command> [option] [<args>]
 
 The most commonly used gitv commands are:
   --help     Show this page.
+  --emacs    Use emacs instead of vim. (works for "vir", "ts" and "open" commands)
+  --sublime  Use sublime text instead of vim. (works for "vir", "ts" and "open" commands)
   vi         Open a file in the git repository whose name contains 
              the keyword using vim. When no keyword is given, history will be shown.
                $ gitv vi [option] keyword
@@ -82,19 +122,26 @@ The most commonly used gitv commands are:
              directory) will be searched. Files with allowed extensions will only
              be searched. (see ~/bin/gitv.) Lua patterns are used.
                $ gitv grep keyword
+  findgrep   Find files and then grep
+               $ gitv findgrep filepattern greppattern
   etags .    Generate TAGS for all tracked files in the current folder recursively
                $ gitv etags .
   etags      Generate TAGS for all tracked files in the git repository
+  ctags      Generate .tags for all tracked files in the git repository
   diff       Show differences between commits. 
                $ gitv diff
                $ gitv diff HEAD~10
+  undo-commit Revert the last commit (while retaining the local copy). 
+              Do not undo-commit if you pushed your last commit!
+  other experimental features: type gitv "command name" to see usage.
+	  backup diffrepo  cprepo test_win_filename
   ]])
 end
 
 g_vimpath, g_gvimpath=os.findVIM()
 g_gitpath=os.findGIT()
 
-if os.isWindows() then
+if isWindows() then
 	g_cache_folder=os.home_path() ..'/'
 end
 function git()
@@ -210,7 +257,7 @@ function git_tools.searchTag(filename, searchKey)
 			--print(fn, path)
 			for i=1,#tags do
 				local t=tags[i][3]
-				if os.isWindows() then t=os.fromWindowsFileName(t) end
+				if isWindows() then t=os.fromWindowsFileName(t) end
 				t=os.relativeToAbsolutePath(t, tagRoot)
 				t=os.absoluteToRelativePath(t, currDir)
 				--print(tags[i][3], t)
@@ -277,7 +324,7 @@ function git_tools.tokenize_cmd(cmd)
 	return tokens
 end
 function git_tools.capture(cmd, isRaw)
-	if os.isWindows() then
+	if isWindows() then
 		local tokens=git_tools.tokenize_cmd(cmd)
 		local fn=os.createUnnamedBatchFile(tokens, true)
 		return os.capture('"'..fn..'"', isRaw)	
@@ -286,18 +333,24 @@ function git_tools.capture(cmd, isRaw)
 	end
 end
 function git_tools.execute(cmd, password)
-	if os.isWindows() then
+	if isWindows() then
 		local tokens=git_tools.tokenize_cmd(cmd)
 		local fn=os.createUnnamedBatchFile(tokens, true)
 		--os.execute('type _temp.bat')
 		return os.execute_original('"'..fn..'"')
 	else
 		if password then
+			local tt=string.tokenize(password,':')
+			local passphrase
+			if tt[2] then
+				password=tt[1]
+				passphrase=tt[2]
+			end
 			local cmd2=string.tokenize(cmd, ';')
 		local script=[[
 import pexpect
 child=pexpect.spawn("]]..cmd2[#cmd2]..[[")
-tbl=['password:', 'up-to-date', 'Counting objects:','unexpectedly']
+tbl=['password:', 'passphrase for key', 'up-to-date', 'Counting objects:','unexpectedly']
 try:
 	i=child.expect(tbl)
 	print child.before,
@@ -309,6 +362,7 @@ try:
 		print child.before,
 	print tbl[i]
 except:
+	print child.before
 	print '???'
 ]]
 			util.writeFile('/tmp/temp.py', script)
@@ -357,8 +411,10 @@ function git_tools.getFilesToCommit(path)
 				output='both added: '
 			end
 			if not c then
-				s,e,c=string.find(line, '#%s+both added:%s+(.+)')
-				output='added by us: '
+				s,e,c=string.find(line, '#%s+both modified:%s+(.+)')
+				if c then
+					print('warning! '..c..' is an unmerged path')
+				end
 			end
 			if c then 
 				if not string.isMatched(os.filename(c), g_commitIgnorePattern) then
@@ -377,8 +433,10 @@ function git_tools.commit(path,force)
 		local untracked=git_tools.getUntracked(path)
 		if #untracked>=1 then
 			print('Untracked files:')
+			print('----------------------------------')
 			for i,v in ipairs(untracked) do print(v) end
-			print('Do you want to add these untracked files to git repository? (YES/edit/[no]/ignore)')
+			print('----------------------------------')
+			print('Do you want to add these untracked files to git repository? Press enter if you are not sure. (YES/edit/[no]/ignore)')
 			local cmd=''
 			for i, v in ipairs(untracked) do 
 				cmd=cmd.. git()..' add "'..v..'"\n'
@@ -403,8 +461,11 @@ function git_tools.commit(path,force)
 				os.deleteFiles('gitscript')
 			elseif string.sub(ioread, 1,6)=='ignore' then
 				local files=table.concat(untracked, '\n')
-				local gitignore=util.readFile(git_top()..'/.gitignore')
-				util.writeFile(git_top()..'/.gitignore.bak', gitignore)
+				local gitignore=''	
+				if os.isFileExist(git_top()..'/.gitignore') then
+					gitignore=util.readFile(git_top()..'/.gitignore')
+					util.writeFile(git_top()..'/.gitignore.bak', gitignore)
+				end
 				if string.sub(gitignore, -1,-1)~='\n' then
 					gitignore=gitignore..'\n'
 				end
@@ -545,8 +606,13 @@ function interactiveChoose(fn, fromHistory)
 	do
 		local fn2={}
 		local c=1
-		for i,v in ipairs(hcache._list) do
-			fn2[#fn2+1]=v
+		--for i,v in ipairs(hcache._list) do
+		--	fn2[#fn2+1]=v
+		--end
+		for i,v in ipairs(fn) do
+			if hcache[v[1]] then 
+				fn2[#fn2+1]=v
+			end
 		end
 		for i,v in ipairs(fn) do
 			if not hcache[v[1]] then 
@@ -652,7 +718,7 @@ function interactiveTagChoose(fn, inputs)
 	end
 	local maxColumn=60
 	local maxRow=20
-	if os.isWindows() then 
+	if isWindows() then 
 		maxColumn=40
 		maxRow=10
 	end
@@ -756,9 +822,12 @@ function lsFiles(option)
 		-- use absolute
 		cpt=os.capture('cd '..git_top()..';git ls-files .', true)
 	else
-		cpt=os.capture(git()..' ls-files '..git_top(), true)
+		cpt=os.capture(git()..' ls-files "'..git_top()..'"', true)
 	end
+	return _lsFiles(cpt, option)
+end
 
+function _lsFiles(cpt, option)
 	local files
 	if type(cpt)=='string' then
 		files=string.lines(cpt)
@@ -872,12 +941,25 @@ function nonInteractiveChoose(keys)
 		option='-l'
 		keys=table.isubset(keys,2)
 	end
+	if #keys==0 then return {} end
+	local useFull=false
+	for ikey,key in ipairs(keys) do
+		if select(1, string.find(key, '/')) then
+			useFull=true
+			keys[ikey]=string.gsub(key,'%.%./','')
+			keys[ikey]=string.gsub(keys[ikey],'%./','')
+		end
+	end
+	if useFull then option='-g' end
 	local files=lsFiles(option)
 
 	local fn={}
 	for ifile, file in ipairs(files) do
 		if string.isMatched(file,g_vimSrc)  then
 			local filename=os.filename(file)
+			if useFull then
+				filename=file
+			end
 			for ikey,key in ipairs(keys) do
 				if select(1,string.find(string.lower(filename), string.lower(key))) then
 					fn[#fn+1]={file}
@@ -910,7 +992,7 @@ local function serverWithFileOpened(serverlist, fn)
 		for i=1,#out do
 			local cmd=g_vimpath..' --servername '..out[i]..' --remote-expr "bufexists(\\\"'..fn..'\\\")"'
 			local opened
-			if os.isWindows then
+			if isWindows() then
 				opened=os.capture('"'..cmd)=='1'
 			else
 				opened=os.capture(cmd)=='1'
@@ -940,6 +1022,7 @@ function makeEditable(servername, fullfn)
 	end
 end
 function makeReadOnlyAll(servers, fullfn)
+	local debugMode=false
 	local function isSwapExist(fullfn)
 		if os.isFileExist(path..'/.'..fn..'.swo') then return true end
 		if os.isFileExist(path..'/.'..fn..'.swp') then return true end
@@ -957,17 +1040,20 @@ function makeReadOnlyAll(servers, fullfn)
 	local function makeReadOnly(servername, fullfn)
 		-- 1. select the buffer after setting a global marker
 		local cmd=g_vimpath..' --servername '..servername..' --remote-send "<ESC>mZ:b '..fullfn..'<CR>"'
-		--print(cmd)
+		if debugMode then print(cmd) end
 		os.execute(cmd)
 		-- 2. check if readonly
 		cmd=g_vimpath..' --servername '..servername..' --remote-expr "&readonly"'
+		if debugMode then print(cmd) end
 		if os.capture(cmd)=='1' then
 			-- already readonly. simply go back to the marker position
 			local cmd=g_vimpath..' --servername '..servername..' --remote-send "\'Z"'
+			if debugMode then print(cmd) end
 			os.execute(cmd)
 		else
 			-- write 
 			local cmd=g_vimpath..' --servername '..servername..' --remote-send ":w<CR>:setlocal readonly<CR>:setlocal nomodifiable<CR>:setlocal autoread<CR>\'Z"'
+			if debugMode then print(cmd) end
 			os.execute(cmd)
 		end
 	end
@@ -980,7 +1066,7 @@ function makeReadOnlyAll(servers, fullfn)
 	end
 end
 function gvimFile(servername, chosen)
-	if os.isWindows() then
+	if isWindows() then
 		local chosenfile=os.toWindowsFileName(chosen)
 		if not serverLaunched(servername) then
 			local cmd=g_gvimpath..' --servername '..servername..' "'..chosenfile..'"'
@@ -1013,7 +1099,13 @@ function os.gvim_remote(servername, filename)
 	local otherServers=array.filter(function(v)return v~=servername  end, out)
 	local thisServer=array.filter(function(v)return v==servername  end, out)
 	otherServers[#otherServers]=nil
-	thisServer[#thisServer]=nil
+	--[[
+	printTable(out)
+	print('otherServers')
+	printTable(otherServers)
+	print('thisServer')
+	printTable(thisServer)
+	]]--
 	local fullfn=os.relativeToAbsolutePath(filename)
 	makeReadOnlyAll(otherServers, fullfn)
 	if #thisServer>0 and #serverWithFileOpened(thisServer, fullfn)>0 then
@@ -1023,7 +1115,43 @@ function os.gvim_remote(servername, filename)
 		gvimFile(servername, filename)
 	end
 end
+
 function os.vi_remote(filename, line)
+	if g_useEmacs then
+		local cmd
+		if line then
+			cmd='emacsclient -n +'..line..' "'..filename..'"'
+		else
+			cmd='emacsclient -n "'..filename..'"'
+		end
+		local output=os.capture(cmd..' 2>&1')
+		if select(1, string.find(output, 'To start the server')) then 
+			os.execute('emacs --eval "(server-start)"&')
+			-- now have to wait, so removing -n option
+			cmd=string.gsub(cmd, 'client -n', 'client')
+			local c=1
+			for i=1,100 do -- try 100 times
+				os.sleep(1)
+				local output=os.capture(cmd..' 2>&1')
+				if not select(1, string.find(output, 'To start the server')) then 
+					c=c+1
+					if c==3 then -- heuristic.
+						return
+					end
+				end
+			end
+		end
+		return
+	elseif g_useSublime then
+		local cmd
+		if line then
+			cmd='/opt/sublime_text/sublime_text "'..filename..'":'..line
+		else
+			cmd='/opt/sublime_text/sublime_text "'..filename..'"'
+		end
+		os.execute(cmd..'&')
+		return
+	end
 	local servername=serverLaunched()
 	local vimpath=g_vimpath
 	if servername then
@@ -1084,12 +1212,55 @@ function main(...)
 		if chosen then
 			os.execute(g_vimpath..' "'..chosen[1]..'"')
 		end
+	elseif arg[1]=='unzip' then -- iconv after unzip. only for Korean cygwin users.
+		if not os.isCygwin() then
+			print('Error! only for cygwin')
+			return
+		end
+		if not os.isFileExist('/usr/bin/unzip') then
+			print('Error! install unzip and convmv using cygwin setup.exe')
+			return
+		end
+
+		if not os.isFileExist('/usr/bin/convmv') then
+			print('Error! install convmv using cygwin setup.exe')
+			return
+		end
+		local fn=arg[2]
+		if string.lower(string.sub(fn,-4))~='.zip' then
+			if os.isFileExist(fn..'.zip') then
+				fn=fn..'.zip'
+			else
+				print('Error! not a zip file?')
+				return
+			end
+		end
+		local unzippath=string.sub(fn, 1,-5)
+		if os.isFileExist(unzippath) then
+			print('Error! '..unzippath..' exists')
+			return
+		end
+		os.execute('mkdir -p "'..unzippath..'"')
+		os.execute('cd "'..unzippath..'";unzip "../'..fn..'"')
+		os.execute('cd "'..unzippath..'";convmv -r --notest -f cp949 -t utf-8 .')
+	elseif arg[1]=='stat' then
+		os.execute('git diff --stat')
+		print('press Enter') io.read('*l')
+		os.execute('git status .')
 	elseif arg[1]=="vir" then
 		local keys=array.sub(arg,2)
-		local chosen=choose(keys)
+		local chosen
+		local fn=nonInteractiveChoose(keys)
+		if #fn>=1 and #array.filter(function(f) return f[1]==arg[2] end, fn)>=1 then 
+			chosen={arg[2]} 
+		else 
+			chosen=interactiveChoose(fn) 
+		end
 		if chosen then
 			os.vi_remote(chosen[1])
 		end
+	elseif arg[1]=='open' then
+		os.vi_remote(arg[2])
 	elseif arg[1]=="ts" then
 		local chosen=git_tools.tagChoose(arg[2], arg[3])
 		if chosen then
@@ -1112,6 +1283,14 @@ function main(...)
 				'edit '..chosen[1]..'\n:1')
 			end
 		end
+	elseif arg[1]=="macro_commentout" then
+		local fn=arg[2]
+		local key=arg[3]
+		unmacro(fn,key)
+	elseif arg[1]=="activate_macro" then
+		local fn=arg[2]
+		local key=arg[3]
+		macro(fn,key)
 	elseif arg[1]=="gedit" then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
@@ -1187,21 +1366,73 @@ function main(...)
 			util.writeFile(g_cache_folder..'gitv_script', 'edit '..chosen[1]..
 			'\n:setlocal noreadonly\n:setlocal modifiable\n:setlocal noautoread')
 		end
-	elseif arg[1]=="find" then
+	elseif arg[1]=='find' then
 		local keys=array.sub(arg,2)
-		local files=lsFiles()
-		local fn={}
-		for ifile, file in ipairs(files) do
-			local passed=true
-			for j=1,#keys do
-				if not select(1,string.find(string.lower(file), string.lower(keys[j]))) then
-					passed=false
-				end
-			end
-			if passed then
-				print(file)
+		findFile(keys, print)
+	elseif arg[1]=='diffrepo' then
+		local filen=arg[2]
+		local other_repo=arg[3]
+		if not filen then
+            print('Diff a file in a repository to another.')
+			print('usage: gitv diffrepo file1 path_to_other_repo_relative_to_git_root')
+			print('   or  gitv diffrepo file1 ')
+			print('   or  gitv diffrepo .')
+			return
+		end
+
+		other_repo=other_repo or g_diffTarget
+		if(other_repo==nil ) then
+			print('set g_diffTarget in your $GIT_ROOT/.gitvconfig')
+			print('For example,    g_diffTarget="../taesooLib"')
+			return
+		end
+		local file1=os.relativeToAbsolutePath(filen)
+		local path1=git_top()
+		local path2=string.gsub(file1, path1, other_repo)
+		path2=os.relativeToAbsolutePath(path2, path1)
+
+		if filen=='.' then
+			os.execute('meld "'..file1..'" "'..path2..'"')
+		else
+			local cmd='vimdiff "'..file1..'" "'..path2..'"'
+			print(cmd)
+			os.execute(cmd)
+		end
+
+	elseif arg[1]=='test_win_filename' then
+		local cpt=string.lines(os.capture('cd '..git_top()..';git ls-files .', true))
+		local key={}
+		for i,fn in ipairs(cpt) do
+			local lfn=string.lower(fn)
+			if key[lfn] then
+				print('duplicated '..fn)
+			else
+				key[lfn]=true
 			end
 		end
+	elseif arg[1]=='cprepo' then
+		local path1=arg[2]
+		local path2=arg[3]
+		if not path1 or not path2 then
+            print('Copy files in a repository to another.')
+			print('usage: gitv cp_repo path1 path2')
+			return
+		end
+		local cpt1=os.capture('cd "'..path1..'";git ls-files .', true)
+		if string.sub(path1,-1)~='/' then
+			path1=path1..'/'
+		end
+		if string.sub(path2,-1)~='/' then
+			path2=path2..'/'
+		end
+		local tbl=_lsFiles(cpt1)
+		local tbl2={}
+		for i=1, #tbl do
+			tbl2[i]='cp "'..path1..tbl[i]..'" "'..path2..tbl[i]..'"'
+		end
+
+		util.writeFile('_copy.sh', table.concat(tbl2,'\n'))
+		print('Run "sh _copy.sh" to copy!')
 	elseif arg[1]=="print" then
 		local keys=array.sub(arg,2)
 		local chosen=choose(keys)
@@ -1307,7 +1538,7 @@ function main(...)
 		end
 	elseif arg[1]=='fetch' then
 		git_tools.fetch(git_top())
-	elseif arg[1]=="etags" then
+	elseif arg[1]=="etags" or arg[1]=="ctags" then
 		local isSourceCode=function(str)
 			return string.isMatched(str,g_etagsSrc)
 		end
@@ -1324,14 +1555,47 @@ function main(...)
 		util.writeFile(g_cache_folder..'gitvsrclist', table.concat(files,'\n'))
 		local cmd='--extra=+f --langmap=c++:.inl.h.hpp.c.cpp.cc.cxx -L '..g_cache_folder..'gitvsrclist'
 		print(cmd)
-		if os.isWindows() then
-			os.execute('ctags -e '..string.gsub(cmd,'\\','/') )
+		
+		if isWindows() then
+			cmd=string.gsub(cmd,'\\','/')
+		end
+		if arg[1]=="ctags" then
+			os.execute('ctags '..cmd ..' -f .tags')
 		else
-			os.execute('etags '..cmd)
+			os.execute('ctags -e '..string.gsub(cmd,'\\','/') )
+		end
+		local isCustomSourceCode=function(str)
+			return string.isMatched(str,g_customEtagsSrc)
+		end
+ 
+		local files=array.filter(isCustomSourceCode,lsFiles())
+		if arg[2]=='.' then
+			files=array.filter(function (f) local s=string.find(f, '^%.%.') return not s end, files)
+		elseif arg[2] then
+			return
+		end
+		table.sort(files, git_tools.compareFileName)
+		util.writeFile(g_cache_folder..'gitvsrclist', table.concat(files,'\n'))
+		local cmd='--append=yes '..g_customEtagsPattern..' -L '..g_cache_folder..'gitvsrclist'
+		print(cmd)
+		
+		if os.isWindows() then
+			cmd=string.gsub(cmd,'\\','/')
+		end
+		if arg[1]=="ctags" then
+			os.execute('ctags '..cmd ..' -f .tags')
+		else
+			os.execute('ctags -e '..cmd)
 		end
 	elseif arg[1]=='grep' then
 		print('searching '..arg[2]..'...')
-		local files=lsFiles()
+		local files
+		if arg[2]=='-l' then
+			arg=table.isubset(arg,2)
+			files=lsFiles('-l')
+		else
+			files=lsFiles()
+		end
 		if arg[2] then
 			if select(1, string.find(arg[2], '"')) and not select(1, string.find(arg[2],'%[')) then
 				-- treat " and ' same. (convenient for many script languages)
@@ -1340,6 +1604,24 @@ function main(...)
 			for i,f in ipairs(files) do
 				if string.isMatched(f,g_grepSrc) then
 					util.grepFile(f, arg[2],'',true)
+				end
+			end
+		end
+	elseif arg[1]=='findgrep' then
+		print('searching '..arg[3]..' in '..arg[2]..' ...')
+		local files=lsFiles()
+		local filefunc=function(f)
+			grepFile(f, arg[3])
+		end
+		findFile({arg[2]}, filefunc)
+
+	elseif arg[1]=='fgrep' then
+		print('searching '..arg[2]..'...')
+		local files=lsFiles()
+		if arg[2] then
+			for i,f in ipairs(files) do
+				if string.isMatched(f,g_grepSrc) then
+					util.grepFile(f, arg[2],'',false)
 				end
 			end
 		end
@@ -1357,12 +1639,26 @@ function main(...)
 		local added=''
 		if arg[2] then added=' '..arg[2] end
 		if arg[3] then added=' "'..arg[3]..'"' end
-		local cmd=git()..' diff --stat'..added..' 2>&1'
-		local str= os.capture(cmd, true)
-		if string.sub(str, 1, 10)=='usage: git' then
+		local stashlist=string.lines(os.capture(git()..' stash list', true))
+		if #stashlist>1 then
+			print(tostring(#stashlist-1)..' stashed backups.')
+			local cmd=git()..' diff stash --stat'..added
+			print('> '..cmd)
+			print('---------------------------------------------------')
+			local str1=os.capture(cmd, true)
+			print(str1)
+			print('---------------------------------------------------')
+			print('> git diff --stat'..added)
+			print('---------------------------------------------------')
+			os.execute('git diff --stat')
 			return
 		end
-		print('> git diff --stat'..added)
+
+
+		print('\n git diff --stat'..added)
+		print('---------------------------------------------------')
+		local str= os.capture(git()..' diff --stat'..added, true)
+		print(string.sub(str,1,-2))
 		if #string.lines(str)>1 then
 			print('---------------------------------------------------')
 			print(string.sub(str,1,-2))
@@ -1399,6 +1695,13 @@ function main(...)
 		else
 			print('Cannot find ~/.gitv_conf')
 			print('  list git repositories seperated by new lines in ~/.gitv_conf')
+		end
+	elseif arg[1]=='post-change-message' then
+		if arg[2] then
+			local cmd=
+			'git commit --amend -m "'..arg[2]..'"'
+			print(cmd)
+			os.execute(cmd)
 		end
 	elseif arg[1]=='iconvcheck' then
 		-- convert EUCKR encoding to UTF-8
@@ -1471,11 +1774,43 @@ function main(...)
 		printHelp()
 	end
 end
+function findFile(keys, filefunc)
+		local files=lsFiles()
+		local fn={}
+		for ifile, file in ipairs(files) do
+			local passed=true
+			for j=1,#keys do
+				if not select(1,string.find(string.lower(file), string.lower(keys[j]))) then
+					passed=false
+				end
+			end
+			if passed then
+				filefunc(file)
+			end
+		end
+end
+function grepFile(f, key)
+	if select(1, string.find(key, '"')) and not select(1, string.find(key,'%[')) then
+		-- treat " and ' same. (convenient for many script languages)
+		key=string.gsub(key, '"', '["\']')
+	end
+	if string.isMatched(f,g_grepSrc) then
+		util.grepFile(f, key,'',true)
+	end
+end
 if string.sub(arg[0],-4)~='gitv' then
 	return
 end
 if arg[1] then
-	main(unpack(arg))
+	if arg[1]=='--emacs' then
+	   g_useEmacs=true
+		main(unpack(array.sub(arg,2)))
+   elseif arg[1]=='--sublime' then
+	   g_useSublime=true
+		main(unpack(array.sub(arg,2)))
+	else
+		main(unpack(arg))
+	end
 else
 	printHelp()
 end

@@ -2,6 +2,11 @@ cd ..
 sh install.sh
 cd taesoo_vimrc
 cp vimrc ~/.vimrc
+cp _emacs ~/.emacs
+cp -rf _emacs.d ~/
+mkdir -p ~/.emacs.d
+cp -rf ~/_emacs.d/* ~/.emacs.d
+rm -rf ~/_emacs.d
 mkdir -p ~/.cgdb
 cp cgdbrc ~/.cgdb/
 cp tmux.cof ~/.tmux.conf
