@@ -352,6 +352,14 @@ function git_tools.getFilesToCommit(path)
 				s,e,c=string.find(line, '#%s+both modified:%s+(.+)')
 				output='both modified: '
 			end
+			if not c then
+				s,e,c=string.find(line, '#%s+both added:%s+(.+)')
+				output='both added: '
+			end
+			if not c then
+				s,e,c=string.find(line, '#%s+both added:%s+(.+)')
+				output='added by us: '
+			end
 			if c then 
 				if not string.isMatched(os.filename(c), g_commitIgnorePattern) then
 					modified[#modified+1]=c
