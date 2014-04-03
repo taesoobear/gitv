@@ -1,21 +1,48 @@
 set nocompatible
-filetype plugin on
+filetype plugin off
+
+set rtp+=~/.vim/bundle/vundle/
+call vundle#rc()
+
+Bundle 'gmarik/vundle'
+
+" The following bundles are installed when you run :BundleInstall in the vim
+"Bundle 'ctrlp.vim' -> to me, gitvim's Ctrl+g is more convenient.
+Bundle 'The-NERD-tree'
+
+"Vim plugin that displays tags in a window, ordered by class etc. 
+Bundle 'Tagbar'
+"nmap <F10> :TagbarToggle<CR> 
+" Autotag re-run ctags on a source file when you save it.
+Bundle 'AutoTag'
+" The-NERD-Commenter comment out visual blocks using \cc
+Bundle 'The-NERD-Commenter' 
+Bundle 'AutoComplPop'
+Bundle 'Tex-PDF'
+"Bundle 'CSApprox'
+
+set shell=C:/cygwin/bin/bash
+"set shellcmdflag=--login\ -c
+set shellxquote=\"
+
 syntax on
 source $VIMRUNTIME/vimrc_example.vim
 " The % key will switch between opening and closing brackets. By sourcing matchit.vim, the key can also switch among e.g. if/elsif/else/end, between opening and closing XML tags, and more. 
 runtime macros/matchit.vim
 set fileencodings=utf-8
+set encoding=utf-8
 if has("gui_running")
-    set guifont=Consolas:h11
+    set guifont=Consolas:h12
+	"set guifont=NanumGothicCoding:h12
     set guioptions-=T
 	"au GUIEnter * simalt ~x "x on an English Windows version. n on a French one
     au GUIEnter * winsize 180 54
     au GUIEnter * winpos 0 0
 endif
 
-" support korean keyboard. (Toggle han/eng using \<space>)
-" Enter insert mode using C-i, C-a, or C-o to use korean
-"let hangeul_enabled=1
+
+
+
 
 let g:vimwiki_file_exts='pdf,chm'
 """""""""""""""""""""""""""""""""""""""""""""
@@ -23,6 +50,10 @@ let g:vimwiki_file_exts='pdf,chm'
 """""""""""""""""""""""""""""""""""""""""""""
 set t_Co=256
 colorscheme pyte
+"colorscheme linux
+"colorscheme torte
+"colorscheme jellybeans
+"set guifont=Monospace\ 13
 
 set ignorecase
 set clipboard=unnamed 
@@ -39,8 +70,42 @@ set foldlevel=1
 """""""""""""""""""""""""""""""""""""""""""""
 " maps
 """""""""""""""""""""""""""""""""""""""""""""
+function ToggleWrap()
+  if &wrap
+    echo "Wrap OFF"
+    setlocal nowrap
+    set virtualedit=all
+    silent! nunmap <buffer> <Up>
+    silent! nunmap <buffer> <Down>
+    silent! nunmap <buffer> <Home>
+    silent! nunmap <buffer> <End>
+    silent! nunmap <buffer> j
+    silent! nunmap <buffer> k
+    silent! iunmap <buffer> <Up>
+    silent! iunmap <buffer> <Down>
+    silent! iunmap <buffer> <Home>
+    silent! iunmap <buffer> <End>
+  else
+    echo "Wrap ON"
+    setlocal wrap linebreak nolist
+    set virtualedit=
+    setlocal display+=lastline
+    noremap  <buffer> <silent> <Up>   gk
+    noremap  <buffer> <silent> <Down> gj
+    noremap  <buffer> <silent> k gk
+    noremap  <buffer> <silent> j gj
+    noremap  <buffer> <silent> <Home> g<Home>
+    noremap  <buffer> <silent> <End>  g<End>
+    inoremap <buffer> <silent> <Up>   <C-o>gk
+    inoremap <buffer> <silent> <Down> <C-o>gj
+    inoremap <buffer> <silent> <Home> <C-o>g<Home>
+    inoremap <buffer> <silent> <End>  <C-o>g<End>
+  endif
+endfunction
+
 " Map toggle function to Space key. 
 noremap <space> :call ToggleFold()<CR>
+noremap <silent> <Leader>w :call ToggleWrap()<CR>
 " Unfold all
 noremap zr zR
 " use ;; instead of ;
@@ -59,6 +124,10 @@ nmap <C-d> :q<CR>
 " in terminal, works only when "stty -ixon" is defined in .bashrc
 nmap <C-s> :w<CR>
 imap <C-s> <ESC>:w<CR>
+nmap <C-tab> :Bs.<CR>
+nmap <C-r> :!stdbuf -i0 -o0 make run<CR>
+
+"some other keybindings are defined in .vim/plugins/gitvim.vim
 
 """""""""""""""""""""""""""""""""""""""""""""
 " commands
@@ -113,7 +182,7 @@ command! -nargs=0 Sh :ConqueTerm bash
 command! -nargs=1 RunL :!l <args> 
 
 
-highlight Folded guifg=#606060 guibg=#d9d9d9
+"highlight Folded guifg=#606060 guibg=#d9d9d9
 
 " Toggle fold state between closed and opened. 
 " 
@@ -142,22 +211,4 @@ fun Ranger()
   redraw!
 endfun
 
-if !exists('hangeul_enabled')
-	finish
-endif
-"map <leader>i i<Plug>ForceHanMode
-"map <leader>a a<Plug>ForceHanMode
-"map <leader>o o<Plug>ForceHanMode
-"map <leader>O O<Plug>ForceHanMode
-nmap <C-i> i<Plug>ForceHanMode
-nmap <C-a> a<Plug>ForceHanMode
-nmap <C-o> o<Plug>ForceHanMode
-nmap i i<Plug>ForceEngMode
-nmap a a<Plug>ForceEngMode<space><backspace>
-nmap A A<Plug>ForceEngMode<space><backspace>
-nmap o o<Plug>ForceEngMode
-nmap O O<Plug>ForceEngMode
-" toggle han/eng
-"imap <C-i> <Plug>HanMode
-imap <silent><leader><space> <Plug>HanMode
-"set guifont=Monospace\ 14
+
