@@ -9,7 +9,7 @@ end
 require("mylib")
  
 -- order doesn't matter
-g_etagsSrc={ "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
+g_etagsSrc={ "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
 g_customEtagsSrc={"%.lua$"}
 g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
@@ -365,7 +365,10 @@ try:
 		i=child.expect(tbl)
 		print child.before,
 	print tbl[i],
-	child.expect(pexpect.EOF)
+	index=child.expect([pexpect.EOF, pexpect.TIMEOUT])
+	while index==1:
+		print(child.before)
+		index=child.expect([pexpect.EOF, pexpect.TIMEOUT])
 	print(child.before)
 except:
 	print('Pexpec Error after :')
