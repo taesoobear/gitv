@@ -354,7 +354,7 @@ function git_tools.execute(cmd, password)
 import pexpect
 import sys
 child=pexpect.spawn("]]..cmd2[#cmd2]..[[")
-tbl=['password:', 'passphrase for key', 'up-to-date', 'Counting objects:','unexpectedly']
+tbl=['password:', 'passphrase for key','Pull is not possible because you have unmerged files', 'up-to-date', 'Counting objects:','unexpectedly']
 try:
 	i=child.expect(tbl)
 	print child.before,
@@ -370,8 +370,9 @@ try:
 		print '****'
 		i=child.expect(tbl)
 		print child.before,
-
-	print tbl[i],
+	else:
+		print tbl[i],
+		print child.before,
 	index=child.expect([pexpect.EOF, pexpect.TIMEOUT])
 	while index==1:
 		print(child.before)
@@ -882,7 +883,9 @@ function _lsFiles(cpt, option, path)
 			return true
 		end, files)
 	end
-	table.sort(files, git_tools.compareFileName)
+	if #files<100 then
+		table.sort(files, git_tools.compareFileName)
+	end
 	return files
 end
 
