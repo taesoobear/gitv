@@ -20,6 +20,10 @@ Bundle 'The-NERD-Commenter'
 Bundle 'AutoComplPop'
 Bundle 'Tex-PDF'
 Bundle 'CSApprox'
+Bundle 'flazz/vim-colorschemes'
+Bundle 'altercation/vim-colors-solarized'
+Bundle 'ColorSchemeMenuMaker'
+Bundle 'desert-warm-256'
 
 syntax on
 source $VIMRUNTIME/vimrc_example.vim
@@ -33,7 +37,8 @@ let g:vimwiki_file_exts='pdf,chm'
 " options
 """""""""""""""""""""""""""""""""""""""""""""
 set t_Co=256
-colorscheme pyte
+"colorscheme pyte
+colorscheme 256-jungle
 "colorscheme linux
 "colorscheme torte
 "colorscheme jellybeans
