@@ -618,10 +618,13 @@ function interactiveChoose(fn, fromHistory)
 	if #fn==0 then
 		for i=1,#g_tagFallbackPath do
 			local path=git_top()..'/'..g_tagFallbackPath [i]
-			local keys={'-g', unpack(table.isubset(arg,2))}
-			fn=nonInteractiveChoose(keys, path)
-			if #fn>0 then break end
+			if os.isFileExist(path) then
+				local keys={'-g', unpack(table.isubset(arg,2))}
+				fn=nonInteractiveChoose(keys, path)
+				if #fn>0 then break end
+			end
 		end
+
 		if #fn==0 then
 			print('Choose from History:')
 			fn=history
@@ -1235,9 +1238,11 @@ function git_tools.tagChoose(keyword, keyword2)
 	if not chosen then
 		for i=1,#g_tagFallbackPath do
 			local path=git_top()..'/'..g_tagFallbackPath [i]
-			chosen= git_tools.tagChooseFromFile(keyword, keyword2, path)
-			if chosen then
-				break
+			if os.isFileExist(path) then
+				chosen= git_tools.tagChooseFromFile(keyword, keyword2, path)
+				if chosen then
+					break
+				end
 			end
 		end
 	end
