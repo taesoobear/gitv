@@ -18,6 +18,7 @@ g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
 g_cache_folder='/tmp/'
 g_vimpath='vim'
 g_gvimpath='gvim'
+g_ctags='ctags'
 -- ignore files that match following patterns even if they are in the repository.
 g_ignorePattern={'^BaseLib/image/FreeImage/Dist/','^dependencies/'}
 g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plot%.', 'OgreFltkConsole.exe', 'console.xml', 'OgreFltkConsoleJIT.exe','optimizelog'}
@@ -35,6 +36,9 @@ if isWindows() then
 		local fn= os.createUnnamedBatchFile({cmd})
 		os.execute_original('"'..fn..'"')
 	end
+end
+if os.isApple() then
+	g_ctags='/usr/local/bin/ctags' -- install exuberant ctags using brew : brew install ctags-exuberant
 end
 -- uncomment
 function macro(fn, key)
@@ -1654,9 +1658,9 @@ function main(...)
 			cmd=string.gsub(cmd,'\\','/')
 		end
 		if arg[1]=="ctags" then
-			os.execute('ctags '..cmd ..' -f .tags')
+			os.execute(g_ctags..' '..cmd ..' -f .tags')
 		else
-			os.execute('ctags -e '..string.gsub(cmd,'\\','/') )
+			os.execute(g_ctags..' -e '..string.gsub(cmd,'\\','/') )
 		end
 		local isCustomSourceCode=function(str)
 			return string.isMatched(str,g_customEtagsSrc)
@@ -1677,9 +1681,9 @@ function main(...)
 			cmd=string.gsub(cmd,'\\','/')
 		end
 		if arg[1]=="ctags" then
-			os.execute('ctags '..cmd ..' -f .tags')
+			os.execute(g_ctags..' '..cmd ..' -f .tags')
 		else
-			os.execute('ctags -e '..cmd)
+			os.execute(g_ctags..' -e '..cmd)
 		end
 	elseif arg[1]=='grep' then
 		print('searching '..arg[2]..'...')

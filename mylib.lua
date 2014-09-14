@@ -834,9 +834,18 @@ function string.trimSpaces(s)
 	  return string.sub(a,1,string.len(b))==b
   end
 function os.capture(cmd, raw)
-  local f = assert(io.popen(cmd, 'r'))
-  local s = assert(f:read('*a'))
-  f:close()
+	local s
+	if os.isApple() then
+		-- macport's lua51 package does not support io.popen -.-; 
+		os.execute(cmd ..">/tmp/capture.txt")
+		local f = assert(io.open('/tmp/capture.txt', 'r'))
+		s = assert(f:read('*a'))
+		f:close()
+	else
+		local f = assert(io.popen(cmd, 'r'))
+		s = assert(f:read('*a'))
+		f:close()
+	end
   if raw then return s end
   s = string.gsub(string.trimSpaces(s), '[\n\r]+', ' ') 
   return s
@@ -931,6 +940,10 @@ end
 function os.isWindows()
 	local isWin=string.find(string.lower(os.getenv('OS') or 'nil'),'windows')~=nil
 	return isWin 
+end
+
+function os.isApple()
+	return os.getenv('TERM_PROGRAM')=='Apple_Terminal' 
 end
 
 
@@ -1166,6 +1179,9 @@ function array:clear()
 	setmetatable(self,array)
 end
 
+if table.getn==nil then
+	table.getn=function (a) return #a end
+end
 function array:size()
 	return table.getn(self)
 end
