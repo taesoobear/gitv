@@ -943,7 +943,8 @@ function os.isWindows()
 end
 
 function os.isApple()
-	return os.getenv('TERM_PROGRAM')=='Apple_Terminal' 
+	return os.getenv('TERM_PROGRAM')=='Apple_Terminal'  or
+	os.getenv('TERM_PROGRAM')=='iTerm.app'
 end
 
 
