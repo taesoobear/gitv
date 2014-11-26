@@ -9,7 +9,7 @@ end
 require("mylib")
  
 -- order doesn't matter
-g_etagsSrc={ "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
+g_etagsSrc={ "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
 g_customEtagsSrc={"%.lua$"}
 g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
@@ -1243,6 +1243,7 @@ function git_tools.tagChoose(keyword, keyword2)
 		for i=1,#g_tagFallbackPath do
 			local path=git_top()..'/'..g_tagFallbackPath [i]
 			if os.isFileExist(path) then
+				print('tag searching '..g_tagFallbackPath[i])
 				chosen= git_tools.tagChooseFromFile(keyword, keyword2, path)
 				if chosen then
 					break
@@ -1276,7 +1277,7 @@ function main(...)
 			os.execute(g_vimpath..' "'..chosen[1]..'"')
 		end
 	elseif arg[1]=='unzip' then -- iconv after unzip. only for Korean cygwin users.
-		if not os.isCygwin() then
+		if not os.isCygwin() and not os.isUnix()then
 			print('Error! only for cygwin')
 			return
 		end
