@@ -9,15 +9,16 @@ end
 require("mylib")
  
 -- order doesn't matter
-g_etagsSrc={ "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
+g_etagsSrc={ "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
 g_customEtagsSrc={"%.lua$"}
 g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
-g_vimSrc={"%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={"%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
 g_cache_folder='/tmp/'
 g_vimpath='vim'
 g_gvimpath='gvim'
+g_ctags='ctags'
 -- ignore files that match following patterns even if they are in the repository.
 g_ignorePattern={'^BaseLib/image/FreeImage/Dist/','^dependencies/'}
 g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plot%.', 'OgreFltkConsole.exe', 'console.xml', 'OgreFltkConsoleJIT.exe','optimizelog'}
@@ -35,6 +36,9 @@ if isWindows() then
 		local fn= os.createUnnamedBatchFile({cmd})
 		os.execute_original('"'..fn..'"')
 	end
+end
+if os.isApple() then
+	g_ctags='/usr/local/bin/ctags' -- install exuberant ctags using brew : brew install ctags-exuberant
 end
 -- uncomment
 function macro(fn, key)
@@ -354,7 +358,7 @@ function git_tools.execute(cmd, password)
 import pexpect
 import sys
 child=pexpect.spawn("]]..cmd2[#cmd2]..[[")
-tbl=['password:', 'passphrase for key', 'up-to-date', 'Counting objects:','unexpectedly']
+tbl=['password:', 'passphrase for key','Pull is not possible because you have unmerged files', 'up-to-date', 'Counting objects:','unexpectedly']
 try:
 	i=child.expect(tbl)
 	print child.before,
@@ -364,8 +368,19 @@ try:
 		print '****'
 		i=child.expect(tbl)
 		print child.before,
-	print tbl[i],
-	child.expect(pexpect.EOF)
+	elif i==1:
+		child.sendline('put key password here')
+		print tbl[i]
+		print '****'
+		i=child.expect(tbl)
+		print child.before,
+	else:
+		print tbl[i],
+		print child.before,
+	index=child.expect([pexpect.EOF, pexpect.TIMEOUT])
+	while index==1:
+		print(child.before)
+		index=child.expect([pexpect.EOF, pexpect.TIMEOUT])
 	print(child.before)
 except:
 	print('Pexpec Error after :')
@@ -414,6 +429,10 @@ function git_tools.getFilesToCommit(path)
 			if not c then
 				s,e,c=string.find(line, '#%s+both modified:%s+(.+)')
 				output='both modified: '
+			end
+			if not c then
+				s,e,c=string.find(line, '#%s+both added:%s+(.+)')
+				output='both added: '
 			end
 			if not c then
 				s,e,c=string.find(line, '#%s+both modified:%s+(.+)')
@@ -601,9 +620,20 @@ function interactiveChoose(fn, fromHistory)
 	local currDir=os.currentDirectory()
 	local history, hcache=loadHistory(currDir)
 	if #fn==0 then
-		print('Choose from History:')
-		fn=history
-		hcache._list=fn
+		for i=1,#g_tagFallbackPath do
+			local path=git_top()..'/'..g_tagFallbackPath [i]
+			if os.isFileExist(path) then
+				local keys={'-g', unpack(table.isubset(arg,2))}
+				fn=nonInteractiveChoose(keys, path)
+				if #fn>0 then break end
+			end
+		end
+
+		if #fn==0 then
+			print('Choose from History:')
+			fn=history
+			hcache._list=fn
+		end
 	end
 	-- reorder fn based on history
 	local nhist=#hcache._list
@@ -814,7 +844,8 @@ function findFileFromGit(key, ...)
 	return interactiveChoose(fn, fromHistory)
 end
 
-function lsFiles(option)
+function lsFiles(option, path)
+	path=path or git_top()
 	local cpt
 	if cache_git_top=='' then
 		--cpt=os.capture(git()..' ls-files .', true)
@@ -824,7 +855,7 @@ function lsFiles(option)
 		cpt=os.capture(git()..' ls-files .', true)
 	elseif option=='-g' then
 		-- use absolute
-		cpt=os.capture('cd '..git_top()..';git ls-files .', true)
+		cpt=os.capture('cd '..path..';git ls-files .', true)
 	else
 		cpt=os.capture(git()..' ls-files "'..git_top()..'" 2>&1', true)
 		if select(1, string.find(cpt, 'fatal:')) then
@@ -832,11 +863,12 @@ function lsFiles(option)
 			cpt=os.capture('cd '..git_top()..';git ls-files .', true)
 		end
 	end
-	return _lsFiles(cpt, option)
+	return _lsFiles(cpt, option, path)
 end
 
-function _lsFiles(cpt, option)
+function _lsFiles(cpt, option, path)
 	local files
+	path=path or git_top()
 	if type(cpt)=='string' then
 		files=string.lines(cpt)
 	else
@@ -845,7 +877,7 @@ function _lsFiles(cpt, option)
 	local files=array.sub(files,1,-2)
 	if option=='-g' then
 		for i,v in ipairs(files) do
-			files[i]=git_top()..'/'..v
+			files[i]=path..'/'..v
 		end
 	end
 	if #g_ignorePattern>0 then
@@ -858,7 +890,9 @@ function _lsFiles(cpt, option)
 			return true
 		end, files)
 	end
-	table.sort(files, git_tools.compareFileName)
+	if #files<100 then
+		table.sort(files, git_tools.compareFileName)
+	end
 	return files
 end
 
@@ -944,7 +978,7 @@ function chooseFile(keys)
 	local chosen=interactiveChoose(fn)
 	return chosen
 end
-function nonInteractiveChoose(keys)
+function nonInteractiveChoose(keys, path)
 	local option
 	if keys[1]=='-l' then
 		option='-l'
@@ -960,7 +994,12 @@ function nonInteractiveChoose(keys)
 		end
 	end
 	if useFull then option='-g' end
-	local files=lsFiles(option)
+	if keys[1]=='-g' then
+		option='-g'
+		keys=table.isubset(keys,2)
+		useFull=true
+	end
+	local files=lsFiles(option, path)
 
 	local fn={}
 	for ifile, file in ipairs(files) do
@@ -1202,10 +1241,12 @@ function git_tools.tagChoose(keyword, keyword2)
 	local chosen= git_tools.tagChooseFromFile(keyword, keyword2, path)
 	if not chosen then
 		for i=1,#g_tagFallbackPath do
-			local path=g_tagFallbackPath [i]
-			chosen= git_tools.tagChooseFromFile(keyword, keyword2, path)
-			if chosen then
-				break
+			local path=git_top()..'/'..g_tagFallbackPath [i]
+			if os.isFileExist(path) then
+				chosen= git_tools.tagChooseFromFile(keyword, keyword2, path)
+				if chosen then
+					break
+				end
 			end
 		end
 	end
@@ -1621,9 +1662,9 @@ function main(...)
 			cmd=g_customCtagsParam  .. ' '..cmd
 		end
 		if arg[1]=="ctags" then
-			os.execute('ctags '..cmd ..' -f .tags')
+			os.execute(g_ctags..' '..cmd ..' -f .tags')
 		else
-			os.execute('ctags -e '..string.gsub(cmd,'\\','/') )
+			os.execute(g_ctags..' -e '..string.gsub(cmd,'\\','/') )
 		end
 		local isCustomSourceCode=function(str)
 			return string.isMatched(str,g_customEtagsSrc)
@@ -1644,9 +1685,9 @@ function main(...)
 			cmd=string.gsub(cmd,'\\','/')
 		end
 		if arg[1]=="ctags" then
-			os.execute('ctags '..cmd ..' -f .tags')
+			os.execute(g_ctags..' '..cmd ..' -f .tags')
 		else
-			os.execute('ctags -e '..cmd)
+			os.execute(g_ctags..' -e '..cmd)
 		end
 	elseif arg[1]=='grep' then
 		print('searching '..arg[2]..'...')
