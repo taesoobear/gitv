@@ -226,6 +226,11 @@ function git_tools.searchTag(filename, searchKey)
 	local currFile
 	local tags={}
 	local MAX_SEARCH=100000
+	local isRegExp=false
+	if select(1,string.find(searchKey, '%.')) then
+		isRegExp=true
+	end
+
 	for i=1,#t do
 		local o=''
 		local oo=string.tokenize(t[i],string.char(127))
@@ -236,13 +241,20 @@ function git_tools.searchTag(filename, searchKey)
 				currFile=oo2[1]
 			end
 		else 
-			local oo2=string.tokenize(oo[2], string.char(1))
+			local oo2 =string.tokenize(oo[2], string.char(1))
+			local pattern=oo2[1]
+			if isRegExp then
+				-- when the searchKey contains "." ,
+				-- for example, VRMLTransform.*translateBone,
+				-- full function-signature is used as a pattern
+				pattern=oo[1]
+			end
 			--print(oo2[1])
 			--print(searchKey)
 			--print(string.gsub(string.lower(searchKey), "%^",":"))
-			if select(1,string.find(string.lower(oo2[1]),string.lower(searchKey))) or
-			 select(1,string.find(string.lower(oo2[1]),string.gsub(string.lower(searchKey), "%^","[:%.]"))) then
-				table.insert(tags, {oo2[1], oo[1], currFile, tonumber(string.tokenize(oo2[2],',')[1])})
+			if select(1,string.find(string.lower(pattern),string.lower(searchKey))) or
+			 select(1,string.find(string.lower(pattern),string.gsub(string.lower(searchKey), "%^","[:%.]"))) then
+				table.insert(tags, {pattern, oo[1], currFile, tonumber(string.tokenize(oo2[2],',')[1])})
 				if #tags> MAX_SEARCH then
 					printf("Error! max_search overflow")
 					break
@@ -616,11 +628,13 @@ function interactiveChoose(fn, fromHistory)
 	local currDir=os.currentDirectory()
 	local history, hcache=loadHistory(currDir)
 	if #fn==0 then
-		for i=1,#g_tagFallbackPath do
-			local path=git_top()..'/'..g_tagFallbackPath [i]
-			local keys={'-g', unpack(table.isubset(arg,2))}
-			fn=nonInteractiveChoose(keys, path)
-			if #fn>0 then break end
+		if keys then
+			for i=1,#g_tagFallbackPath do
+				local path=git_top()..'/'..g_tagFallbackPath [i]
+				local keys={'-g', unpack(table.isubset(arg,2))}
+				fn=nonInteractiveChoose(keys, path)
+				if #fn>0 then break end
+			end
 		end
 		if #fn==0 then
 			print('Choose from History:')
