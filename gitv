@@ -37,6 +37,13 @@ if isWindows() then
 		os.execute_original('"'..fn..'"')
 	end
 end
+function execute2(...)
+	local tbl={...}
+	for i,v in pairs(tbl) do
+		print(v)
+	end
+	os.execute2(unpack(tbl))
+end
 if os.isApple() then
 	g_ctags='/usr/local/bin/ctags' -- install exuberant ctags using brew : brew install ctags-exuberant
 end
@@ -1935,6 +1942,35 @@ if arg[1] then
    elseif arg[1]=='--sublime' then
 	   g_useSublime=true
 		main(unpack(array.sub(arg,2)))
+	elseif arg[1]=='clone_subtree' then
+		local repo=arg[2]
+		local url=arg[3]
+		local path=arg[4]
+		if not url or not repo or not path then
+			print('gitv clone_subtree repo url path')
+			print('e.g. gitv clone_subtree SP_taesoo ssh://taesoo@calab.hanyang.ac.kr:8022/~/taesoo.git courses/SP_taesoo')
+			return 
+		end
+
+		execute2('git init "'..repo..'"',
+		'cd "'..repo..'"',
+		'git remote add origin '..url, 'git config core.sparsecheckout true')
+		execute2(
+		'cd "'..repo..'"',
+		'echo "'..path..'" > .git/info/sparse-checkout',
+		'git pull origin master')
+	elseif arg[1]=="get_subtree" then
+		local repo=arg[2]
+		local url=arg[3]
+		local path=arg[4]
+		if not url or not repo or not path then
+			print('gitv get_subtree repo url path')
+			print('e.g. gitv get_subtree SP_taesoo ssh://taesoo@calab.hanyang.ac.kr:8022/~/taesoo.git courses/SP_taesoo')
+			return 
+		end
+		execute2('mkdir -p "'..repo..'"',
+		'cd "'..repo..'"',
+		'git archive --remote='..url ..' master '..path .. '| tar xvf -')
 	else
 		main(unpack(arg))
 	end
