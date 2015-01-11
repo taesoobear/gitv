@@ -9,11 +9,11 @@ end
 require("mylib")
  
 -- order doesn't matter
-g_etagsSrc={ "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
+g_etagsSrc={ "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
 g_customEtagsSrc={"%.lua$"}
 g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
-g_vimSrc={"%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={"%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
 g_cache_folder='/tmp/'
 g_vimpath='vim'
@@ -1462,6 +1462,14 @@ function main(...)
 		findFile(keys, print)
 	elseif arg[1]=='diffrepo' or arg[1]=='cprepo' or arg[1]=='cprepo2' then
 		local filen=arg[2]
+		local statOnly=false
+
+		if filen=="--stat" then
+			statOnly=true
+			filen=arg[3]
+			arg[3]=arg[4]
+			arg[4]=arg[5]
+		end
 		local other_repo=arg[3]
 		local function printHelp(verb, cmd)
 			print('Diff a file in a repository to another.')
@@ -1483,6 +1491,7 @@ function main(...)
 		if(other_repo==nil ) then
 			print('set g_diffTarget in your $GIT_ROOT/.gitvconfig')
 			print('For example,    g_diffTarget="../taesooLib"')
+			print('Always use relative path name!')
 			return
 		end
 		local file1=os.relativeToAbsolutePath(filen)
@@ -1516,7 +1525,41 @@ function main(...)
 			end
 		else
 			if filen=='.' then
-				os.execute('meld "'..file1..'" "'..path2..'"')
+				if os.capture("which meld")=="" then
+					print("meld not found")
+					local files=lsFiles('-l')
+					path1=file1
+					path1=string.gsub(path1, '%.','')
+					path2=string.gsub(path2, '%.','')
+					for i, fn in ipairs(files) do
+						local t1=os.isFileExist(path1..fn)
+						local t2=os.isFileExist(path2..fn)
+						if t1 and t2 then
+							local t=os.capture('diff "'..path1..fn..'" "'..path2..fn..'"')
+							if t=="" then
+								--print(fn..' identical')
+							else
+								if statOnly then
+									print(fn .. ' different')
+								else
+									local cmd='vimdiff "'..path1..fn..'" "'..path2..fn..'"'
+									print(cmd)
+									os.execute(cmd)
+								end
+							end
+						else
+							if not t1 then
+								print(path1..fn .." does not exist!")
+							end
+							if not t2 then
+								print(path2..fn .." does not exist!")
+							end
+						end
+					end
+					--printTable(files)
+				else
+					os.execute('meld "'..file1..'" "'..path2..'"')
+				end
 			else
 				local cmd='vimdiff "'..file1..'" "'..path2..'"'
 				print(cmd)
