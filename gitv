@@ -870,7 +870,11 @@ function lsFiles(option, path)
 	local cpt
 	if cache_git_top=='' then
 		--cpt=os.capture(git()..' ls-files .', true)
-		cpt=os.glob('*',true,true)
+		if os.isApple() then
+			cpt={}
+		else
+			cpt=os.glob('*',true,true)
+		end
 		printTable(cpt)
 	elseif option=='-l' then	
 		cpt=os.capture(git()..' ls-files .', true)
@@ -1219,6 +1223,15 @@ function os.vi_remote(filename, line)
 			cmd='/opt/sublime_text/sublime_text "'..filename..'"'
 		end
 		os.execute(cmd..'&')
+		return
+	end
+	if os.isApple() then
+		local vimpath=g_vimpath
+		if line then
+			os.execute(vimpath..' +'..line..' "'..filename..'"')
+		else
+			os.execute(vimpath..' "'..filename..'"')
+		end
 		return
 	end
 	local servername=serverLaunched()
@@ -1755,7 +1768,6 @@ function main(...)
 			os.execute(g_ctags..' -e '..cmd)
 		end
 	elseif arg[1]=='grep' then
-		print('searching '..arg[2]..'...')
 		local files
 		if arg[2]=='-l' then
 			arg=table.isubset(arg,2)
@@ -1764,6 +1776,7 @@ function main(...)
 			files=lsFiles()
 		end
 		if arg[2] then
+			print('searching '..arg[2]..' in '..#files ..' files...')
 			if select(1, string.find(arg[2], '"')) and not select(1, string.find(arg[2],'%[')) then
 				-- treat " and ' same. (convenient for many script languages)
 				arg[2]=string.gsub(arg[2], '"', '["\']')
