@@ -419,7 +419,15 @@ function git_tools.getFilesToCommit(path)
 			local output='modified: '
 			local s,e,c=string.find(line, '#%s+modified:%s+(.+)')
 			if not c then
+				s,e,c=string.find(line, '%s+modified:%s+(.+)')
+				output='new file: '
+			end
+			if not c then
 				s,e,c=string.find(line, '#%s+new file:%s+(.+)')
+				output='new file: '
+			end
+			if not c then
+				s,e,c=string.find(line, '%s+new file:%s+(.+)')
 				output='new file: '
 			end
 			if not c then
@@ -427,11 +435,23 @@ function git_tools.getFilesToCommit(path)
 				output='renamed: '
 			end
 			if not c then
+				s,e,c=string.find(line, '%s+renamed:%s+(.+)')
+				output='renamed: '
+			end
+			if not c then
 				s,e,c=string.find(line, '#%s+both modified:%s+(.+)')
 				output='both modified: '
 			end
 			if not c then
+				s,e,c=string.find(line, '%s+both modified:%s+(.+)')
+				output='both modified: '
+			end
+			if not c then
 				s,e,c=string.find(line, '#%s+both added:%s+(.+)')
+				output='both added: '
+			end
+			if not c then
+				s,e,c=string.find(line, '%s+both added:%s+(.+)')
 				output='both added: '
 			end
 			if not c then
