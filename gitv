@@ -499,7 +499,7 @@ function git_tools.commit(path,force)
 			print('----------------------------------')
 			for i,v in ipairs(untracked) do print(v) end
 			print('----------------------------------')
-			print('Do you want to add these untracked files to git repository? Press enter if you are not sure. (YES/edit/[no]/ignore)')
+			print('Do you want to add these untracked files to git repository? Press enter if you are not sure. ([no]/edit/ignore/YES)')
 			local cmd=''
 			for i, v in ipairs(untracked) do 
 				cmd=cmd.. git()..' add "'..v..'"\n'
