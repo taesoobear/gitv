@@ -115,7 +115,11 @@ nmap <C-d> :q<CR>
 nmap <C-s> :w<CR>
 imap <C-s> <ESC>:w<CR>
 nmap <C-tab> :Bs.<CR>
-nmap <C-r> :!stdbuf -i0 -o0 make run<CR>
+"nmap <C-y> :!stdbuf -i0 -o0 make run<CR>
+nmap <C-n> :bn<CR>
+nmap <C-p> :bp<CR>
+nmap <C-k> :GitvTS 
+nmap <C-y> :!stdbuf -i0 -o0 make run<CR>
 
 "some other keybindings are defined in .vim/plugins/gitvim.vim
 
@@ -201,3 +205,5 @@ fun Ranger()
   redraw!
 endfun
 
+set backupdir=./.backup,.,/tmp
+set directory=.,./.backup,/tmp

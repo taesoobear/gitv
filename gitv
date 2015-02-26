@@ -9,11 +9,11 @@ end
 require("mylib")
  
 -- order doesn't matter
-g_etagsSrc={ "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
+g_etagsSrc={ "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
 g_customEtagsSrc={"%.lua$"}
 g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
-g_vimSrc={"%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={"%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
 g_cache_folder='/tmp/'
 g_vimpath='vim'
@@ -36,6 +36,13 @@ if isWindows() then
 		local fn= os.createUnnamedBatchFile({cmd})
 		os.execute_original('"'..fn..'"')
 	end
+end
+function execute2(...)
+	local tbl={...}
+	for i,v in pairs(tbl) do
+		print(v)
+	end
+	os.execute2(unpack(tbl))
 end
 if os.isApple() then
 	g_ctags='/usr/local/bin/ctags' -- install exuberant ctags using brew : brew install ctags-exuberant
@@ -230,6 +237,11 @@ function git_tools.searchTag(filename, searchKey)
 	local currFile
 	local tags={}
 	local MAX_SEARCH=100000
+	local isRegExp=false
+	if select(1,string.find(searchKey, '%.')) then
+		isRegExp=true
+	end
+
 	for i=1,#t do
 		local o=''
 		local oo=string.tokenize(t[i],string.char(127))
@@ -240,13 +252,20 @@ function git_tools.searchTag(filename, searchKey)
 				currFile=oo2[1]
 			end
 		else 
-			local oo2=string.tokenize(oo[2], string.char(1))
+			local oo2 =string.tokenize(oo[2], string.char(1))
+			local pattern=oo2[1]
+			if isRegExp then
+				-- when the searchKey contains "." ,
+				-- for example, VRMLTransform.*translateBone,
+				-- full function-signature is used as a pattern
+				pattern=oo[1]
+			end
 			--print(oo2[1])
 			--print(searchKey)
 			--print(string.gsub(string.lower(searchKey), "%^",":"))
-			if select(1,string.find(string.lower(oo2[1]),string.lower(searchKey))) or
-			 select(1,string.find(string.lower(oo2[1]),string.gsub(string.lower(searchKey), "%^","[:%.]"))) then
-				table.insert(tags, {oo2[1], oo[1], currFile, tonumber(string.tokenize(oo2[2],',')[1])})
+			if select(1,string.find(string.lower(pattern),string.lower(searchKey))) or
+			 select(1,string.find(string.lower(pattern),string.gsub(string.lower(searchKey), "%^","[:%.]"))) then
+				table.insert(tags, {pattern, oo[1], currFile, tonumber(string.tokenize(oo2[2],',')[1])})
 				if #tags> MAX_SEARCH then
 					printf("Error! max_search overflow")
 					break
@@ -640,12 +659,14 @@ function interactiveChoose(fn, fromHistory)
 	local currDir=os.currentDirectory()
 	local history, hcache=loadHistory(currDir)
 	if #fn==0 then
-		for i=1,#g_tagFallbackPath do
-			local path=git_top()..'/'..g_tagFallbackPath [i]
-			if os.isFileExist(path) then
-				local keys={'-g', unpack(table.isubset(arg,2))}
-				fn=nonInteractiveChoose(keys, path)
-				if #fn>0 then break end
+		if keys then
+			for i=1,#g_tagFallbackPath do
+				local path=git_top()..'/'..g_tagFallbackPath [i]
+				if os.isFileExist(path) then
+					local keys={'-g', unpack(table.isubset(arg,2))}
+					fn=nonInteractiveChoose(keys, path)
+					if #fn>0 then break end
+				end
 			end
 		end
 
@@ -869,7 +890,11 @@ function lsFiles(option, path)
 	local cpt
 	if cache_git_top=='' then
 		--cpt=os.capture(git()..' ls-files .', true)
-		cpt=os.glob('*',true,true)
+		if os.isApple() then
+			cpt={}
+		else
+			cpt=os.glob('*',true,true)
+		end
 		printTable(cpt)
 	elseif option=='-l' then	
 		cpt=os.capture(git()..' ls-files .', true)
@@ -1220,6 +1245,15 @@ function os.vi_remote(filename, line)
 		os.execute(cmd..'&')
 		return
 	end
+	if os.isApple() then
+		local vimpath=g_vimpath
+		if line then
+			os.execute(vimpath..' +'..line..' "'..filename..'"')
+		else
+			os.execute(vimpath..' "'..filename..'"')
+		end
+		return
+	end
 	local servername=serverLaunched()
 	local vimpath=g_vimpath
 	if servername then
@@ -1461,6 +1495,14 @@ function main(...)
 		findFile(keys, print)
 	elseif arg[1]=='diffrepo' or arg[1]=='cprepo' or arg[1]=='cprepo2' then
 		local filen=arg[2]
+		local statOnly=false
+
+		if filen=="--stat" then
+			statOnly=true
+			filen=arg[3]
+			arg[3]=arg[4]
+			arg[4]=arg[5]
+		end
 		local other_repo=arg[3]
 		local function printHelp(verb, cmd)
 			print('Diff a file in a repository to another.')
@@ -1482,6 +1524,7 @@ function main(...)
 		if(other_repo==nil ) then
 			print('set g_diffTarget in your $GIT_ROOT/.gitvconfig')
 			print('For example,    g_diffTarget="../taesooLib"')
+			print('Always use relative path name!')
 			return
 		end
 		local file1=os.relativeToAbsolutePath(filen)
@@ -1515,7 +1558,41 @@ function main(...)
 			end
 		else
 			if filen=='.' then
-				os.execute('meld "'..file1..'" "'..path2..'"')
+				if os.capture("which meld")=="" then
+					print("meld not found")
+					local files=lsFiles('-l')
+					path1=file1
+					path1=string.gsub(path1, '%.','')
+					path2=string.gsub(path2, '%.','')
+					for i, fn in ipairs(files) do
+						local t1=os.isFileExist(path1..fn)
+						local t2=os.isFileExist(path2..fn)
+						if t1 and t2 then
+							local t=os.capture('diff "'..path1..fn..'" "'..path2..fn..'"')
+							if t=="" then
+								--print(fn..' identical')
+							else
+								if statOnly then
+									print(fn .. ' different')
+								else
+									local cmd='vimdiff "'..path1..fn..'" "'..path2..fn..'"'
+									print(cmd)
+									os.execute(cmd)
+								end
+							end
+						else
+							if not t1 then
+								print(path1..fn .." does not exist!")
+							end
+							if not t2 then
+								print(path2..fn .." does not exist!")
+							end
+						end
+					end
+					--printTable(files)
+				else
+					os.execute('meld "'..file1..'" "'..path2..'"')
+				end
 			else
 				local cmd='vimdiff "'..file1..'" "'..path2..'"'
 				print(cmd)
@@ -1711,7 +1788,6 @@ function main(...)
 			os.execute(g_ctags..' -e '..cmd)
 		end
 	elseif arg[1]=='grep' then
-		print('searching '..arg[2]..'...')
 		local files
 		if arg[2]=='-l' then
 			arg=table.isubset(arg,2)
@@ -1720,6 +1796,7 @@ function main(...)
 			files=lsFiles()
 		end
 		if arg[2] then
+			print('searching '..arg[2]..' in '..#files ..' files...')
 			if select(1, string.find(arg[2], '"')) and not select(1, string.find(arg[2],'%[')) then
 				-- treat " and ' same. (convenient for many script languages)
 				arg[2]=string.gsub(arg[2], '"', '["\']')
@@ -1941,6 +2018,35 @@ if arg[1] then
    elseif arg[1]=='--sublime' then
 	   g_useSublime=true
 		main(unpack(array.sub(arg,2)))
+	elseif arg[1]=='clone_subtree' then
+		local repo=arg[2]
+		local url=arg[3]
+		local path=arg[4]
+		if not url or not repo or not path then
+			print('gitv clone_subtree repo url path')
+			print('e.g. gitv clone_subtree SP_taesoo ssh://taesoo@calab.hanyang.ac.kr:8022/~/taesoo.git courses/SP_taesoo')
+			return 
+		end
+
+		execute2('git init "'..repo..'"',
+		'cd "'..repo..'"',
+		'git remote add origin '..url, 'git config core.sparsecheckout true')
+		execute2(
+		'cd "'..repo..'"',
+		'echo "'..path..'" > .git/info/sparse-checkout',
+		'git pull origin master')
+	elseif arg[1]=="get_subtree" then
+		local repo=arg[2]
+		local url=arg[3]
+		local path=arg[4]
+		if not url or not repo or not path then
+			print('gitv get_subtree repo url path')
+			print('e.g. gitv get_subtree SP_taesoo ssh://taesoo@calab.hanyang.ac.kr:8022/~/taesoo.git courses/SP_taesoo')
+			return 
+		end
+		execute2('mkdir -p "'..repo..'"',
+		'cd "'..repo..'"',
+		'git archive --remote='..url ..' master '..path .. '| tar xvf -')
 	else
 		main(unpack(arg))
 	end

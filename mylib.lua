@@ -122,12 +122,14 @@ function os.findVIM()
 			local search={
 				"/cygdrive/c/Program Files/Vim/vim73/vim.exe",
 				"/cygdrive/c/Program Files (x86)/Vim/vim73/vim.exe",
+				"/cygdrive/c/Program Files (x86)/Vim/vim73/vimrun.exe",
 			}
 
 			for i,v in ipairs(search) do
 				if os.isFileExist(v) then
 					local vimpath= '"'..v..'"'
 					local gvimpath= '"'..string.gsub(v, 'vim.exe', 'gvim.exe')..'"'
+					gvimpath= string.gsub(gvimpath, 'vimrun.exe', 'gvim.exe')
 					return 'vim', gvimpath
 				end
 			end

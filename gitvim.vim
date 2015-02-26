@@ -46,7 +46,7 @@ set shiftwidth=4
 
 function! BufSelGit(pattern)
 	if has("gui_running")
-		execute "!gitv chooser ".v:servername." ".a:pattern
+		execute "!gitv choose ".a:pattern
 	else
 		if v:servername==""
 			silent execute "!clear"
@@ -56,7 +56,7 @@ function! BufSelGit(pattern)
 			silent execute "!gitv chooser ".v:servername." ".a:pattern
 		endif
 	endif
-	if filereadable('/tmp/gitv_script')
+	if filereadable('/tmp/gitv_script') || filereadable('c:/cygwin/tmp/gitv_script')
 		exec system('cat /tmp/gitv_script')
 		call system('rm /tmp/gitv_script')
 	end
