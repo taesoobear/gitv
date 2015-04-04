@@ -238,7 +238,9 @@ function git_tools.searchTag(filename, searchKey)
 	local tags={}
 	local MAX_SEARCH=100000
 	local isRegExp=false
-	if select(1,string.find(searchKey, '%.')) then
+	if select(1,string.find(searchKey, '%.')) 
+		or select(1,string.find(searchKey, '%:')) 
+		then
 		isRegExp=true
 	end
 
@@ -1264,11 +1266,13 @@ function os.vi_remote(filename, line)
 			os.execute(vimpath..' --servername '..servername..' --remote "'..filename..'"')
 		end
 	else
+		local vis=vimpath..' --servername VIM '
+		if os.isCygwin() then vis=vimpath end
 		-- launch vim
 		if line then
-			os.execute(vimpath..' --servername VIM +'..line..' "'..filename..'"')
+			os.execute(vis..' +'..line..' "'..filename..'"')
 		else
-			os.execute(vimpath..' --servername VIM "'..filename..'"')
+			os.execute(vis..' '..filename..'"')
 		end
 	end
 end
