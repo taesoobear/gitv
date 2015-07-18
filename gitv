@@ -238,7 +238,9 @@ function git_tools.searchTag(filename, searchKey)
 	local tags={}
 	local MAX_SEARCH=100000
 	local isRegExp=false
-	if select(1,string.find(searchKey, '%.')) then
+	if select(1,string.find(searchKey, '%.')) 
+		or select(1,string.find(searchKey, '%:')) 
+		then
 		isRegExp=true
 	end
 
@@ -438,7 +440,15 @@ function git_tools.getFilesToCommit(path)
 			local output='modified: '
 			local s,e,c=string.find(line, '#%s+modified:%s+(.+)')
 			if not c then
+				s,e,c=string.find(line, '%s+modified:%s+(.+)')
+				output='new file: '
+			end
+			if not c then
 				s,e,c=string.find(line, '#%s+new file:%s+(.+)')
+				output='new file: '
+			end
+			if not c then
+				s,e,c=string.find(line, '%s+new file:%s+(.+)')
 				output='new file: '
 			end
 			if not c then
@@ -446,11 +456,23 @@ function git_tools.getFilesToCommit(path)
 				output='renamed: '
 			end
 			if not c then
+				s,e,c=string.find(line, '%s+renamed:%s+(.+)')
+				output='renamed: '
+			end
+			if not c then
 				s,e,c=string.find(line, '#%s+both modified:%s+(.+)')
 				output='both modified: '
 			end
 			if not c then
+				s,e,c=string.find(line, '%s+both modified:%s+(.+)')
+				output='both modified: '
+			end
+			if not c then
 				s,e,c=string.find(line, '#%s+both added:%s+(.+)')
+				output='both added: '
+			end
+			if not c then
+				s,e,c=string.find(line, '%s+both added:%s+(.+)')
 				output='both added: '
 			end
 			if not c then
@@ -479,7 +501,7 @@ function git_tools.commit(path,force)
 			print('----------------------------------')
 			for i,v in ipairs(untracked) do print(v) end
 			print('----------------------------------')
-			print('Do you want to add these untracked files to git repository? Press enter if you are not sure. (YES/edit/[no]/ignore)')
+			print('Do you want to add these untracked files to git repository? Press enter if you are not sure. ([no]/edit/ignore/YES)')
 			local cmd=''
 			for i, v in ipairs(untracked) do 
 				cmd=cmd.. git()..' add "'..v..'"\n'
@@ -1244,11 +1266,13 @@ function os.vi_remote(filename, line)
 			os.execute(vimpath..' --servername '..servername..' --remote "'..filename..'"')
 		end
 	else
+		local vis=vimpath..' --servername VIM '
+		if os.isCygwin() then vis=vimpath end
 		-- launch vim
 		if line then
-			os.execute(vimpath..' --servername VIM +'..line..' "'..filename..'"')
+			os.execute(vis..' +'..line..' "'..filename..'"')
 		else
-			os.execute(vimpath..' --servername VIM "'..filename..'"')
+			os.execute(vis..' '..filename..'"')
 		end
 	end
 end
