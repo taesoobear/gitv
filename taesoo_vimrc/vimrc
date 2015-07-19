@@ -42,7 +42,13 @@ colorscheme 256-jungle
 "colorscheme linux
 "colorscheme torte
 "colorscheme jellybeans
-set guifont=Monospace\ 13
+set guifont=Monospace\ 11
+
+if has("gui_running")
+	let hangeul_enabled = 1
+	imap <silent> <S-Space> <Plug>HanMode
+	colorscheme Monokai
+end
 
 set ignorecase
 set clipboard=unnamed 

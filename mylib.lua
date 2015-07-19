@@ -2423,6 +2423,14 @@ function util.grepFile(fn, pattern, prefix,useLuaPattern, printFunc)
 	}
 	prefix=prefix or ""
 	pattern=string.lower(pattern)
+	do
+		local s,i= string.find(pattern, '"')
+		local s2,i= string.find(pattern, "'")
+		if s2 and not s then
+			local pattern2=string.gsub(pattern, "'", '"')
+			util.grepFile(fn, pattern2, prefix, useLuaPattern, printFunc)
+		end
+	end
 	local fin, msg=io.open(fn, "r")
 	if fin==nil then
 		print(msg)
