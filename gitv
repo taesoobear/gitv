@@ -1100,7 +1100,7 @@ local function serverWithFileOpened(serverlist, fn)
 			return allOpened
 		end
 	end
-	return nil 
+	return {} 
 end
 function makeEditable(servername, fullfn)
 	-- 1. select the buffer 
@@ -1203,7 +1203,7 @@ function os.gvim_remote(servername, filename)
 	]]--
 	local fullfn=os.relativeToAbsolutePath(filename)
 	makeReadOnlyAll(otherServers, fullfn)
-	if #thisServer>0 and #serverWithFileOpened(thisServer, fullfn)>0 then
+	if thisServer and #thisServer>0 and #serverWithFileOpened(thisServer, fullfn)>0 then
 		-- already open on this server so just choose
 		makeEditable(servername, fullfn)
 	else
@@ -1429,7 +1429,7 @@ function main(...)
 	elseif arg[1]=="gvimr" then
 		local servername=arg[2]
 		local keys=array.sub(arg,3)
-		if keys[1]==nil then printHelp() return end
+		--if keys[1]==nil then printHelp() return end
 		local chosen=chooseFile(keys)
 		if chosen then
 			os.gvim_remote(servername, chosen[1])
