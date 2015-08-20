@@ -69,7 +69,7 @@ function! BufSelTag(pattern)
 		silent execute "!clear"
 		silent execute "!gitv tschoose ".a:pattern
 	endif
-	if filereadable('/tmp/gitv_script')
+	if filereadable('/tmp/gitv_script') || filereadable('c:/cygwin/tmp/gitv_script')
 		exec system('cat /tmp/gitv_script')
 		call system('rm /tmp/gitv_script')
 	end
