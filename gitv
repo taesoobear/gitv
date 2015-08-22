@@ -15,7 +15,9 @@ g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
 g_vimSrc={"%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
-g_cache_folder='/tmp/'
+--g_cache_folder='/tmp/'
+g_cache_folder=os.home_path()..'/.config/'
+g_tmp_folder='/tmp/'
 g_vimpath='vim'
 g_gvimpath='gvim'
 g_ctags='ctags'
@@ -662,20 +664,17 @@ function interactiveChoose(fn, fromHistory)
 	local history, hcache=loadHistory(currDir)
 	if #fn==0 then
 		if keys then
-			for i=1,#g_tagFallbackPath do
-				local path=git_top()..'/'..g_tagFallbackPath [i]
-				if os.isFileExist(path) then
-					local keys={'-g', unpack(table.isubset(arg,2))}
-					fn=nonInteractiveChoose(keys, path)
-					if #fn>0 then break end
-				end
-			end
+			fn=chooseFileFromTagFallbackPath()
 		end
 
 		if #fn==0 then
 			print('Choose from History:')
 			fn=history
-			hcache._list=fn
+			if fn[2] then
+				local temp=fn[1]
+				fn[1]=fn[2] fn[2]=temp
+				hcache._list=fn
+			end
 		end
 	end
 	-- reorder fn based on history
@@ -1020,8 +1019,37 @@ function chooseFolder(keys)
 	end
 	return fn[index]
 end
+function chooseFileFromTagFallbackPath()
+	local fn
+	for i=1,#g_tagFallbackPath do
+		local path=os.relativeToAbsolutePath(g_tagFallbackPath [i], git_top())
+		if os.isFileExist(path) then
+			local keys={'-g', unpack(table.isubset(arg,2))}
+			fn=nonInteractiveChoose(keys, path)
+			if #fn>0 then break end
+		end
+	end
+	return fn
+end
 function chooseFile(keys)
-	local fn=nonInteractiveChoose(keys)
+	local fn
+	if #keys==0 then
+		-- choose from history
+		return interactiveChoose({})
+	elseif #keys==1 then 
+		local keys1=string.sub(keys[1],1,1)
+		if keys1=='.' or keys1=='~' or keys1=='/' then
+			if os.isFileExist(keys[1]) then
+				fn={keys}
+			end
+		end
+	end
+	if not fn then
+		fn=nonInteractiveChoose(keys)
+	end
+	if #fn==0 and keys then
+		fn=chooseFileFromTagFallbackPath()
+	end
 	local chosen=interactiveChoose(fn)
 	return chosen
 end
@@ -1394,7 +1422,7 @@ function main(...)
 	elseif arg[1]=="tschoose" then
 		local chosen=git_tools.tagChoose(arg[2])
 		if chosen then
-			util.writeFile(g_cache_folder..'gitv_script', 
+			util.writeFile(g_tmp_folder..'gitv_script', 
 			'edit '..chosen[3]..'\n:' ..tostring(chosen[4]))
 		else
 			local key=string.gsub(arg[2],"%$", "")
@@ -1402,7 +1430,7 @@ function main(...)
 			print("Tags "..key.." not found. Fallback to the file chooser!")
 			local chosen=chooseFile({ key})
 			if chosen then
-				util.writeFile(g_cache_folder..'gitv_script', 
+				util.writeFile(g_tmp_folder..'gitv_script', 
 				'edit '..chosen[1]..'\n:1')
 			end
 		end
@@ -1442,7 +1470,7 @@ function main(...)
 		local keys=array.sub(arg,2)
 		local chosen=chooseFile(keys)
 		if chosen then
-			util.writeFile(g_cache_folder..'gitv_script', 'edit '..chosen[1])
+			util.writeFile(g_tmp_folder..'gitv_script', 'edit '..chosen[1])
 		end
 	elseif arg[1]=="listFolder" then
 		local keys=array.sub(arg,2)
@@ -1461,18 +1489,18 @@ function main(...)
 		local chosen=chooseFile(keys)
 		if chosen then
 			local fn, path=os.processFileName(chosen[1])
-			util.writeFile(g_cache_folder..'gitv_chosen', path)
+			util.writeFile(g_tmp_folder..'gitv_chosen', path)
 		else
-			util.writeFile(g_cache_folder..'gitv_chosen', '.')
+			util.writeFile(g_tmp_folder..'gitv_chosen', '.')
 		end
 	elseif arg[1]=="chooseFolder2" then
 		local keys=array.sub(arg,2)
 		local chosen=chooseFolder(keys)
 		if chosen then
 			local t=string.gsub(chosen,'~', os.home_path())
-			util.writeFile(g_cache_folder..'gitv_chosen', t)
+			util.writeFile(g_tmp_folder..'gitv_chosen', t)
 		else
-			util.writeFile(g_cache_folder..'gitv_chosen', '.')
+			util.writeFile(g_tmp_folder..'gitv_chosen', '.')
 		end
 	elseif arg[1]=="chooser" then
 		local servername=arg[2]
@@ -1491,7 +1519,7 @@ function main(...)
 			thisServer[#thisServer]=nil
 			local fullfn=os.relativeToAbsolutePath(chosen[1])
 			makeReadOnlyAll(otherServers, fullfn)
-			util.writeFile(g_cache_folder..'gitv_script', 'edit '..chosen[1]..
+			util.writeFile(g_tmp_folder..'gitv_script', 'edit '..chosen[1]..
 			'\n:setlocal noreadonly\n:setlocal modifiable\n:setlocal noautoread')
 		end
 	elseif arg[1]=='find' then
