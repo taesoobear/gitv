@@ -120,7 +120,8 @@ nmap <C-d> :q<CR>
 " in terminal, works only when "stty -ixon" is defined in .bashrc
 nmap <C-s> :w<CR>
 imap <C-s> <ESC>:w<CR>
-nmap <C-tab> :Bs.<CR>
+"nmap <C-tab> :Bs.<CR>
+nmap <C-tab> :Bg<CR>
 "nmap <C-y> :!stdbuf -i0 -o0 make run<CR>
 nmap <C-n> :bn<CR>
 nmap <C-p> :bp<CR>
