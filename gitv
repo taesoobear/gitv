@@ -1051,6 +1051,10 @@ function chooseFile(keys)
 		fn=chooseFileFromTagFallbackPath()
 	end
 	local chosen=interactiveChoose(fn)
+
+	if os.isWindows() and chosen then
+		chosen[1]=os.absoluteToRelativePath(chosen[1])
+	end
 	return chosen
 end
 function nonInteractiveChoose(keys, path)
