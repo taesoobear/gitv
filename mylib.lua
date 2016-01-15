@@ -2026,7 +2026,13 @@ function os.absoluteToRelativePath(folder, currDir) -- param1: folder or file na
 		str=str.."../"
 	end
 	--print(n_ddot, currDir)
-	str=str..string.sub(folder,#currDir+2)
+	if currDir..'/' == string.sub(folder, 1,#currDir+1) then
+		str=str..string.sub(folder,#currDir+2)
+	else
+		assert(n_ddot==0)
+		currDir=os.parentDir(currDir)
+		str=str.."../"..string.sub(folder,#currDir+2)
+	end
 	return string.trimSpaces(str)
 end
 
