@@ -2032,7 +2032,7 @@ end
 
 function os.currentDirectory()
 	if os.isUnix() then
-		return os.capture('pwd')
+		return os.capture('pwd -P')
 	else
 		return os.fromWindowsFileName(os.capture('cd'))
 	end
