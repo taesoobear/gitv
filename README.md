@@ -1,5 +1,4 @@
 # gitv
-Automatically exported from code.google.com/p/gitv
 gitv: vim file chooser, and TAGS generator
 Gitv is a tool that extends git's functionality. Gitv is for those who use vim (or gvim) and etags. The gitv's main feature is its file chooser: it opens any source file in a git repository using vim like this:
 
