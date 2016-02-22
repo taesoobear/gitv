@@ -2026,19 +2026,13 @@ function os.absoluteToRelativePath(folder, currDir) -- param1: folder or file na
 		str=str.."../"
 	end
 	--print(n_ddot, currDir)
-	if currDir..'/' == string.sub(folder, 1,#currDir+1) then
-		str=str..string.sub(folder,#currDir+2)
-	else
-		assert(n_ddot==0)
-		currDir=os.parentDir(currDir)
-		str=str.."../"..string.sub(folder,#currDir+2)
-	end
+	str=str..string.sub(folder,#currDir+2)
 	return string.trimSpaces(str)
 end
 
 function os.currentDirectory()
 	if os.isUnix() then
-		return os.capture('pwd -P')
+		return os.capture('pwd')
 	else
 		return os.fromWindowsFileName(os.capture('cd'))
 	end
@@ -2395,7 +2389,7 @@ function os.shellEscape(str)
 	else
 		str=string.gsub(str, '\\', '\\\\')
 		str=string.gsub(str, '"', '^"')
-		str=string.gsub(str, '%$', '\$')
+		str=string.gsub(str, '%$', '\\$')
 	end
 	return str
 end

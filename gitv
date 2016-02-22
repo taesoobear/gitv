@@ -6,7 +6,11 @@ if isWin then
 else
 	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
 end
-require("mylib")
+if _VERSION=='Lua 5.2' then
+	require("mylib52")
+else
+	require("mylib")
+end
  
 -- order doesn't matter
 g_etagsSrc={ "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
@@ -1864,7 +1868,7 @@ function main(...)
 	elseif arg[1]=='ls' then
 		local files=lsFiles()
 		for i,f in ipairs(files) do print (f) end
-	elseif arg[1]=='clear-hist' then
+	elseif arg[1]=='clear-hist' or arg[1]=='clear' then
 		os.deleteFiles(g_cache_folder..'cache_hist.txt')
 		os.deleteFiles(git_top()..'/TAGS')
 	elseif arg[1]=='cmd' then
