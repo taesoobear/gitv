@@ -24,6 +24,7 @@ Bundle 'flazz/vim-colorschemes'
 Bundle 'altercation/vim-colors-solarized'
 Bundle 'ColorSchemeMenuMaker'
 Bundle 'desert-warm-256'
+Bundle 'gabrielelana/vim-markdown'
 
 syntax on
 source $VIMRUNTIME/vimrc_example.vim
