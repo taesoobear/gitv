@@ -117,7 +117,7 @@ map q; q:
 imap <C-c> <ESC>
 nmap <C-e> $
 " for page up and down, use C-f and C-u instead of C-d.
-nmap <C-d> :q<CR>
+nmap <C-d> :mks! __session<CR>:qa<CR>
 " in terminal, works only when "stty -ixon" is defined in .bashrc
 nmap <C-s> :w<CR>
 imap <C-s> <ESC>:w<CR>
