@@ -507,7 +507,7 @@ function git_tools.commit(path,force)
 			print('----------------------------------')
 			for i,v in ipairs(untracked) do print(v) end
 			print('----------------------------------')
-			print('Do you want to add these untracked files to git repository? Press enter if you are not sure. ([no]/edit/ignore/YES)')
+			print('Do you want to add these untracked files to git repository? Press enter if you are not sure. ([no]/ignore/EDIT_../YES_I_AM_100%_SURE)')
 			local cmd=''
 			for i, v in ipairs(untracked) do 
 				cmd=cmd.. git()..' add "'..v..'"\n'
@@ -518,10 +518,10 @@ function git_tools.commit(path,force)
 			else
 				ioread=io.read('*line')
 			end
-			if string.sub(ioread,1,3)=="YES" then
+			if string.sub(ioread,1,8)=="YES_I_AM" then
 				os.execute2('cd "'..path..'"', cmd)
 				print('\n Added '..#untracked..' files')
-			elseif string.sub(ioread,1,4)=="edit" then
+			elseif string.sub(ioread,1,9)=="EDIT_I_AM" then
 				os.createBatchFile("gitscript.bat", {'cd "'..path..'"',cmd})
 				os.execute2('vim gitscript.bat')
 				if os.isUnix() then
@@ -552,15 +552,22 @@ function git_tools.commit(path,force)
 			local bDone
 			repeat
 				bDone=true
-				print('Do you want to commit these files to git repository? (yes/[no]/diff optionally followed by a commit message)')
+				print('Do you want to commit these files to git repository? (yes/[no]/diff)')
 				local ioread
 				if force then
-					ioread='yes'..table.concat(array.sub(arg, 2), " ")
+					ioread='yes'
 				else
 					ioread=io.read('*line')
 				end
 				if string.sub(ioread,1,3)=="yes" or string.sub(ioread,1,1)=='y' then
-					local msg=string.sub(ioread,4)
+					local msg
+					if force then
+						msg=table.concat(array.sub(arg, 2), " ")
+					else
+						print("Enter a commit message (press enter to skip).")
+						msg=io.read('*line')
+					end
+
 					if msg=='' then
 						msg='(no msg)'
 					end
@@ -631,6 +638,9 @@ function getHashTbl(list, conversionFcn)
 	end
 
 	local hcache={}
+	if not list then
+		list={}
+	end
 	for i,v in ipairs(list) do
 		hcache[conversionFcn(v)]=true
 	end
@@ -666,12 +676,12 @@ function interactiveChoose(fn, fromHistory)
 	end
 	local currDir=os.currentDirectory()
 	local history, hcache=loadHistory(currDir)
-	if #fn==0 then
+	if not fn or #fn==0 then
 		if keys then
 			fn=chooseFileFromTagFallbackPath()
 		end
 
-		if #fn==0 then
+		if not fn or #fn==0 then
 			print('Choose from History:')
 			fn=history
 			if fn[2] then
@@ -1687,14 +1697,15 @@ function main(...)
 				local bDone
 				repeat
 					bDone=true
-					print("Do you want to commit these files to git repository? ([yes]/no/diff optionally followed by a commit message)")
+					print("Do you want to commit these files to git repository? ([yes]/no/diff)")
 					ioread=io.read('*line')
 					if string.lower(string.sub(ioread, 1,2))=='no' then
 					elseif string.lower(string.sub(ioread,1,1))=='d' then
 						git_tools.execute(git()..' diff .')
 						bDone=false
 					else
-						local msg=string.sub(ioread,4)
+						print("Enter a commit message (press enter to skip).")
+						msg=io.read('*line')
 						if msg=='' then
 							msg='(no msg)'
 						end
