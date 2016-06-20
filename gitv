@@ -1668,93 +1668,43 @@ function main(...)
 			os.execute('nautilus ~/PDF')
 		end
 	elseif arg[1]=='sync' then
-		if arg[2]=='.' then
-			local untracked=git_tools.getUntracked('.')
-			local filter=function(files)
-				local filtered={}
-				for i,v in ipairs(files) do
-					if select(1,string.find(v, '/')==nil) then
-						table.insert(filtered, v)
-					end
-				end
-				return filtered
-			end
-			local untracked_local=filter(untracked)
-			if #untracked_local>0 then
-				printTable(untracked_local)
-				print("Do you want to add these untracked files to git repository? ([yes]/no)")
-				ioread=io.read('*line')
-				if string.lower(ioread)~='no' then
-					for i,v in ipairs(untracked_local) do
-						os.execute(git()..' add "'..v..'"')
-					end
-					print(msg)
-				end
-			end
-			local modified=filter(git_tools.getFilesToCommit('.'))
-			if #modified>0 then
-				printTable(modified)
-				local bDone
-				repeat
-					bDone=true
-					print("Do you want to commit these files to git repository? ([yes]/no/diff)")
-					ioread=io.read('*line')
-					if string.lower(string.sub(ioread, 1,2))=='no' then
-					elseif string.lower(string.sub(ioread,1,1))=='d' then
-						git_tools.execute(git()..' diff .')
-						bDone=false
-					else
-						print("Enter a commit message (press enter to use the default).")
-						msg=io.read('*line')
-						if msg=='' then
-							msg='(no msg)'
-						end
-						for im, m in ipairs(modified) do
-							git_tools.execute(git()..' add "'..m..'"')
-						end
-						git_tools.execute(git()..' commit -m "'..msg..'"')
-					end
-				until bDone 
-			end
-			print("------------------------")
-			print("Pull:")
-			print("------------------------")
-			git_tools.pull(git_top())
-			print("------------------------")
-			print("Push:")
-			print("------------------------")
-			git_tools.push(git_top())
-		else
-			local password
-			if arg[2]=='-p' then
-				print("Input password:")
-				function getch_unix()
-					os.execute("stty cbreak </dev/tty >/dev/tty 2>&1")
-					local key = io.read(1)
-					os.execute("stty -cbreak </dev/tty >/dev/tty 2>&1");
-					return(key);      
-				end 
-				password=''
-				while true do
-					local c=getch_unix()
-					if c =='\n' then
-						break
-					else
-						password=password..c
-						io.write('\r')
-					end
+		local password
+		if arg[2]=='-p' then
+			print("Input password:")
+			function getch_unix()
+				os.execute("stty cbreak </dev/tty >/dev/tty 2>&1")
+				local key = io.read(1)
+				os.execute("stty -cbreak </dev/tty >/dev/tty 2>&1");
+				return(key);      
+			end 
+			password=''
+			while true do
+				local c=getch_unix()
+				if c =='\n' then
+					break
+				else
+					password=password..c
+					io.write('\r')
 				end
 			end
 			print("------------------------")
 			print("Commit:")
 			git_tools.commit(git_top())
+		elseif arg[2]=='.' then
 			print("------------------------")
-			print("Pull:")
-			git_tools.pull(git_top(),password)
+			print("Commit:")
+			git_tools.commit('.')
+		else
 			print("------------------------")
-			print("Push:")
-			git_tools.push(git_top(),password)
+			print("Commit:")
+			git_tools.commit(git_top())
 		end
+		print("------------------------")
+		print("Pull:")
+		git_tools.pull(git_top(),password)
+		print("------------------------")
+		print("Push:")
+		git_tools.push(git_top(),password)
 	elseif arg[1]=='pull' then
 		git_tools.pull(git_top())
 	elseif arg[1]=='push' then
