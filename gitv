@@ -507,7 +507,7 @@ function git_tools.commit(path,force)
 			print('----------------------------------')
 			for i,v in ipairs(untracked) do print(v) end
 			print('----------------------------------')
-			print('Do you want to add these untracked files to git repository? Press enter if you are not sure. ([no]/ignore/EDIT_../YES_I_AM_100%_SURE)')
+			print('Do you want to add these untracked files to git repository? Press enter if you are not sure. ([no]/ignore/EDIT!!!/YES!!!)')
 			local cmd=''
 			for i, v in ipairs(untracked) do 
 				cmd=cmd.. git()..' add "'..v..'"\n'
@@ -518,10 +518,10 @@ function git_tools.commit(path,force)
 			else
 				ioread=io.read('*line')
 			end
-			if string.sub(ioread,1,8)=="YES_I_AM" then
+			if string.sub(ioread,1,6)=="YES!!!" then
 				os.execute2('cd "'..path..'"', cmd)
 				print('\n Added '..#untracked..' files')
-			elseif string.sub(ioread,1,9)=="EDIT_I_AM" then
+			elseif string.sub(ioread,1,7)=="EDIT!!!" then
 				os.createBatchFile("gitscript.bat", {'cd "'..path..'"',cmd})
 				os.execute2('vim gitscript.bat')
 				if os.isUnix() then
