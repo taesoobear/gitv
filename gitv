@@ -497,7 +497,7 @@ function git_tools.getFilesToCommit(path)
 		return modified
 end
 function git_tools.commit(path,force)
-	if os.isFileExist(path..'/.git/HEAD') then
+	if os.isFileExist(git_top()..'/.git/HEAD') then
 		if hookBeforeCommit then
 			hookBeforeCommit(arg)
 		end
@@ -1766,9 +1766,17 @@ function main(...)
 		print('> git stash save; git stash apply')
 		os.execute2(git()..' stash save', git() .. ' stash apply')
 	elseif arg[1]=='commit' or arg[1]=='ci' then
-		git_tools.commit(git_top())
+		if arg[2]=='.' then
+			git_tools.commit('.')
+		else
+			git_tools.commit(git_top())
+		end
 	elseif arg[1]=='cif' then
-		git_tools.commit(git_top(), true)
+		if arg[2]=='.' then
+			git_tools.commit('.', true)
+		else
+			git_tools.commit(git_top(), true)
+		end
 	elseif arg[1]=='undo-commit' then
 		print("Do not undo commit if you pushed your last commit!")
 		print("Are you sure? (yes/[no])")
