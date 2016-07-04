@@ -864,6 +864,16 @@ function interactiveTagChoose(fn, inputs)
 					if idx~=nil then array.pushBack(refinedFn, v) end
 				end
 			end
+
+			if #refinedFn==0 then
+				print('"'..cmd..'" not found in class/function names. Searching file names...')
+				for i,v in ipairs(fn) do
+					local idx=string.find(string.lower(v[3]), string.lower(cmd))
+					if idx~=nil then
+						array.pushBack(refinedFn, v)
+					end
+				end
+			end
 			fn=refinedFn
 			index=1
 			if #fn==0 then return nil end
