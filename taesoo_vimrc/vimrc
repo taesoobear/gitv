@@ -39,10 +39,10 @@ let g:vimwiki_file_exts='pdf,chm'
 """""""""""""""""""""""""""""""""""""""""""""
 set t_Co=256
 "colorscheme pyte
-colorscheme 256-jungle
+"colorscheme 256-jungle
 "colorscheme linux
 "colorscheme torte
-"colorscheme jellybeans
+colorscheme jellybeans
 set guifont=Monospace\ 11
 
 if has("gui_running")
