@@ -6,16 +6,22 @@ if isWin then
 else
 	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
 end
-require("mylib")
+if _VERSION=='Lua 5.2' then
+	require("mylib52")
+else
+	require("mylib")
+end
  
 -- order doesn't matter
 g_etagsSrc={ "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
 g_customEtagsSrc={"%.lua$"}
 g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
-g_vimSrc={"%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={"%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
-g_cache_folder='/tmp/'
+--g_cache_folder='/tmp/'
+g_cache_folder=os.home_path()..'/.config/'
+g_tmp_folder='/tmp/'
 g_vimpath='vim'
 g_gvimpath='gvim'
 g_ctags='ctags'
@@ -491,7 +497,7 @@ function git_tools.getFilesToCommit(path)
 		return modified
 end
 function git_tools.commit(path,force)
-	if os.isFileExist(path..'/.git/HEAD') then
+	if os.isFileExist(git_top()..'/.git/HEAD') then
 		if hookBeforeCommit then
 			hookBeforeCommit(arg)
 		end
@@ -501,7 +507,7 @@ function git_tools.commit(path,force)
 			print('----------------------------------')
 			for i,v in ipairs(untracked) do print(v) end
 			print('----------------------------------')
-			print('Do you want to add these untracked files to git repository? Press enter if you are not sure. ([no]/edit/ignore/YES)')
+			print('Do you want to add these untracked files to git repository? Press enter if you are not sure. ([no]/ignore/EDIT!!!/YES!!!)')
 			local cmd=''
 			for i, v in ipairs(untracked) do 
 				cmd=cmd.. git()..' add "'..v..'"\n'
@@ -512,10 +518,10 @@ function git_tools.commit(path,force)
 			else
 				ioread=io.read('*line')
 			end
-			if string.sub(ioread,1,3)=="YES" then
+			if string.sub(ioread,1,6)=="YES!!!" then
 				os.execute2('cd "'..path..'"', cmd)
 				print('\n Added '..#untracked..' files')
-			elseif string.sub(ioread,1,4)=="edit" then
+			elseif string.sub(ioread,1,7)=="EDIT!!!" then
 				os.createBatchFile("gitscript.bat", {'cd "'..path..'"',cmd})
 				os.execute2('vim gitscript.bat')
 				if os.isUnix() then
@@ -523,7 +529,7 @@ function git_tools.commit(path,force)
 				else
 					os.execute('gitscript')
 				end
-				os.deleteFiles('gitscript')
+				os.deleteFiles('gitscript.bat')
 			elseif string.sub(ioread, 1,6)=='ignore' then
 				local files=table.concat(untracked, '\n')
 				local gitignore=''	
@@ -546,15 +552,22 @@ function git_tools.commit(path,force)
 			local bDone
 			repeat
 				bDone=true
-				print('Do you want to commit these files to git repository? (yes/[no]/diff optionally followed by a commit message)')
+				print('Do you want to commit these files to git repository? (yes/[no]/diff)')
 				local ioread
 				if force then
-					ioread='yes'..table.concat(array.sub(arg, 2), " ")
+					ioread='yes'
 				else
 					ioread=io.read('*line')
 				end
 				if string.sub(ioread,1,3)=="yes" or string.sub(ioread,1,1)=='y' then
-					local msg=string.sub(ioread,4)
+					local msg
+					if force then
+						msg=table.concat(array.sub(arg, 2), " ")
+					else
+						print("Enter a commit message (press enter to use the default).")
+						msg=io.read('*line')
+					end
+
 					if msg=='' then
 						msg='(no msg)'
 					end
@@ -625,6 +638,9 @@ function getHashTbl(list, conversionFcn)
 	end
 
 	local hcache={}
+	if not list then
+		list={}
+	end
 	for i,v in ipairs(list) do
 		hcache[conversionFcn(v)]=true
 	end
@@ -660,22 +676,19 @@ function interactiveChoose(fn, fromHistory)
 	end
 	local currDir=os.currentDirectory()
 	local history, hcache=loadHistory(currDir)
-	if #fn==0 then
+	if not fn or #fn==0 then
 		if keys then
-			for i=1,#g_tagFallbackPath do
-				local path=git_top()..'/'..g_tagFallbackPath [i]
-				if os.isFileExist(path) then
-					local keys={'-g', unpack(table.isubset(arg,2))}
-					fn=nonInteractiveChoose(keys, path)
-					if #fn>0 then break end
-				end
-			end
+			fn=chooseFileFromTagFallbackPath()
 		end
 
-		if #fn==0 then
+		if not fn or #fn==0 then
 			print('Choose from History:')
 			fn=history
-			hcache._list=fn
+			if fn[2] then
+				local temp=fn[1]
+				fn[1]=fn[2] fn[2]=temp
+				hcache._list=fn
+			end
 		end
 	end
 	-- reorder fn based on history
@@ -851,6 +864,16 @@ function interactiveTagChoose(fn, inputs)
 					if idx~=nil then array.pushBack(refinedFn, v) end
 				end
 			end
+
+			if #refinedFn==0 then
+				print('"'..cmd..'" not found in class/function names. Searching file names...')
+				for i,v in ipairs(fn) do
+					local idx=string.find(string.lower(v[3]), string.lower(cmd))
+					if idx~=nil then
+						array.pushBack(refinedFn, v)
+					end
+				end
+			end
 			fn=refinedFn
 			index=1
 			if #fn==0 then return nil end
@@ -1020,9 +1043,42 @@ function chooseFolder(keys)
 	end
 	return fn[index]
 end
+function chooseFileFromTagFallbackPath()
+	local fn
+	for i=1,#g_tagFallbackPath do
+		local path=os.relativeToAbsolutePath(g_tagFallbackPath [i], git_top())
+		if os.isFileExist(path) then
+			local keys={'-g', unpack(table.isubset(arg,2))}
+			fn=nonInteractiveChoose(keys, path)
+			if #fn>0 then break end
+		end
+	end
+	return fn
+end
 function chooseFile(keys)
-	local fn=nonInteractiveChoose(keys)
+	local fn
+	if #keys==0 then
+		-- choose from history
+		return interactiveChoose({})
+	elseif #keys==1 then 
+		local keys1=string.sub(keys[1],1,1)
+		if keys1=='.' or keys1=='~' or keys1=='/' then
+			if os.isFileExist(keys[1]) then
+				fn={keys}
+			end
+		end
+	end
+	if not fn then
+		fn=nonInteractiveChoose(keys)
+	end
+	if #fn==0 and keys then
+		fn=chooseFileFromTagFallbackPath()
+	end
 	local chosen=interactiveChoose(fn)
+
+	if os.isWindows() and chosen then
+		chosen[1]=os.absoluteToRelativePath(chosen[1])
+	end
 	return chosen
 end
 function nonInteractiveChoose(keys, path)
@@ -1394,7 +1450,7 @@ function main(...)
 	elseif arg[1]=="tschoose" then
 		local chosen=git_tools.tagChoose(arg[2])
 		if chosen then
-			util.writeFile(g_cache_folder..'gitv_script', 
+			util.writeFile(g_tmp_folder..'gitv_script', 
 			'edit '..chosen[3]..'\n:' ..tostring(chosen[4]))
 		else
 			local key=string.gsub(arg[2],"%$", "")
@@ -1402,7 +1458,7 @@ function main(...)
 			print("Tags "..key.." not found. Fallback to the file chooser!")
 			local chosen=chooseFile({ key})
 			if chosen then
-				util.writeFile(g_cache_folder..'gitv_script', 
+				util.writeFile(g_tmp_folder..'gitv_script', 
 				'edit '..chosen[1]..'\n:1')
 			end
 		end
@@ -1442,7 +1498,7 @@ function main(...)
 		local keys=array.sub(arg,2)
 		local chosen=chooseFile(keys)
 		if chosen then
-			util.writeFile(g_cache_folder..'gitv_script', 'edit '..chosen[1])
+			util.writeFile(g_tmp_folder..'gitv_script', 'edit '..chosen[1])
 		end
 	elseif arg[1]=="listFolder" then
 		local keys=array.sub(arg,2)
@@ -1461,18 +1517,18 @@ function main(...)
 		local chosen=chooseFile(keys)
 		if chosen then
 			local fn, path=os.processFileName(chosen[1])
-			util.writeFile(g_cache_folder..'gitv_chosen', path)
+			util.writeFile(g_tmp_folder..'gitv_chosen', path)
 		else
-			util.writeFile(g_cache_folder..'gitv_chosen', '.')
+			util.writeFile(g_tmp_folder..'gitv_chosen', '.')
 		end
 	elseif arg[1]=="chooseFolder2" then
 		local keys=array.sub(arg,2)
 		local chosen=chooseFolder(keys)
 		if chosen then
 			local t=string.gsub(chosen,'~', os.home_path())
-			util.writeFile(g_cache_folder..'gitv_chosen', t)
+			util.writeFile(g_tmp_folder..'gitv_chosen', t)
 		else
-			util.writeFile(g_cache_folder..'gitv_chosen', '.')
+			util.writeFile(g_tmp_folder..'gitv_chosen', '.')
 		end
 	elseif arg[1]=="chooser" then
 		local servername=arg[2]
@@ -1491,7 +1547,7 @@ function main(...)
 			thisServer[#thisServer]=nil
 			local fullfn=os.relativeToAbsolutePath(chosen[1])
 			makeReadOnlyAll(otherServers, fullfn)
-			util.writeFile(g_cache_folder..'gitv_script', 'edit '..chosen[1]..
+			util.writeFile(g_tmp_folder..'gitv_script', 'edit '..chosen[1]..
 			'\n:setlocal noreadonly\n:setlocal modifiable\n:setlocal noautoread')
 		end
 	elseif arg[1]=='find' then
@@ -1622,92 +1678,43 @@ function main(...)
 			os.execute('nautilus ~/PDF')
 		end
 	elseif arg[1]=='sync' then
-		if arg[2]=='.' then
-			local untracked=git_tools.getUntracked('.')
-			local filter=function(files)
-				local filtered={}
-				for i,v in ipairs(files) do
-					if select(1,string.find(v, '/')==nil) then
-						table.insert(filtered, v)
-					end
-				end
-				return filtered
-			end
-			local untracked_local=filter(untracked)
-			if #untracked_local>0 then
-				printTable(untracked_local)
-				print("Do you want to add these untracked files to git repository? ([yes]/no)")
-				ioread=io.read('*line')
-				if string.lower(ioread)~='no' then
-					for i,v in ipairs(untracked_local) do
-						os.execute(git()..' add "'..v..'"')
-					end
-					print(msg)
-				end
-			end
-			local modified=filter(git_tools.getFilesToCommit('.'))
-			if #modified>0 then
-				printTable(modified)
-				local bDone
-				repeat
-					bDone=true
-					print("Do you want to commit these files to git repository? ([yes]/no/diff optionally followed by a commit message)")
-					ioread=io.read('*line')
-					if string.lower(string.sub(ioread, 1,2))=='no' then
-					elseif string.lower(string.sub(ioread,1,1))=='d' then
-						git_tools.execute(git()..' diff .')
-						bDone=false
-					else
-						local msg=string.sub(ioread,4)
-						if msg=='' then
-							msg='(no msg)'
-						end
-						for im, m in ipairs(modified) do
-							git_tools.execute(git()..' add "'..m..'"')
-						end
-						git_tools.execute(git()..' commit -m "'..msg..'"')
-					end
-				until bDone 
-			end
-			print("------------------------")
-			print("Pull:")
-			print("------------------------")
-			git_tools.pull(git_top())
-			print("------------------------")
-			print("Push:")
-			print("------------------------")
-			git_tools.push(git_top())
-		else
-			local password
-			if arg[2]=='-p' then
-				print("Input password:")
-				function getch_unix()
-					os.execute("stty cbreak </dev/tty >/dev/tty 2>&1")
-					local key = io.read(1)
-					os.execute("stty -cbreak </dev/tty >/dev/tty 2>&1");
-					return(key);      
-				end 
-				password=''
-				while true do
-					local c=getch_unix()
-					if c =='\n' then
-						break
-					else
-						password=password..c
-						io.write('\r')
-					end
+		local password
+		if arg[2]=='-p' then
+			print("Input password:")
+			function getch_unix()
+				os.execute("stty cbreak </dev/tty >/dev/tty 2>&1")
+				local key = io.read(1)
+				os.execute("stty -cbreak </dev/tty >/dev/tty 2>&1");
+				return(key);      
+			end 
+			password=''
+			while true do
+				local c=getch_unix()
+				if c =='\n' then
+					break
+				else
+					password=password..c
+					io.write('\r')
 				end
 			end
 			print("------------------------")
 			print("Commit:")
 			git_tools.commit(git_top())
+		elseif arg[2]=='.' then
 			print("------------------------")
-			print("Pull:")
-			git_tools.pull(git_top(),password)
+			print("Commit:")
+			git_tools.commit('.')
+		else
 			print("------------------------")
-			print("Push:")
-			git_tools.push(git_top(),password)
+			print("Commit:")
+			git_tools.commit(git_top())
 		end
+		print("------------------------")
+		print("Pull:")
+		git_tools.pull(git_top(),password)
+		print("------------------------")
+		print("Push:")
+		git_tools.push(git_top(),password)
 	elseif arg[1]=='pull' then
 		git_tools.pull(git_top())
 	elseif arg[1]=='push' then
@@ -1719,9 +1726,17 @@ function main(...)
 		print('> git stash save; git stash apply')
 		os.execute2(git()..' stash save', git() .. ' stash apply')
 	elseif arg[1]=='commit' or arg[1]=='ci' then
-		git_tools.commit(git_top())
+		if arg[2]=='.' then
+			git_tools.commit('.')
+		else
+			git_tools.commit(git_top())
+		end
 	elseif arg[1]=='cif' then
-		git_tools.commit(git_top(), true)
+		if arg[2]=='.' then
+			git_tools.commit('.', true)
+		else
+			git_tools.commit(git_top(), true)
+		end
 	elseif arg[1]=='undo-commit' then
 		print("Do not undo commit if you pushed your last commit!")
 		print("Are you sure? (yes/[no])")
@@ -1832,7 +1847,7 @@ function main(...)
 	elseif arg[1]=='ls' then
 		local files=lsFiles()
 		for i,f in ipairs(files) do print (f) end
-	elseif arg[1]=='clear-hist' then
+	elseif arg[1]=='clear-hist' or arg[1]=='clear' then
 		os.deleteFiles(g_cache_folder..'cache_hist.txt')
 		os.deleteFiles(git_top()..'/TAGS')
 	elseif arg[1]=='cmd' then

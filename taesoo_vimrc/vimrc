@@ -24,6 +24,7 @@ Bundle 'flazz/vim-colorschemes'
 Bundle 'altercation/vim-colors-solarized'
 Bundle 'ColorSchemeMenuMaker'
 Bundle 'desert-warm-256'
+Bundle 'gabrielelana/vim-markdown'
 
 syntax on
 source $VIMRUNTIME/vimrc_example.vim
@@ -38,10 +39,10 @@ let g:vimwiki_file_exts='pdf,chm'
 """""""""""""""""""""""""""""""""""""""""""""
 set t_Co=256
 "colorscheme pyte
-colorscheme 256-jungle
+"colorscheme 256-jungle
 "colorscheme linux
 "colorscheme torte
-"colorscheme jellybeans
+colorscheme jellybeans
 set guifont=Monospace\ 11
 
 if has("gui_running")
@@ -116,11 +117,12 @@ map q; q:
 imap <C-c> <ESC>
 nmap <C-e> $
 " for page up and down, use C-f and C-u instead of C-d.
-nmap <C-d> :q<CR>
+nmap <C-d> :mks! __session<CR>:qa<CR>
 " in terminal, works only when "stty -ixon" is defined in .bashrc
 nmap <C-s> :w<CR>
 imap <C-s> <ESC>:w<CR>
-nmap <C-tab> :Bs.<CR>
+"nmap <C-tab> :Bs.<CR>
+nmap <C-tab> :Bg<CR>
 "nmap <C-y> :!stdbuf -i0 -o0 make run<CR>
 nmap <C-n> :bn<CR>
 nmap <C-p> :bp<CR>
