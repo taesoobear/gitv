@@ -13,11 +13,11 @@ else
 end
  
 -- order doesn't matter
-g_etagsSrc={ "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
+g_etagsSrc={"%.f$", "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.cxx", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
 g_customEtagsSrc={"%.lua$"}
 g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
-g_vimSrc={"%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={"%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
 --g_cache_folder='/tmp/'
 g_cache_folder=os.home_path()..'/.config/'
@@ -34,6 +34,9 @@ g_useEmacs=false
 g_useSublime=false
 function isWindows() 
 	return os.isWindows() and not os.isCygwin()
+end
+function getLine()
+	return io.read('*l')
 end
 if isWindows() then
 	-- on some systems, os.execute doesn't work perfectly. so  this is a workaround.
@@ -83,6 +86,11 @@ function unmacro(fn, key)
 	print('-->')
 	printSample(contents)
 	util.writeFile(fn, contents)
+end
+
+function os.executeVerbose(cmd)
+	print(cmd) 
+	os.execute(cmd)
 end
 
 if g_debug then
@@ -180,7 +188,7 @@ function git_top() -- git_root
 	end
 	if cache_git_top=='' then
 		print('Not a git repository. Searching the current folder...')
-		return '.'
+		cache_git_top='.'
 	end
 	return cache_git_top
 end 
@@ -516,7 +524,7 @@ function git_tools.commit(path,force)
 			if force then
 				ioread='no'
 			else
-				ioread=io.read('*line')
+				ioread=getLine()
 			end
 			if string.sub(ioread,1,6)=="YES!!!" then
 				os.execute2('cd "'..path..'"', cmd)
@@ -557,7 +565,7 @@ function git_tools.commit(path,force)
 				if force then
 					ioread='yes'
 				else
-					ioread=io.read('*line')
+					ioread=getLine()
 				end
 				if string.sub(ioread,1,3)=="yes" or string.sub(ioread,1,1)=='y' then
 					local msg
@@ -565,7 +573,7 @@ function git_tools.commit(path,force)
 						msg=table.concat(array.sub(arg, 2), " ")
 					else
 						print("Enter a commit message (press enter to use the default).")
-						msg=io.read('*line')
+						msg=getLine()
 					end
 
 					if msg=='' then
@@ -578,7 +586,7 @@ function git_tools.commit(path,force)
 					if path~="n" then
 						if useGitSVN then
 							print('Do you want to commit these files to SVN server? (yes/no)')
-							local ioread=io.read('*line')
+							local ioread=getLine()
 							if string.sub(ioread,1,3)=='yes' then
 								os.execute('cd "'..path..'";git svn dcommit')
 							end
@@ -601,7 +609,7 @@ function git_tools.commit(path,force)
 			if useGitSVN then
 				os.execute('cd "'..path..'";git diff refs/remotes/git-svn')
 				print('Do you want to commit to SVN server? (yes/no)')
-				local ioread=io.read('*line')
+				local ioread=getLine()
 				if string.sub(ioread,1,3)=='yes' then
 					os.execute('cd "'..path..'";git svn dcommit')
 				end
@@ -732,7 +740,7 @@ function interactiveChoose(fn, fromHistory)
 			end
 		end
 		print('Enter file shortcut (shown on the right) or keyword to further refine the search:')
-		local cmd=io.read('*line')
+		local cmd=getLine()
 		index=tonumber(cmd) 
 
 		if cmd=="" then 
@@ -778,7 +786,7 @@ end
 function interactiveTagChoose(fn, inputs)
 	local index=1
 	local print=print
-	local getInput=function() return io.read('*line') end
+	local getInput=getLine
 	local _currentInput=0
 
 	if inputs then 
@@ -913,14 +921,14 @@ end
 function lsFiles(option, path)
 	path=path or git_top()
 	local cpt
-	if cache_git_top=='' then
+	if cache_git_top=='.' then
 		--cpt=os.capture(git()..' ls-files .', true)
 		if os.isApple() then
 			cpt={}
 		else
 			cpt=os.glob('*',true,true)
 		end
-		printTable(cpt)
+		--printTable(cpt)
 	elseif option=='-l' then	
 		cpt=os.capture(git()..' ls-files .', true)
 	elseif option=='-g' then
@@ -932,6 +940,7 @@ function lsFiles(option, path)
 			option='-g'
 			cpt=os.capture('cd '..git_top()..';git ls-files .', true)
 		end
+		cpt=string.lines(cpt)
 	end
 	return _lsFiles(cpt, option, path)
 end
@@ -994,9 +1003,20 @@ function chooseFolder(keys)
 			end
 		end
 	end
+	if #fn==0 then
+		for ifolder, folder in ipairs(folders) do
+			for ikey,key in ipairs(keys) do
+				local fname=folder
+				if select(1,string.find(string.lower(fname), string.lower(key))) then
+					fn[#fn+1]=folder
+					break
+				end
+			end
+		end
+	end
 	local index=1
 	local print=print
-	local getInput=function() return io.read('*line') end
+	local getInput=getLine
 	local _currentInput=0
 
 	while #fn>1 do
@@ -1043,12 +1063,12 @@ function chooseFolder(keys)
 	end
 	return fn[index]
 end
-function chooseFileFromTagFallbackPath()
+function chooseFileFromTagFallbackPath(keys)
 	local fn
 	for i=1,#g_tagFallbackPath do
 		local path=os.relativeToAbsolutePath(g_tagFallbackPath [i], git_top())
 		if os.isFileExist(path) then
-			local keys={'-g', unpack(table.isubset(arg,2))}
+			local keys={'-g', unpack(keys)}
 			fn=nonInteractiveChoose(keys, path)
 			if #fn>0 then break end
 		end
@@ -1072,7 +1092,7 @@ function chooseFile(keys)
 		fn=nonInteractiveChoose(keys)
 	end
 	if #fn==0 and keys then
-		fn=chooseFileFromTagFallbackPath()
+		fn=chooseFileFromTagFallbackPath(keys)
 	end
 	local chosen=interactiveChoose(fn)
 
@@ -1081,13 +1101,12 @@ function chooseFile(keys)
 	end
 	return chosen
 end
-function nonInteractiveChoose(keys, path)
+function nonInteractiveChoose_process_keys(keys, path)
 	local option
 	if keys[1]=='-l' then
 		option='-l'
 		keys=table.isubset(keys,2)
 	end
-	if #keys==0 then return {} end
 	local useFull=false
 	for ikey,key in ipairs(keys) do
 		if select(1, string.find(key, '/')) then
@@ -1102,6 +1121,14 @@ function nonInteractiveChoose(keys, path)
 		keys=table.isubset(keys,2)
 		useFull=true
 	end
+	return keys, option, useFull
+end
+function nonInteractiveChoose(keys, path)
+	local keys, option,useFull=nonInteractiveChoose_process_keys(keys, path)
+	return _nonInteractiveChoose(keys, path, option, useFull)
+end
+function _nonInteractiveChoose(keys, path, option, useFull)
+	if #keys==0 then return {} end
 	local files=lsFiles(option, path)
 
 	local fn={}
@@ -1384,24 +1411,55 @@ function main(...)
 		dofile(git_top()..'/.gitvconfig')
 	end
 	local arg={...}
-	if arg[1]=="vi" then
+	if arg[1]=='clone_to_server' then
+		clone_to_server()
+	elseif arg[1]=="vi" then
 		local keys=array.sub(arg,2)
 		local chosen=chooseFile(keys)
 		if chosen then
 			os.execute(g_vimpath..' "'..chosen[1]..'"')
 		end
+	elseif arg[1]=='clone_subtree' then
+		local repo=arg[2]
+		local url=arg[3]
+		local path=arg[4]
+		if not url or not repo or not path then
+			print('gitv clone_subtree repo url path')
+			print('e.g. gitv clone_subtree SP_taesoo ssh://taesoo@calab.hanyang.ac.kr:8022/~/taesoo.git courses/SP_taesoo')
+			return 
+		end
+
+		execute2('git init "'..repo..'"',
+		'cd "'..repo..'"',
+		'git remote add origin '..url, 'git config core.sparsecheckout true')
+		execute2(
+		'cd "'..repo..'"',
+		'echo "'..path..'" > .git/info/sparse-checkout',
+		'git pull origin master')
+	elseif arg[1]=="get_subtree" then
+		local repo=arg[2]
+		local url=arg[3]
+		local path=arg[4]
+		if not url or not repo or not path then
+			print('gitv get_subtree repo url path')
+			print('e.g. gitv get_subtree SP_taesoo ssh://taesoo@calab.hanyang.ac.kr:8022/~/taesoo.git courses/SP_taesoo')
+			return 
+		end
+		execute2('mkdir -p "'..repo..'"',
+		'cd "'..repo..'"',
+		'git archive --remote='..url ..' master '..path .. '| tar xvf -')
 	elseif arg[1]=='unzip' then -- iconv after unzip. only for Korean cygwin users.
 		if not os.isCygwin() and not os.isUnix()then
 			print('Error! only for cygwin')
 			return
 		end
 		if not os.isFileExist('/usr/bin/unzip') then
-			print('Error! install unzip and convmv using cygwin setup.exe')
+			print('Error! install unzip and convmv using apt or cygwin setup.exe')
 			return
 		end
 
 		if not os.isFileExist('/usr/bin/convmv') then
-			print('Error! install convmv using cygwin setup.exe')
+			print('Error! install convmv using apt or cygwin setup.exe')
 			return
 		end
 		local fn=arg[2]
@@ -1414,17 +1472,19 @@ function main(...)
 				return
 			end
 		end
-		local unzippath=string.sub(fn, 1,-5)
+		local currDir=os.currentDirectory()
+		local absFn=os.relativeToAbsolutePath(fn)
+		local unzippath=os.filename(string.sub(fn, 1,-5))
 		if os.isFileExist(unzippath) then
 			print('Error! '..unzippath..' exists')
 			return
 		end
 		os.execute('mkdir -p "'..unzippath..'"')
-		os.execute('cd "'..unzippath..'";unzip "../'..fn..'"')
-		os.execute('cd "'..unzippath..'";convmv -r --notest -f cp949 -t utf-8 .')
+		os.execute('cd "'..unzippath..'";unzip -O cp949 "'..absFn..'"')
+		--os.execute('cd "'..unzippath..'";convmv -r --notest -f cp949 -t utf-8 .')
 	elseif arg[1]=='stat' then
 		os.execute('git diff --stat')
-		print('press Enter') io.read('*l')
+		print('press Enter') getLine()
 		os.execute('git status .')
 	elseif arg[1]=="vir" then
 		local keys=array.sub(arg,2)
@@ -1740,7 +1800,7 @@ function main(...)
 	elseif arg[1]=='undo-commit' then
 		print("Do not undo commit if you pushed your last commit!")
 		print("Are you sure? (yes/[no])")
-		ioread=io.read('*line')
+		ioread=getLine()
 		if ioread=='yes' or ioread=='YES' then
 			local cmd='git reset --soft HEAD^'
 			print(cmd)
@@ -1827,6 +1887,13 @@ function main(...)
 			end
 		end
 	elseif arg[1]=='findgrep' then
+		if not arg[2] or not arg[3] then
+			print([[
+  findgrep   Find files and then grep
+               $ gitv findgrep filepattern greppattern
+			   ]])
+			return
+		end
 		print('searching '..arg[3]..' in '..arg[2]..' ...')
 		local files=lsFiles()
 		local filefunc=function(f)
@@ -1834,6 +1901,8 @@ function main(...)
 		end
 		findFile({arg[2]}, filefunc)
 
+	elseif arg[1]=='stop' then
+		os.execute('gitv_stop_server')
 	elseif arg[1]=='fgrep' then
 		print('searching '..arg[2]..'...')
 		local files=lsFiles()
@@ -1883,7 +1952,7 @@ function main(...)
 			print(string.sub(str,1,-2))
 			print('---------------------------------------------------')
 			print('- do you want to see the differences? (yes/[no])')
-			if io.read('*line')=='yes' then
+			if getLine()=='yes' then
 				print('\n\n-------------------git difftool:-------------------')
 				os.execute(git()..' difftool'..added)
 			end
@@ -1953,7 +2022,7 @@ function main(...)
 				print('All files!')
 			end
 			print('Are you sure? (YES/[no])')
-			ioread=io.read('*line')
+			ioread=getLine()
 			if ioread~='YES' then
 				force=false
 			end
@@ -1968,7 +2037,7 @@ function main(...)
 				if output~='' then
 					local trySourceEncodings={
 						--koreans
-						'EUCKR', 'CP949', 'MSCP949', 'ISO-2022-KR',
+						'CP949', 'MSCP949', 'EUCKR', 'ISO-2022-KR',
 					}
 					local autoConv=false
 					for ienc, enc in ipairs(trySourceEncodings) do
@@ -2030,42 +2099,75 @@ end
 if string.sub(arg[0],-4)~='gitv' then
 	return
 end
+clone_to_server=function()
+	local path=arg[2]
+	if arg[2]==nil or not os.isFileExist(path) then
+		print('usage: gitv clone_to_server path')
+		return
+	end
+	if path=='.' or select(1,string.find(path, '/')) then
+		print('usage: git clone_to_server path')
+		print('Warning! path should be a simple name such as "gitv" where gitv is the name of a git repository in the current directory.')
+		return
+	end
+	if string.sub(path, -1,-1)=='/' then
+		path=string.sub(path,1,-2)
+	end
+	local function upload()
+		os.execute('cd '..path..'&& git clone --bare . ../'..path..'.git')
+		print("Enter port number (press enter to skip)")
+		local port=tonumber(getLine())
+		print("Enter server address (example: user1@calab.hanyang.ac.kr)")
+		local addr=getLine()
+		print("Enter subdirectory name (press enter to use the home directory)")
+		local subdir=getLine()
+
+		print('Uploading...')
+
+		local portScp
+		if port then
+			portScp=' -P '..tostring(port)
+			portRemote=':'..tostring(port)
+		else
+			portScp=''
+			portRemote=''
+		end
+
+		if subdir=='' then
+			os.executeVerbose('scp '..portScp..' -r '..path..'.git '..addr..':~/')
+			os.executeVerbose('cd '..path..'&& git remote add origin ssh://'..addr..portRemote..'/~/'..path..'.git')
+			os.executeVerbose('rm -rf '..path..'.git')
+		else
+			os.executeVerbose('scp '..portScp..' -r '..path..'.git '..addr..':'..subdir..'/')
+			os.executeVerbose('cd '..path..'&& git remote add origin ssh://'..addr..portRemote..'/~/'..subdir..'/'..path..'.git')
+			os.executeVerbose('rm -rf '..path..'.git')
+		end
+	end
+	local v= os.capture('cd '..path..';git remote 2>&1')
+	if select(1,string.find(v, 'Not a git repository')) then
+		local cmd='cd '..path..'&& git init . && git add *.pdf && git commit -a -ma '
+		print(cmd)
+		os.execute(cmd)
+		upload()
+	elseif select(1,string.find(v,'origin')) then
+		print('Already uploaded? If this is not the case, please manually upload. Or you could remove the origin remote and retry.')
+		return
+	elseif os.isFileExist(path..'.git') then
+		print(path..'.git already exists. Please remove it and retry')
+		return
+	else
+		upload()
+	end
+end
 if arg[1] then
-	if arg[1]=='--emacs' then
+	if arg[1]=='--donothing' then
+	elseif arg[1]=='--emacs' then
 	   g_useEmacs=true
 		main(unpack(array.sub(arg,2)))
+
    elseif arg[1]=='--sublime' then
 	   g_useSublime=true
 		main(unpack(array.sub(arg,2)))
-	elseif arg[1]=='clone_subtree' then
-		local repo=arg[2]
-		local url=arg[3]
-		local path=arg[4]
-		if not url or not repo or not path then
-			print('gitv clone_subtree repo url path')
-			print('e.g. gitv clone_subtree SP_taesoo ssh://taesoo@calab.hanyang.ac.kr:8022/~/taesoo.git courses/SP_taesoo')
-			return 
-		end
-
-		execute2('git init "'..repo..'"',
-		'cd "'..repo..'"',
-		'git remote add origin '..url, 'git config core.sparsecheckout true')
-		execute2(
-		'cd "'..repo..'"',
-		'echo "'..path..'" > .git/info/sparse-checkout',
-		'git pull origin master')
-	elseif arg[1]=="get_subtree" then
-		local repo=arg[2]
-		local url=arg[3]
-		local path=arg[4]
-		if not url or not repo or not path then
-			print('gitv get_subtree repo url path')
-			print('e.g. gitv get_subtree SP_taesoo ssh://taesoo@calab.hanyang.ac.kr:8022/~/taesoo.git courses/SP_taesoo')
-			return 
-		end
-		execute2('mkdir -p "'..repo..'"',
-		'cd "'..repo..'"',
-		'git archive --remote='..url ..' master '..path .. '| tar xvf -')
 	else
 		main(unpack(arg))
 	end
