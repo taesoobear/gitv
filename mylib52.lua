@@ -2382,7 +2382,7 @@ end
 
 -- escape so that it can be used in double quotes
 function os.shellEscape(str)
-	if os.isUnix() then
+	if os.isUnix() or os.isApple() then
 		str=string.gsub(str, '\\', '\\\\')
 		str=string.gsub(str, '"', '\\"')
 		str=string.gsub(str, '%%', '\\%%')
