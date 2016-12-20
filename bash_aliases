@@ -1,5 +1,6 @@
 # to use vim to open a file. e.g. v luna.c
 alias v='gitv vi'
+alias b='gitv gvim'
 # tag search. e.g. t main$
 alias t='gitv ts'
 
@@ -53,32 +54,32 @@ alias va='vi ~/.bash_aliases;source ~/.bash_aliases'
 # experimental features below (not well tested)#
 ################################################
 # to use gvim 
-alias b='gitv gvim'
+#alias b='gitv gvim'
 # to use gvim remote
-alias b='gitv gvimr GVIM'
+#alias b='gitv gvimr GVIM'
 # or you can use emacs client
-alias b='gitv --emacs vir'
+#alias b='gitv --emacs vir'
 # send to another gvim instance # gitv gvimr support multiple instances of gvim # even when the same file is open in both gvim (an experimental feature).
-alias b2='gitv gvimr GVIM2'
+#alias b2='gitv gvimr GVIM2'
 # emacsclient + auto launch server
-alias e='gitv --emacs open'
+#alias e='gitv --emacs open'
 # or using emacs
-alias t='gitv --emacs ts'
+#alias t='gitv --emacs ts'
 
 ##############################################
 # windows msysgit only below                 #
 ##############################################
-function gvim {
-	"/c/Program Files (x86)/vim/Vim73/gvim" "$@" &
-	}
-alias vimdiff='vim -d'
-# use the following instead of the above one on windows
-function gitv-cd {
-  before="$(pwd)"
-  gitv chooseFolder "$@" 
-  after="$(cat ~/gitv_chosen)"
-  if [[ "$before" != "$after" ]]; then
-    cd "$after"
-  fi
-}
-alias va='vi ~/.bashrc;source ~/.bashrc'
+# function gvim {
+# 	"/c/Program Files (x86)/vim/Vim73/gvim" "$@" &
+# 	}
+# alias vimdiff='vim -d'
+# # use the following instead of the above one on windows
+# function gitv-cd {
+#   before="$(pwd)"
+#   gitv chooseFolder "$@" 
+#   after="$(cat ~/gitv_chosen)"
+#   if [[ "$before" != "$after" ]]; then
+#     cd "$after"
+#   fi
+# }
+# alias va='vi ~/.bashrc;source ~/.bashrc'
