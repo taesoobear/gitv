@@ -1885,6 +1885,9 @@ function main(...)
 					util.grepFile(f, arg[2],'',true)
 				end
 			end
+		else
+			print("usage: gitv grep luapattern")
+			print("options: -l (search locally)")
 		end
 	elseif arg[1]=='findgrep' then
 		if not arg[2] or not arg[3] then
