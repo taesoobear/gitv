@@ -88,6 +88,40 @@ function unmacro(fn, key)
 	util.writeFile(fn, contents)
 end
 
+function convertToUTF8(file, force)
+	local output=os.capture('iconv -f UTF-8 "'..file..'" -o /dev/null 2>&1')
+	if output~='' then
+		local trySourceEncodings={
+			--koreans
+			'MSCP949', 'CP949', 'EUCKR', 'ISO-2022-KR',
+		}
+		local autoConv=false
+		for ienc, enc in ipairs(trySourceEncodings) do
+			local output2=os.capture('iconv -f '..enc..' -t UTF8 "'..file..'" -o /dev/null 2>&1')
+			if output2=='' then
+				print("automatically converting "..file)
+				os.execute2('cp "'..file..'" "'..file..'.bak"',
+				'iconv -f '..enc..' -t UTF8 "'..file..'.bak" -o "'..file..'"' )
+				autoConv=true
+				break
+			end
+		end
+		if not autoConv then
+			if force then
+				print("force converting "..file)
+				os.execute2('cp "'..file..'" "'..file..'.bak"',
+				'iconv -f UTF8 -t UTF8 "'..file..'.bak" -c -o "'..file..'"' )
+			else
+				print(file, output)
+				local tokens=string.tokenize(output, '%s')
+				local byte=tonumber(tokens[#tokens])
+				print('---------------------------------')
+				print(string.sub(util.readFile(file), byte-100, byte+100))
+				print('---------------------------------')
+			end
+		end
+	end
+end
 function os.executeVerbose(cmd)
 	print(cmd) 
 	os.execute(cmd)
@@ -1419,6 +1453,12 @@ function main(...)
 		if chosen then
 			os.execute(g_vimpath..' "'..chosen[1]..'"')
 		end
+	elseif arg[1]=="convutf8" then
+		printTable(arg)
+		for i=2,#arg do
+			convertToUTF8(arg[i], true)
+		end
+
 	elseif arg[1]=='clone_subtree' then
 		local repo=arg[2]
 		local url=arg[3]
@@ -2033,38 +2073,7 @@ function main(...)
 		local fn={}
 		for ifile, file in ipairs(files) do
 			if string.isMatched(file,g_vimSrc)  then
-				local output=os.capture('iconv -f UTF-8 "'..file..'" -o /dev/null 2>&1')
-				if output~='' then
-					local trySourceEncodings={
-						--koreans
-						'CP949', 'MSCP949', 'EUCKR', 'ISO-2022-KR',
-					}
-					local autoConv=false
-					for ienc, enc in ipairs(trySourceEncodings) do
-						local output2=os.capture('iconv -f '..enc..' -t UTF8 "'..file..'" -o /dev/null 2>&1')
-						if output2=='' then
-							print("automatically converting "..file)
-							os.execute2('cp "'..file..'" "'..file..'.bak"',
-							'iconv -f '..enc..' -t UTF8 "'..file..'.bak" -o "'..file..'"' )
-							autoConv=true
-							break
-						end
-					end
-					if not autoConv then
-						if force then
-							print("force converting "..file)
-							os.execute2('cp "'..file..'" "'..file..'.bak"',
-							'iconv -f UTF8 -t UTF8 "'..file..'.bak" -c -o "'..file..'"' )
-						else
-							print(file, output)
-							local tokens=string.tokenize(output, '%s')
-							local byte=tonumber(tokens[#tokens])
-							print('---------------------------------')
-							print(string.sub(util.readFile(file), byte-100, byte+100))
-							print('---------------------------------')
-						end
-					end
-				end
+				convertToUTF8(file, force)
 			end
 		end
 
