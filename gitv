@@ -17,7 +17,7 @@ g_etagsSrc={"%.f$", "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.cxx", "%.h$"
 g_customEtagsSrc={"%.lua$"}
 g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
-g_vimSrc={"%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={"%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
 --g_cache_folder='/tmp/'
 g_cache_folder=os.home_path()..'/.config/'
@@ -1447,6 +1447,10 @@ function main(...)
 	local arg={...}
 	if arg[1]=='clone_to_server' then
 		clone_to_server()
+	elseif arg[1]=='pwd' then
+		local currDir=os.currentDirectory()
+		print(os.absoluteToRelativePath(currDir, git_top()))
+
 	elseif arg[1]=="vi" then
 		local keys=array.sub(arg,2)
 		local chosen=chooseFile(keys)
