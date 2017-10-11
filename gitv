@@ -221,7 +221,6 @@ function git_top() -- git_root
 		cache_git_top=t
 	end
 	if cache_git_top=='' then
-		print('Not a git repository. Searching the current folder...')
 		cache_git_top='.'
 	end
 	return cache_git_top
@@ -956,6 +955,7 @@ function lsFiles(option, path)
 	path=path or git_top()
 	local cpt
 	if cache_git_top=='.' then
+		print('Not a git repository. Searching the current folder...')
 		--cpt=os.capture(git()..' ls-files .', true)
 		if os.isApple() then
 			cpt={}
@@ -1526,6 +1526,12 @@ function main(...)
 		os.execute('mkdir -p "'..unzippath..'"')
 		os.execute('cd "'..unzippath..'";unzip -O cp949 "'..absFn..'"')
 		--os.execute('cd "'..unzippath..'";convmv -r --notest -f cp949 -t utf-8 .')
+	elseif string.sub(arg[1],1,4)=='pdfc' then
+		if arg[2] then
+			os.execute('pdfcrop --margins 5 "'..arg[2]..'" "'..arg[2]..'_c.pdf"')
+		else
+			print('usage: gitv pdfcrop a.pdf')
+		end
 	elseif arg[1]=='stat' then
 		os.execute('git diff --stat')
 		print('press Enter') getLine()
