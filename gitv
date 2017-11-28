@@ -190,6 +190,8 @@ The most commonly used gitv commands are:
   diff       Show differences between commits. 
                $ gitv diff
                $ gitv diff HEAD~10
+  vimdiff    Show differences between files.
+			   $ gitv diff keyword1 keyword2
   undo-commit Revert the last commit (while retaining the local copy). 
               Do not undo-commit if you pushed your last commit!
   other experimental features: type gitv "command name" to see usage.
@@ -1976,6 +1978,22 @@ function main(...)
 		local cmd={go=os.openFolder} 
 		local fn=cmd[arg[2]]
 		if arg[3] then fn(arg[3]) end
+	elseif arg[1]=='vimdiff' then
+		if arg[2] and arg[3] then
+			print('processing '..arg[2])
+			local chosen1=chooseFile({arg[2]})
+			if chosen1 then
+				print('processing '..arg[3])
+				local chosen2=chooseFile({arg[3]})
+				if chosen2 then
+					local cmd='vimdiff "'..chosen1[1]..'" "'..chosen2[1]..'"'
+					print(cmd)
+					os.execute(cmd)
+				end
+			end
+		else
+			print('usage: git vimdiff keyword1 keyword2')
+		end
 	elseif arg[1]=='diff' then
 		local added=''
 		if arg[2] then added=' '..arg[2] end
