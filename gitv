@@ -2129,7 +2129,7 @@ clone_to_server=function()
 	if string.sub(path, -1,-1)=='/' then
 		path=string.sub(path,1,-2)
 	end
-	local function upload()
+	local function upload(origin)
 		os.execute('cd '..path..'&& git clone --bare . ../'..path..'.git')
 		print("Enter port number (press enter to skip)")
 		local port=tonumber(getLine())
@@ -2151,11 +2151,11 @@ clone_to_server=function()
 
 		if subdir=='' then
 			os.executeVerbose('scp '..portScp..' -r '..path..'.git '..addr..':~/')
-			os.executeVerbose('cd '..path..'&& git remote add origin ssh://'..addr..portRemote..'/~/'..path..'.git')
+			os.executeVerbose('cd '..path..'&& git remote add '..origin..' ssh://'..addr..portRemote..'/~/'..path..'.git')
 			os.executeVerbose('rm -rf '..path..'.git')
 		else
 			os.executeVerbose('scp '..portScp..' -r '..path..'.git '..addr..':'..subdir..'/')
-			os.executeVerbose('cd '..path..'&& git remote add origin ssh://'..addr..portRemote..'/~/'..subdir..'/'..path..'.git')
+			os.executeVerbose('cd '..path..'&& git remote add '..origin..' ssh://'..addr..portRemote..'/~/'..subdir..'/'..path..'.git')
 			os.executeVerbose('rm -rf '..path..'.git')
 		end
 	end
@@ -2166,13 +2166,20 @@ clone_to_server=function()
 		os.execute(cmd)
 		upload()
 	elseif select(1,string.find(v,'origin')) then
-		print('Already uploaded? If this is not the case, please manually upload. Or you could remove the origin remote and retry.')
+		print('Already uploaded? There already is the origin remote. Are you still want to upload? (YES/no)')
+		local line=getLine()
+		if line=="YES" then
+			print("Enter the new remote name. (Do not include space in the name.)")
+			line=getLine()
+			upload(line)
+		end
+		ioread=getLine()
 		return
 	elseif os.isFileExist(path..'.git') then
 		print(path..'.git already exists. Please remove it and retry')
 		return
 	else
-		upload()
+		upload('origin')
 	end
 end
 if arg[1] then
