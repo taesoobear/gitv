@@ -64,10 +64,10 @@ function! BufSelGit(pattern)
 endfunction
 function! BufSelTag(pattern)
 	if has("gui_running")
-		execute "!gitv tschoose ".a:pattern
+		execute "!gitv tschoose -p ".a:pattern
 	else
 		silent execute "!clear"
-		silent execute "!gitv tschoose ".a:pattern
+		silent execute "!gitv tschoose -p ".a:pattern
 	endif
 	if filereadable('/tmp/gitv_script') || filereadable('c:/cygwin/tmp/gitv_script')
 		exec system('cat /tmp/gitv_script')

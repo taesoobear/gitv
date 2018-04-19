@@ -689,34 +689,35 @@ function getHashTbl(list, conversionFcn)
 	end
 	return hcache
 end
-function interactiveChoose(fn, fromHistory)
-	local index=1
-	local function loadHistory(currDir)
-		local hcache={_list={}}
-		local history={}
-		if os.isFileExist(g_cache_folder..'cache_hist.txt') then
-			history= table.fromstring(util.readFile(g_cache_folder..'cache_hist.txt'))
-			hcache=getHashTbl(history, 
-			function (v) 
-				v[1]=os.absoluteToRelativePath(v[1], currDir)
-				return v[1]
-			end
-			)
-			local fncache=getHashTbl(fn, 
-			function (v)
-				return v[1]
-			end
-			)
-				
-			hcache._list={}
-			for i,v in ipairs(history) do
-				if fncache[v[1]] then
-					hcache._list[#hcache._list+1]=v
-				end
+
+local function loadHistory(currDir)
+	local hcache={_list={}}
+	local history={}
+	if os.isFileExist(g_cache_folder..'cache_hist.txt') then
+		history= table.fromstring(util.readFile(g_cache_folder..'cache_hist.txt'))
+		hcache=getHashTbl(history, 
+		function (v) 
+			v[1]=os.absoluteToRelativePath(v[1], currDir)
+			return v[1]
+		end
+		)
+		local fncache=getHashTbl(fn, 
+		function (v)
+			return v[1]
+		end
+		)
+
+		hcache._list={}
+		for i,v in ipairs(history) do
+			if fncache[v[1]] then
+				hcache._list[#hcache._list+1]=v
 			end
 		end
-		return history, hcache
 	end
+	return history, hcache
+end
+function interactiveChoose(fn, fromHistory)
+	local index=1
 	local currDir=os.currentDirectory()
 	local history, hcache=loadHistory(currDir)
 	if not fn or #fn==0 then
@@ -819,6 +820,26 @@ function interactiveChoose(fn, fromHistory)
 	return fn[index]
 end
 function interactiveTagChoose(fn, inputs)
+
+	if g_tagPrioritySearchPath then
+
+		if g_tagPrioritySearchPath~='.' then
+			local gpsp=os.currentDirectory()..'/'..g_tagPrioritySearchPath
+			for i, v in ipairs(fn) do
+				v[3]=os.relativeToAbsolutePath(v[3])
+				v[3]=os.absoluteToRelativePath(v[3], gpsp)
+			end
+			table.sort(fn, function(f11,f21)
+				local f1=f11[3]
+				local f2=f21[3]
+				return git_tools.compareFileName(f1,f2)
+			end)
+			for i, v in ipairs(fn) do
+				v[3]=os.relativeToAbsolutePath(v[3], gpsp)
+				v[3]=os.absoluteToRelativePath(v[3])
+			end
+		end
+	end
 	local index=1
 	local print=print
 	local getInput=getLine
@@ -1412,7 +1433,15 @@ function git_tools.tagChoose(keyword, keyword2)
 
 	local path=git_top()
 	if keyword=='-l' then
-		path='.'
+		g_tagPrioritySearchPath='.'
+		keyword=keyword2
+	elseif keyword=='-p' then
+		-- use priority search
+		g_tagPrioritySearchPath=nil
+		local files=loadHistory(os.currentDirectory())
+		if #files~=0 then
+			g_tagPrioritySearchPath=select(2,os.processFileName(files[1][1]))
+		end
 		keyword=keyword2
 	end
 	local chosen= git_tools.tagChooseFromFile(keyword, keyword2, path)
@@ -1560,7 +1589,7 @@ function main(...)
 	elseif arg[1]=="tl" then
 		git_tools.tagList(array.sub(arg,2))
 	elseif arg[1]=="tschoose" then
-		local chosen=git_tools.tagChoose(arg[2])
+		local chosen=git_tools.tagChoose(arg[2], arg[3])
 		if chosen then
 			util.writeFile(g_tmp_folder..'gitv_script', 
 			'edit '..chosen[3]..'\n:' ..tostring(chosen[4]))
