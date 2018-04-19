@@ -1417,7 +1417,11 @@ function os.vi_remote(filename, line)
 	end
 end
 function git_tools.tagChooseFromFile(keyword, keyword2, path)
-	print('Searching '..keyword)
+	if g_tagPrioritySearchPath then
+		print('Searching '..keyword ..' in '..g_tagPrioritySearchPath..'/' )
+	else
+		print('Searching '..keyword ..' in '..path..'/' )
+	end
 	if not os.isFileExist(path..'/TAGS') then
 		print('Generating '..path..'/TAGS...')
 		main('etags', path)
