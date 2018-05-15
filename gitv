@@ -13,11 +13,11 @@ else
 end
  
 -- order doesn't matter
-g_etagsSrc={"%.f$", "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.cxx", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
+g_etagsSrc={"%.f$", "%.cc$", "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.cxx", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
 g_customEtagsSrc={"%.lua$"}
 g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
-g_vimSrc={"%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={"%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
 --g_cache_folder='/tmp/'
 g_cache_folder=os.home_path()..'/.config/'
@@ -579,6 +579,27 @@ function git_tools.commit(path,force)
 				if os.isFileExist(git_top()..'/.gitignore') then
 					gitignore=util.readFile(git_top()..'/.gitignore')
 					util.writeFile(git_top()..'/.gitignore.bak', gitignore)
+				else
+					-- assign default values
+					gitignore=[[*~
+**/*/*~
+**/*/*.lo
+**/*/*.la
+**/*/*.o
+**/*/*.a
+**/*/CMakeCache.txt
+**/*/CMakeFiles*
+.*
+**/.*
+.__vimsession
+**/*/.__vimsession
+*/TAGS
+**/*/TAGS
+build_*
+]]
+					util.writeFile(git_top()..'/.gitignore', gitignore)
+					untracked=git_tools.getUntracked(path)
+					files=table.concat(untracked, '\n')
 				end
 				if string.sub(gitignore, -1,-1)~='\n' then
 					gitignore=gitignore..'\n'
@@ -1125,6 +1146,9 @@ function chooseFileFromTagFallbackPath(keys)
 	for i=1,#g_tagFallbackPath do
 		local path=os.relativeToAbsolutePath(g_tagFallbackPath [i], git_top())
 		if os.isFileExist(path) then
+			if keys[1]=='-p' then
+				array.popFront(keys)
+			end
 			local keys={'-g', unpack(keys)}
 			fn=nonInteractiveChoose(keys, path)
 			if #fn>0 then break end
