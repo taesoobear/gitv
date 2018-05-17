@@ -2,6 +2,7 @@ mkdir -p ~/bin
 cp gitv ~/bin/
 sed -i "s/\/usr\/bin\///g" ~/bin/gitv 
 cp mylib.lua ~/bin/
+cp mylib52.lua ~/bin/
 cp gitvim.vim ~/bin/
 WINHOMEPATH=$HOMEDRIVE$HOMEPATH
 echo "$WINHOMEPATH"

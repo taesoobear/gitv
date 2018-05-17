@@ -1,4 +1,4 @@
-#!/usr/bin/lua
+#!/usr/bin/env lua
 local gitvPath
 local isWin=string.find(string.lower(os.getenv('OS') or 'nil'),'windows')~=nil
 if isWin then
