@@ -565,7 +565,7 @@ function git_tools.commit(path,force)
 				os.execute2('cd "'..path..'"', cmd)
 				print('\n Added '..#untracked..' files')
 			elseif string.sub(ioread,1,7)=="EDIT!!!" then
-				os.createBatchFile("gitscript.bat", {'cd "'..path..'"',cmd})
+				os.createBatchFile("gitscript.bat", {'# remove all the unnecessary lines!!!', '# Warning!!! simply exiting the editor WILL executes this script!!!', 'cd "'..path..'"',cmd})
 				os.execute2('vim gitscript.bat')
 				if os.isUnix() then
 					os.execute2('sh gitscript.bat')
@@ -616,7 +616,7 @@ build_*
 			local bDone
 			repeat
 				bDone=true
-				print('Do you want to commit these files to git repository? (yes/[no]/diff)')
+				print('Do you want to commit these files to git repository? (yes/[no]/diff/EDIT!!!)')
 				local ioread
 				if force then
 					ioread='yes'
@@ -654,6 +654,15 @@ build_*
 						print('"'..m..'" added')
 					end
 					git_tools.execute('cd "'..path..'";git status . -s')
+				elseif string.sub(ioread,1,7)=="EDIT!!!" then
+					os.createBatchFile("gitscript.bat", { 'remove or edit all the unnecessary lines!!!', '# use "git reset HEAD <file>..." to unstage', '# Warning!!! simply exiting the editor WILL executes this script!!!', 'cd "'..path..'"',unpack(modified)})
+					os.execute2('vim gitscript.bat')
+					if os.isUnix() then
+						os.execute2('sh gitscript.bat')
+					else
+						os.execute('gitscript')
+					end
+					os.deleteFiles('gitscript.bat')
 				elseif string.sub(ioread,1,1)=="d" then
 					git_tools.execute('cd "'..path..'";git diff')
 					bDone=false
@@ -722,15 +731,15 @@ local function loadHistory(currDir)
 			return v[1]
 		end
 		)
-		local fncache=getHashTbl(fn, 
-		function (v)
-			return v[1]
-		end
-		)
+		--local fncache=getHashTbl(fn, 
+		--function (v)
+		--	return v[1]
+		--end
+		--)
 
 		hcache._list={}
 		for i,v in ipairs(history) do
-			if fncache[v[1]] then
+			if hcache[v[1]] then
 				hcache._list[#hcache._list+1]=v
 			end
 		end
