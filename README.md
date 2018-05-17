@@ -40,7 +40,7 @@ Install exuberant-ctags to generate TAGS and use code-browsing in vim.
 Clone the repository anywhere, then run install.sh. Gitv will be installed locally
 in your ~/bin folder.
 
-       $ git clone https://code.google.com/p/gitv 
+       $ git clone https://github.com/taesoobear/gitv
        $ cd gitv; sh install.sh
 On windows machines, use install_windows_msysgit.sh.
 Optionally create bash aliases, for example, in ~/.bash_aliases

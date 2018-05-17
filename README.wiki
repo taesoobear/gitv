@@ -49,7 +49,7 @@ Target platform
 
         in your ~/bin folder.
 
-               $ git clone https://code.google.com/p/gitv 
+               $ git clone https://github.com/taesoobear/gitv
                $ cd gitv; sh install.sh
 
         On windows machines, use install_windows_msysgit.sh. 
