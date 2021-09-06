@@ -13,17 +13,18 @@ else
 end
  
 -- order doesn't matter
-g_etagsSrc={"%.f$", "%.cc$", "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.cxx", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
+g_etagsSrc={"%.cs$", "%.f$", "%.cc$", "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.cxx", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
 g_customEtagsSrc={"%.lua$"}
 g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
-g_vimSrc={"%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
-g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
+g_vimSrc={"%.cfg$", "%.cmake$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+--g_grepSrc=array.concatMulti(g_vimSrc, {"%.tex$", "%.txt$"})
+g_grepSrc=g_vimSrc
 --g_cache_folder='/tmp/'
 g_cache_folder=os.home_path()..'/.config/'
 g_tmp_folder='/tmp/'
-g_vimpath='vim'
-g_gvimpath='gvim'
+g_vimpath, g_gvimpath=os.findVIM()
+--g_vimpath='/Applications/MacVim.app/Contents/bin/vim'
 g_ctags='ctags'
 -- ignore files that match following patterns even if they are in the repository.
 g_ignorePattern={'^BaseLib/image/FreeImage/Dist/','^dependencies/'}
@@ -199,7 +200,6 @@ The most commonly used gitv commands are:
   ]])
 end
 
-g_vimpath, g_gvimpath=os.findVIM()
 g_gitpath=os.findGIT()
 
 if isWindows() then
@@ -747,10 +747,11 @@ local function loadHistory(currDir)
 	end
 	return history, hcache
 end
-function interactiveChoose(fn, fromHistory)
+function interactiveChoose(fn, keys, fromFallbackPath)
 	local index=1
 	local currDir=os.currentDirectory()
 	local history, hcache=loadHistory(currDir)
+	local listFromHistory=false
 	if not fn or #fn==0 then
 		if keys then
 			fn=chooseFileFromTagFallbackPath()
@@ -764,6 +765,7 @@ function interactiveChoose(fn, fromHistory)
 				fn[1]=fn[2] fn[2]=temp
 				hcache._list=fn
 			end
+			listFromHistory=true
 		end
 	end
 	-- reorder fn based on history
@@ -806,8 +808,21 @@ function interactiveChoose(fn, fromHistory)
 				break
 			end
 		end
-		print('Enter file shortcut (shown on the right) or keyword to further refine the search:')
+		if #g_tagFallbackPath>0 and not fromFallbackPath and not listFromHistory then
+			print('   - To see other files in fallback folders', "(0)")
+		end
+
+
+		print('\nEnter a shortcut (number) or a keyword to further refine the search:')
 		local cmd=getLine()
+		-- skip strange special characters 
+		while string.byte(cmd)==27 or string.byte(cmd)==91 do
+			if string.byte(cmd)==91 then
+				cmd=cmd:sub(3)
+			else
+				cmd=cmd:sub(2)
+			end
+		end
 		index=tonumber(cmd) 
 
 		if cmd=="" then 
@@ -817,6 +832,9 @@ function interactiveChoose(fn, fromHistory)
 			--else
 			--	return nil 
 			--end
+		elseif index==0 then
+			local fn=listFileFromTagFallbackPath(keys)
+			return interactiveChoose(fn, keys, true)
 		elseif index==nil then 
 			-- refine search
 			local refinedFn={}
@@ -838,12 +856,29 @@ function interactiveChoose(fn, fromHistory)
 		if fn[index]==nil then return nil end
 		local chosenFile=fn[index][1]
 		if not history then history=loadHistory() end
-		local max_num_hist=10
-		history=array.filter(function (x) return x[1]~=chosenFile end, history)
-		history={{chosenFile}, unpack(history)}
+
+		do
+			-- remove duplicated
+			local keys={}
+			local newHistory={}
+			for i, v in ipairs(history) do
+				if not keys[v[1]] then
+					keys[v[1]]=true
+					table.insert(newHistory,v)
+				end
+			end
+			history=newHistory
+		end
+
 		for i =1, #history do
 			history[i]={os.relativeToAbsolutePath(history[i][1], currDir)}
 		end
+
+		chosenFile=os.relativeToAbsolutePath(chosenFile, currDir)
+
+		local max_num_hist=10
+		history=array.filter(function (x) return x[1]~=chosenFile end, history)
+		history={{chosenFile}, unpack(history)}
 		history[max_num_hist+1]=nil
 		util.writeFile(g_cache_folder..'cache_hist.txt', table.tostring(history))
 	end
@@ -933,7 +968,7 @@ function interactiveTagChoose(fn, inputs)
 				break
 			end
 		end
-		print('Enter file shortcut (shown on the right) or keyword to further refine the search:')
+		print('Enter a shortcut (number) or a keyword to further refine the search:')
 		local cmd=getInput()
 		index=tonumber(cmd) 
 
@@ -980,11 +1015,11 @@ function interactiveTagChoose(fn, inputs)
 end
 function findFileFromGit(key, ...)
 	local fn
+	local keys={key,...}
 	do
 		local str=os.capture(git()..' ls-files ../..', true)
 		local files=string.lines(str)
 		fn={}
-		local keys={key,...}
 		for ifile, file in ipairs(files) do
 			if select(1,string.find(file, "%.lua$")) 
 				or select(1,string.find(file, "%.c$")) 
@@ -1002,7 +1037,7 @@ function findFileFromGit(key, ...)
 			end
 		end
 	end
-	return interactiveChoose(fn, fromHistory)
+	return interactiveChoose(fn, keys)
 end
 
 function lsFiles(option, path)
@@ -1123,7 +1158,7 @@ function chooseFolder(keys)
 				break
 			end
 		end
-		print('Enter file shortcut (shown on the right) or keyword to further refine the search:')
+		print('Enter a shortcut (number) or a keyword to further refine the search:')
 		local cmd=getInput()
 		index=tonumber(cmd) 
 
@@ -1151,6 +1186,25 @@ function chooseFolder(keys)
 	end
 	return fn[index]
 end
+
+function listFileFromTagFallbackPath(keys)
+	local fn
+	for i=1,#g_tagFallbackPath do
+		local path=os.relativeToAbsolutePath(g_tagFallbackPath [i], git_top())
+		if os.isFileExist(path) then
+			if keys[1]=='-p' then
+				array.popFront(keys)
+			end
+			local keys={'-g', unpack(keys)}
+			fn=nonInteractiveChoose(keys, path)
+			if #fn>0 then
+				return fn
+			end
+		end
+	end
+	return fn
+end
+
 function chooseFileFromTagFallbackPath(keys)
 	local fn
 	for i=1,#g_tagFallbackPath do
@@ -1170,7 +1224,7 @@ function chooseFile(keys)
 	local fn
 	if #keys==0 then
 		-- choose from history
-		return interactiveChoose({})
+		return interactiveChoose({}, keys)
 	elseif #keys==1 then 
 		local keys1=string.sub(keys[1],1,1)
 		if keys1=='.' or keys1=='~' or keys1=='/' then
@@ -1184,8 +1238,11 @@ function chooseFile(keys)
 	end
 	if #fn==0 and keys then
 		fn=chooseFileFromTagFallbackPath(keys)
+		if #fn==0 then
+			print('No such files (in this repository and also in fallback repositories)\n')
+		end
 	end
-	local chosen=interactiveChoose(fn)
+	local chosen=interactiveChoose(fn, keys)
 
 	if os.isWindows() and chosen then
 		chosen[1]=os.absoluteToRelativePath(chosen[1])
@@ -1516,9 +1573,38 @@ function main(...)
 	local arg={...}
 	if arg[1]=='clone_to_server' then
 		clone_to_server()
+	elseif arg[1]=='rsync_to_server' then
+		print('not implemented yet!')
+		--use something like: 
+		-- rsync -avh -e 'ssh -p 8022' --copy-links sample_walk_media taesoo@calab.hanyang.ac.kr:/home/taesoo/
 	elseif arg[1]=='pwd' then
 		local currDir=os.currentDirectory()
 		print(os.absoluteToRelativePath(currDir, git_top()))
+	elseif arg[1]=='open' then
+		if string.sub(arg[2], -3)=='mp4' then
+			os.execute('melt "'.. arg[2]..'"')
+		elseif string.sub(arg[2], -3)=='dem' then
+			os.execute('gnuplot "'.. arg[2]..'"')
+		else
+			os.execute('xdg-open "'.. arg[2]..'"')
+		end
+	elseif arg[1]=='cc' then
+		-- character count 
+		local c1=os.capture('wc -m "'..arg[2]..'"')
+		local tokens=string.tokenize(c1, '%s')
+		c1=tonumber(tokens[1])
+		
+		local t=util.readFile(arg[2])
+		local c2=0
+		for i=1,#t do
+			local c=t:sub(i,i)
+
+			if c==' ' or c=='\n' or c=='\t' then
+				c2=c2+1
+			end
+		end
+		print('characters:', c1-c2,' characters+space:', c1)
+
 
 	elseif arg[1]=="vi" then
 		local keys=array.sub(arg,2)
@@ -1612,7 +1698,7 @@ function main(...)
 		if #fn>=1 and #array.filter(function(f) return f[1]==arg[2] end, fn)>=1 then 
 			chosen={arg[2]} 
 		else 
-			chosen=interactiveChoose(fn) 
+			chosen=interactiveChoose(fn, keys) 
 		end
 		if chosen then
 			os.vi_remote(chosen[1])
@@ -1904,6 +1990,8 @@ function main(...)
 	elseif arg[1]=='backup' then
 		print('> git stash save; git stash apply')
 		os.execute2(git()..' stash save', git() .. ' stash apply')
+		print('> git stash list')
+		os.execute2(git()..' stash list')
 	elseif arg[1]=='commit' or arg[1]=='ci' then
 		if arg[2]=='.' then
 			git_tools.commit('.')
@@ -2041,6 +2129,14 @@ function main(...)
 	elseif arg[1]=='clear-hist' or arg[1]=='clear' then
 		os.deleteFiles(g_cache_folder..'cache_hist.txt')
 		os.deleteFiles(git_top()..'/TAGS')
+		for i,v in ipairs(g_tagFallbackPath) do
+			os.deleteFiles(git_top()..'/'..v..'/TAGS')
+		end
+
+		print("deleted TAGS and cache_hist!")
+	elseif arg[1]=='clear-tag' then
+		os.deleteFiles(git_top()..'/TAGS')
+		print("deleted "..git_top()..'/TAGS')
 	elseif arg[1]=='cmd' then
 		local cmd={go=os.openFolder} 
 		local fn=cmd[arg[2]]
@@ -2129,6 +2225,24 @@ function main(...)
 			print(cmd)
 			os.execute(cmd)
 		end
+	elseif arg[1]=='denoise' or arg[1]=='denoise2' then
+		if not arg[2] then
+			print('usage: gitv denose test.mp4')
+		else
+			if os.isFileExist('__test.wav') then
+				os.remove('__test.wav')
+			end
+
+			if arg[1]=='denoise2' then
+				os.execute('ffmpeg -i "'..arg[2]..'" -vn -acodec pcm_s16le -ar 48000 -ac 2 __test.wav')
+			else
+				os.execute('ffmpeg -i "'..arg[2]..'" -acodec copy __test.wav')
+			end
+			print("Important! after applying noise reduction filter, save that into ~/Documents/__test.m4a")
+			os.execute('audacity __test.wav')
+			os.rename(arg[2], arg[2]..'.backup.mp4')
+			os.execute('ffmpeg -i "'..arg[2]..'.backup.mp4'..'" -i ~/Documents/__test.m4a -vcodec copy -acodec copy -map 0:0 -map 1:0 "'..arg[2]..'"')
+		end
 	elseif arg[1]=='iconvcheck' then
 		-- convert EUCKR encoding to UTF-8
 		local option=''
@@ -2207,11 +2321,38 @@ if string.sub(arg[0],-4)~='gitv' then
 	return
 end
 clone_to_server=function()
+	if arg[2] and string.sub(arg[2], -1)=='/' then
+		arg[2]=string.sub(arg[2], 1,-2)
+	end
 	local path=arg[2]
 	if arg[2]==nil or not os.isFileExist(path) then
-		print('usage: gitv clone_to_server path')
+		print('usage: gitv clone_to_server path [server address]')
+		print('for example you can use one of the following forms: ')
+		print('	gitv clone_to_server taesooLib')
+		print('	gitv clone_to_server taesooLib taesoo@calab.hanyang.ac.kr')
+		print('	gitv clone_to_server taesooLib taesoo@calab.hanyang.ac.kr:8022')
+		print('	gitv clone_to_server taesooLib ssh://taesoo@calab.hanyang.ac.kr')
+		print('	gitv clone_to_server taesooLib ssh://taesoo@calab.hanyang.ac.kr:8022')
 		return
 	end
+	local addr, port
+	if arg[3] then
+		if string.sub(arg[3], 1,6)=='ssh://' then
+			addr=string.sub(arg[3], 7)
+		else
+			addr=arg[3]
+		end
+		if string.sub(addr, -2)=='/~' then
+			addr=string.sub(addr, 1, -3)
+		end
+
+		local a,b=string.find(addr, ':')
+		if a then
+			port=string.sub(addr,a+1)
+			addr=string.sub(addr, 1, a-1)
+		end
+	end
+
 	if path=='.' or select(1,string.find(path, '/')) then
 		print('usage: git clone_to_server path')
 		print('Warning! path should be a simple name such as "gitv" where gitv is the name of a git repository in the current directory.')
@@ -2222,11 +2363,16 @@ clone_to_server=function()
 	end
 	local function upload(origin)
 		os.execute('cd '..path..'&& git clone --bare . ../'..path..'.git')
-		print("Enter port number (press enter to skip)")
-		local port=tonumber(getLine())
-		print("Enter server address (example: user1@calab.hanyang.ac.kr)")
-		local addr=getLine()
-		print("Enter subdirectory name (press enter to use the home directory)")
+
+		if not port then
+			print("Enter port number (press enter to skip)")
+			port=tonumber(getLine())
+		end
+		if not addr then
+			print("Enter server address (example: user1@calab.hanyang.ac.kr)")
+			addr=getLine()
+		end
+		print("Enter subdirectory name (press enter to use the home directory of "..addr..":"..port..")")
 		local subdir=getLine()
 
 		print('Uploading...')
