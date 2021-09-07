@@ -1238,7 +1238,7 @@ function chooseFile(keys)
 	end
 	if #fn==0 and keys then
 		fn=chooseFileFromTagFallbackPath(keys)
-		if #fn==0 then
+		if not fn or #fn==0 then
 			print('No such files (in this repository and also in fallback repositories)\n')
 		end
 	end
