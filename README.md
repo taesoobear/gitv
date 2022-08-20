@@ -35,6 +35,8 @@ Example settings are in gitvim.vim (for vim), init.vim (for neovim), and bash_al
 
 Additionally, you can set error-fallback paths and ignore patterns for each repository. For example,
 create GIT_TOP/.gitvconfig file containing
+
+
        -- ignore files that match following patterns even if they are in the repository.
        g_ignorePattern={'/dependencies_windows_only/', '/dependencies/','dependencies_windows_only/','BaseLib/image/FreeImage/','^dependencies/', 'PhysicsLib/CollisionDetector/Ice',
        'PhysicsLib/AIST_implementation', 
