@@ -1,34 +1,32 @@
 set nocompatible
 filetype plugin off
 
-set rtp+=~/.vim/bundle/vundle/
-call vundle#rc()
+call plug#begin()
 
-Bundle 'gmarik/vundle'
-
-" The following bundles are installed when you run :BundleInstall in the vim
-"Bundle 'ctrlp.vim' -> to me, gitvim's Ctrl+g is more convenient.
-Bundle 'The-NERD-tree'
-
-"Vim plugin that displays tags in a window, ordered by class etc. 
-Bundle 'Tagbar'
-"nmap <F10> :TagbarToggle<CR> 
-" Autotag re-run ctags on a source file when you save it.
-"Bundle 'AutoTag'
-" The-NERD-Commenter comment out visual blocks using \cc
-Bundle 'The-NERD-Commenter' 
-Bundle 'AutoComplPop'
-Bundle 'Tex-PDF'
-Bundle 'CSApprox'
-Bundle 'flazz/vim-colorschemes'
-Bundle 'altercation/vim-colors-solarized'
-"Bundle 'ColorSchemeMenuMaker'
-Bundle 'desert-warm-256'
-Bundle 'gabrielelana/vim-markdown'
+" plugins will be installed in .local/share/nvim/plugged
+Plug 'flazz/vim-colorschemes'
+Plug 'altercation/vim-colors-solarized'
+Plug 'vimwiki/vimwiki'
+Plug 'gabrielelana/vim-markdown'
+Plug 'chipsenkbeil/vimwiki-server.nvim', { 'tag': 'v0.1.0-alpha.4' }
+Plug 'nanotech/jellybeans.vim'
+Plug 'nvim-lua/plenary.nvim'
+Plug 'nvim-telescope/telescope.nvim', { 'tag': '0.1.0' }
+Plug 'nvim-telescope/telescope-file-browser.nvim'
+Plug '~/gitv/gitv.nvim'
+call plug#end()
+lua << EOF
+require('telescope').setup{
+  -- ...
+}
+require("telescope").load_extension "file_browser"
+require("telescope").load_extension "gitv"
+EOF
+command! -nargs=0 E :Telescope file_browser
+command! -nargs=0 B :Telescope buffers
 
 syntax on
-source $VIMRUNTIME/vimrc_example.vim
-" The % key will switch between opening and closing brackets. By sourcing matchit.vim, the key can also switch among e.g. if/elsif/else/end, between opening and closing XML tags, and more. 
+" The % key will switch between opening and closing brackets. By sourcing matchit.vim, the key can also switch among e.g. if/elsif/else/end, between opening and closing XML tags, and more.
 runtime macros/matchit.vim
 set fileencodings=utf-8
 set guioptions-=T
@@ -52,18 +50,29 @@ if has("gui_running")
 end
 
 set ignorecase
-"set clipboard=unnamed 
 set tabstop=4
 set shiftwidth=4
 set noexpandtab
-set tags=./TAGS
 set notagbsearch
 set nowrap
 " code folding using indentation
 set fdm=indent
 set foldlevel=1
-" use system clipboard
-set clipboard=unnamedplus
+" use system clipboard. use unnamed instead of unnamedplus on linux or mac
+set clipboard+=unnamedplus
+" g:clipboard below is only for wsl
+let g:clipboard = {
+          \   'name': 'win32yank-wsl',
+          \   'copy': {
+          \      '+': 'win32yank.exe -i --crlf',
+          \      '*': 'win32yank.exe -i --crlf',
+          \    },
+          \   'paste': {
+          \      '+': 'win32yank.exe -o --lf',
+          \      '*': 'win32yank.exe -o --lf',
+          \   },
+          \   'cache_enabled': 0,
+          \ }
 """""""""""""""""""""""""""""""""""""""""""""
 " maps
 """""""""""""""""""""""""""""""""""""""""""""
@@ -100,7 +109,7 @@ function ToggleWrap()
   endif
 endfunction
 
-" Map toggle function to Space key. 
+" Map toggle function to Space key.
 noremap <space> :call ToggleFold()<CR>
 noremap <silent> <Leader>w :call ToggleWrap()<CR>
 " Unfold all
@@ -126,8 +135,15 @@ nmap <C-tab> :Bg<CR>
 "nmap <C-y> :!stdbuf -i0 -o0 make run<CR>
 nmap <C-n> :bn<CR>
 nmap <C-p> :bp<CR>
-nmap <C-k> :GitvTS 
+"nmap <C-k> :Telescope tags<CR>
+nmap <C-k> :Telescope gitv<CR>
 nmap <C-y> :!stdbuf -i0 -o0 make run<CR>
+"nmap <C-g> :Telescope git_files<CR>
+nmap <c-g> :lua require('telescope').extensions.gitv.gitv_files()<CR>
+nmap <c-b> :Telescope buffers<CR>
+"nmap <c-h> mZ:lua require('telescope.builtin').gitv("^<C-r><C-w>$")<CR>
+nmap <c-h> mZ:lua require('telescope').extensions.gitv.gitv{key="^<C-r><C-w>$"}<CR>
+nmap <S-F5> 'Z
 
 "some other keybindings are defined in .vim/plugins/gitvim.vim
 
@@ -136,7 +152,7 @@ nmap <C-y> :!stdbuf -i0 -o0 make run<CR>
 " Ranger file manager
 """""""""""""""""""""""""""""""""""""""""""""
 "command! -nargs=0 -complete=buffer Ranger :call Ranger()
-" open a file explorer selecting the current file or directory. 
+" open a file explorer selecting the current file or directory.
 "command! -nargs=0 -complete=buffer F :call ExplorerFile("go")
 "command! -nargs=0 -complete=buffer E :Explore
 "command! -nargs=0 -complete=buffer Ev :Explore c:\program files\vim
@@ -181,28 +197,28 @@ endfunction
 command! -nargs=0 ZR :normal zR
 command! -nargs=0 Sh :ConqueTerm bash
 "command! -nargs=0 -complete=buffer M :simalt ~x "maximize window
-command! -nargs=1 RunL :!l <args> 
+command! -nargs=1 RunL :!l <args>
 
 
 "highlight Folded guifg=#606060 guibg=#d9d9d9
 
-" Toggle fold state between closed and opened. 
-" 
-" If there is no fold at current line, just moves forward. 
-" If it is present, reverse it's state. 
-fun! ToggleFold() 
-	if foldlevel('.') == 0 
-		normal! l 
-	else 
-		if foldclosed('.') < 0 
-			. foldclose 
-		else 
-			. foldopen 
-		endif 
-	endif 
-	" Clear status line 
-	echo 
-endfun 
+" Toggle fold state between closed and opened.
+"
+" If there is no fold at current line, just moves forward.
+" If it is present, reverse it's state.
+fun! ToggleFold()
+	if foldlevel('.') == 0
+		normal! l
+	else
+		if foldclosed('.') < 0
+			. foldclose
+		else
+			. foldopen
+		endif
+	endif
+	" Clear status line
+	echo
+endfun
 
 fun Ranger()
   silent !ranger --choosefile=/tmp/chosen
@@ -215,3 +231,6 @@ endfun
 
 set backupdir=./.backup,.,/tmp
 set directory=.,./.backup,/tmp
+"set tags=./.tags;/,.tags;/
+"
+set grepprg=gitv\ grep

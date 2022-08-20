@@ -17,13 +17,14 @@ g_etagsSrc={"%.cs$", "%.f$", "%.cc$", "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$
 g_customEtagsSrc={"%.lua$"}
 g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
-g_vimSrc={"%.cfg$", "%.cmake$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={"%.cfg$", "%.cmake$", "%.vim$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 --g_grepSrc=array.concatMulti(g_vimSrc, {"%.tex$", "%.txt$"})
 g_grepSrc=g_vimSrc
 --g_cache_folder='/tmp/'
 g_cache_folder=os.home_path()..'/.config/'
 g_tmp_folder='/tmp/'
-g_vimpath, g_gvimpath=os.findVIM()
+--g_vimpath, g_gvimpath=os.findVIM()
+g_vimpath='nvim' g_gvimpath='gvim'
 --g_vimpath='/Applications/MacVim.app/Contents/bin/vim'
 g_ctags='ctags'
 -- ignore files that match following patterns even if they are in the repository.
@@ -754,7 +755,7 @@ function interactiveChoose(fn, keys, fromFallbackPath)
 	local listFromHistory=false
 	if not fn or #fn==0 then
 		if keys then
-			fn=chooseFileFromTagFallbackPath()
+			fn=chooseFileFromTagFallbackPath(keys)
 		end
 
 		if not fn or #fn==0 then
@@ -1297,6 +1298,10 @@ function _nonInteractiveChoose(keys, path, option, useFull)
 	return fn
 end
 function serverLaunched(name)
+	if g_vimpath=='nvim' then
+		return nil
+	end
+
 	local out=string.tokenize(os.capture(g_vimpath..' --serverlist',true), "\n")
 	if name==nil then
 		if #out>1 then
@@ -1498,6 +1503,9 @@ function os.vi_remote(filename, line)
 		end
 	else
 		local vis=vimpath..' --servername VIM '
+		if vimpath=='nvim' then
+			vis=vimpath
+		end
 		if os.isCygwin() then vis=vimpath end
 		-- launch vim
 		if line then

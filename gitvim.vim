@@ -1,6 +1,6 @@
 
 "use C-c to leave insert mode
-imap <C-c> <ESC>
+"imap <C-c> <ESC>
 
 
 " select buffers using :Bs or :Bg or :GitvTS

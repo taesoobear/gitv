@@ -1,6 +1,7 @@
 # gitv
-gitv: vim file chooser, and TAGS generator
-Gitv is a tool that extends git's functionality. Gitv is for those who use vim (or gvim) and etags. The gitv's main feature is its file chooser: it opens any source file in a git repository using vim like this:
+gitv: vim, neovim file chooser, and TAGS generator
+Gitv is a tool that extends git's functionality as well as vim and neovim. 
+Gitv is for those who use vim neovim or gvim and etags. The gitv's main feature is its file chooser: it opens any source file in a git repository using vim like this:
 
     $ gitv vi keyword
 When there are multiple files containing the keyword, one of them can be interactively chosen. The keyword matching uses the lua patterns (http://pgl.yoyo.org/luai/i/5.4.1+Patterns). For example, to list all cpp files, use
@@ -16,16 +17,45 @@ To list all main functions, use
     $ gitv ts main$
     or more precisely,
     $ gitv ts ^main$
-The above "ts" command requires "exuberant-ctags" to be installed. Inside vim, one can open another file using ctrl + g + keyword, or :Bg keyword. To search for a function definition, use F3 + keyword.
+
+The above "ts" command requires "exuberant-ctags" to be installed. Inside vim or neovim, one can open another file using ctrl + g + keyword. To search for a function definition, ctrl+ h  + keyword.
+
+In neovim, fuzzy-keyword search is supported through the telescope plugin.
+
+Also, you can change directory using keywords
+    $ gg main.cpp$
+    or
+    $ gd streamingassets$
+
+Here, "gd" uses folder name (instead of file name). Both gg and gd uses a recursive search in an entire git repository. 
 
 This tool is convenient for repositories having complex directory structures.
 
+Example settings are in gitvim.vim (for vim), init.vim (for neovim), and bash_aliases (for bash and zsh).
+
+Additionally, you can set error-fallback paths and ignore patterns for each repository. For example,
+create .gitvconfig file containing
+{{{
+-- ignore files that match following patterns even if they are in the repository.
+g_ignorePattern={'/dependencies_windows_only/', '/dependencies/','dependencies_windows_only/','BaseLib/image/FreeImage/','^dependencies/', 'PhysicsLib/CollisionDetector/Ice',
+'PhysicsLib/AIST_implementation', 
+'PhysicsLib/GMBS_implementation', 
+'PhysicsLib/Bullet_implementation', 
+'MotionFlow/MATHCLASS',
+'QP_controller/Eigen',
+--'math/clust',
+'PhysicsLib/sDIMS','GaussianProcess/','opennl/','Fl_Native_File_Chooser','PhysicsEngine/'
+}
+g_diffTarget="../taesooLib"
+g_tagFallbackPath={"../taesooLib", "../PhysX_MABA/"}
+}}}
+
 Target platform
 =
-Windows (msysgit) and Linux (tested on msysgit, Ubuntu and Fedora machines).
+Windows (wsl), mac, and Linux (tested on Ubuntu and Fedora machines).
 It is assumed that ~/bin is in the PATH environment variable.
 If there is no /tmp/ folder in your system, please search and replace /tmp/ in ~/bin/gitv and ~/.vim/plugin/gitvim.vim files appropriately.
-gitv is written fully in lua.
+gitv is written fully in pure lua.
 Supported extensions (*.c, *.cpp, *.py, *.lua ...) can be modified by editing the first few lines of gitv (Other files will be ignored.)
 
 How to install
@@ -33,7 +63,8 @@ How to install
 Install git and lua. For example, in Debian or Ubuntu,
 
        $ sudo apt-get install lua git 
-In windows, install msysgit including consoles. Make sure that lua.exe is in the path.
+
+In windows, install wsl. 
 Install exuberant-ctags to generate TAGS and use code-browsing in vim.
 
        $ sudo apt-get install exuberant-ctags
@@ -42,18 +73,15 @@ in your ~/bin folder.
 
        $ git clone https://github.com/taesoobear/gitv
        $ cd gitv; sh install.sh
-On windows machines, use install_windows_msysgit.sh.
 Optionally create bash aliases, for example, in ~/.bash_aliases
 
        alias v='gitv vi'
        alias g='gitv gvim'
        alias t='gitv ts'
        export PATH=$PATH:~/bin
-On windows machines, edit ~/.bashrc.
 If you want to install my .vimrc too... (Dangerous!)
 
        $ cd gitv/taesoo_vimrc;sh install_taesoo_only.sh
-On windows machines, use install_taesoo_only_windows_msysgit.sh.
 Usage in terminal
 
         $ gitv

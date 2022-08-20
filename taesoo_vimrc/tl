@@ -1,0 +1,64 @@
+#!/usr/bin/env lua
+package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
+
+if _VERSION=='Lua 5.2' then
+	require("mylib52")
+else
+	require("mylib")
+end
+
+local original = require'fzy_lua'
+
+-- for wsl users
+--local scriptPrefix= 'cd ~/sample_physX/work;GALLIUM_DRIVER=llvmpipe ./nopython '
+
+-- to use taesooLib with PhysX simulator and without python3 dependency
+--local scriptPrefix= 'cd ~/sample_physX/work;./nopython '
+
+-- to use taesooLib with PhysX simulator and with python3 dependency
+--local scriptPrefix= 'cd ~/sample_physX/work;python3 test_sample_python.py '
+
+-- to use taesooLib with python3 dependency
+local scriptPrefix= 'cd ~/sample_python/work;python3 test_sample_python.py '
+
+function filter(fzy, needle, lines)
+  results = {}
+  for i, line in ipairs(lines) do
+    if fzy.has_match(needle, line) then
+      local positions = fzy.positions(needle, line)
+      table.insert(results, {line, positions})
+    end
+  end
+  return results
+end
+
+
+function main()
+
+	local files= string.lines(os.capture('ls -1 *.lua', true))
+	files[#files]=nil
+
+	local pattern
+	if arg[1] and arg[1]~='-p' then
+		pattern=arg[1]
+
+	end
+	if not pattern then
+		print('usage: tl wrlv')
+		return
+	end
+
+	local res=filter(original, arg[1], files)
+	if #res==1 then
+		local currDir=os.currentDirectory()
+		print(scriptPrefix..'"'..currDir..'/'..res[1][1]..'"')
+		os.execute2(scriptPrefix..'"'..currDir..'/'..res[1][1]..'"')
+	elseif #res==0 then
+		print('no matches found')
+	else
+		print('multiple matches:')
+		printTable(res)
+	end
+end
+
+main()
