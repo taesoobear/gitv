@@ -34,21 +34,19 @@ This tool is convenient for repositories having complex directory structures.
 Example settings are in gitvim.vim (for vim), init.vim (for neovim), and bash_aliases (for bash and zsh).
 
 Additionally, you can set error-fallback paths and ignore patterns for each repository. For example,
-create .gitvconfig file containing
-{{{
--- ignore files that match following patterns even if they are in the repository.
-g_ignorePattern={'/dependencies_windows_only/', '/dependencies/','dependencies_windows_only/','BaseLib/image/FreeImage/','^dependencies/', 'PhysicsLib/CollisionDetector/Ice',
-'PhysicsLib/AIST_implementation', 
-'PhysicsLib/GMBS_implementation', 
-'PhysicsLib/Bullet_implementation', 
-'MotionFlow/MATHCLASS',
-'QP_controller/Eigen',
---'math/clust',
-'PhysicsLib/sDIMS','GaussianProcess/','opennl/','Fl_Native_File_Chooser','PhysicsEngine/'
-}
-g_diffTarget="../taesooLib"
-g_tagFallbackPath={"../taesooLib", "../PhysX_MABA/"}
-}}}
+create GIT_TOP/.gitvconfig file containing
+       -- ignore files that match following patterns even if they are in the repository.
+       g_ignorePattern={'/dependencies_windows_only/', '/dependencies/','dependencies_windows_only/','BaseLib/image/FreeImage/','^dependencies/', 'PhysicsLib/CollisionDetector/Ice',
+       'PhysicsLib/AIST_implementation', 
+       'PhysicsLib/GMBS_implementation', 
+       'PhysicsLib/Bullet_implementation', 
+       'MotionFlow/MATHCLASS',
+       'QP_controller/Eigen',
+       --'math/clust',
+       'PhysicsLib/sDIMS','GaussianProcess/','opennl/','Fl_Native_File_Chooser','PhysicsEngine/'
+       }
+       g_diffTarget="../taesooLib"
+       g_tagFallbackPath={"../taesooLib", "../PhysX_MABA/"}
 
 Target platform
 =
