@@ -76,9 +76,6 @@ function _lsFiles(cpt, option, path)
 			return true
 		end, files)
 	end
-	if #files<100 then
-		table.sort(files, git_tools.compareFileName)
-	end
 	return files
 end
 function string.linesContaining(filename, pattern)
