@@ -151,6 +151,18 @@ function os.findVIM()
 			end
 		end
 	end
+	local search={
+		'/opt/homebrew/bin/nvim',
+		'/usr/local/bin/nvim',
+	}
+
+	for i,v in ipairs(search) do
+		if os.isFileExist(v) then
+			local vimpath= '"'..v..'"'
+			local gvimpath= '"'..string.gsub(v, 'vim.exe', 'gvim.exe')..'"'
+			return vimpath, gvimpath
+		end
+	end
 	return 'vim', 'gvim'
 end
 function os.findGIT()

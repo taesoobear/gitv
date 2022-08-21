@@ -23,8 +23,8 @@ g_grepSrc=g_vimSrc
 --g_cache_folder='/tmp/'
 g_cache_folder=os.home_path()..'/.config/'
 g_tmp_folder='/tmp/'
---g_vimpath, g_gvimpath=os.findVIM()
-g_vimpath='nvim' g_gvimpath='gvim'
+g_vimpath, g_gvimpath=os.findVIM() -- find vim prefers nvim if it is installed.
+--g_vimpath='nvim' g_gvimpath='gvim'
 --g_vimpath='/Applications/MacVim.app/Contents/bin/vim'
 g_ctags='ctags'
 -- ignore files that match following patterns even if they are in the repository.
@@ -1298,7 +1298,7 @@ function _nonInteractiveChoose(keys, path, option, useFull)
 	return fn
 end
 function serverLaunched(name)
-	if g_vimpath=='nvim' then
+	if g_vimpath:sub(-4)=='nvim' or g_vimpath:sub(-5)=='nvim"' then
 		return nil
 	end
 
@@ -1503,7 +1503,7 @@ function os.vi_remote(filename, line)
 		end
 	else
 		local vis=vimpath..' --servername VIM '
-		if vimpath=='nvim' then
+		if vimpath:sub(-4)=='nvim' or vimpath:sub(-5)=='nvim"' then
 			vis=vimpath
 		end
 		if os.isCygwin() then vis=vimpath end
