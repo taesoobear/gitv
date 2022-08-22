@@ -121,7 +121,7 @@ The most commonly used gitv commands are:
                $ gitv diff
                $ gitv diff HEAD~10
 
-Usage in VIM or GVIM
+Usage in VIM, NEOVIM, or GVIM
 =
 By default, the following map is used. In gvim, a new menu also appears. You can alter the behavior by editing ~/.vim/plugin/gitvim.vim
 
