@@ -74,13 +74,13 @@ in your ~/bin folder.
 
        $ git clone https://github.com/taesoobear/gitv
        $ cd gitv; sh install.sh
-Optionally create bash aliases, for example, in ~/.bash_aliases
+Optionally create bash aliases, for example, in ~/.bash_aliases. See more examples including gg and gd in bash_aliases file.
 
        alias v='gitv vi'
        alias g='gitv gvim'
        alias t='gitv ts'
        export PATH=$PATH:~/bin
-If you want to install my .vimrc too... (Dangerous!)
+If you want to install my .vimrc for vim and init.vim for neovim too... (Dangerous!)
 
        $ cd gitv/taesoo_vimrc;sh install_taesoo_only.sh
 Usage in terminal
@@ -125,41 +125,23 @@ Usage in VIM or GVIM
 =
 By default, the following map is used. In gvim, a new menu also appears. You can alter the behavior by editing ~/.vim/plugin/gitvim.vim
 
-select buffers using :Bs (choose among the already open files) or :Bg (choose a file in the repository) or :GitvTS (choose using $GIT_ROOT/TAGS). $GIT_ROOT is automatically detected based on :pwd.
-
-    :Bs a.cpp
-    :Bg a.cpp
-    :GitvTS main
 select buffers using C-b (choose among the already open files) or C-g (choose in the repository)
     
     
 tag-search definitions starting with... (Uses gitv ts)
 
-    <f3>
+    c-k
 
     
-grep the current word under the cursor. (Uses gitv grep)
+recursively grep the current word under the cursor from the repository. (Uses gitv grep)
 
-    <f4>
     :grep keyword
 
 tag-search the current word under the cursor. (More robust than the default c+])
 
-    <f5>
-    
+    c-h
     
 go back to the previous location.
 
-    <shift-f5>
+    'Z
     
-make
-
-    <f7>
-    
-list compile errors (:copen)
-
-    <f8>
-    
-goto the next error (:cnext)
-
-    <f9>
