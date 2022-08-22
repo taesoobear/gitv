@@ -23,6 +23,7 @@ The above "ts" command requires "exuberant-ctags" to be installed. Inside vim or
 In neovim, fuzzy-keyword search is supported through the telescope plugin.
 
 Also, you can change directory using keywords
+
     $ gg main.cpp$
     or
     $ gd streamingassets$
