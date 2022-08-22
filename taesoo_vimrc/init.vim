@@ -59,20 +59,9 @@ set nowrap
 set fdm=indent
 set foldlevel=1
 " use system clipboard. use unnamed instead of unnamedplus on linux or mac
-set clipboard+=unnamedplus
-" g:clipboard below is only for wsl
-let g:clipboard = {
-          \   'name': 'win32yank-wsl',
-          \   'copy': {
-          \      '+': 'win32yank.exe -i --crlf',
-          \      '*': 'win32yank.exe -i --crlf',
-          \    },
-          \   'paste': {
-          \      '+': 'win32yank.exe -o --lf',
-          \      '*': 'win32yank.exe -o --lf',
-          \   },
-          \   'cache_enabled': 0,
-          \ }
+set clipboard+=unnamed
+" g:clipboard setting below is only for windows wsl
+" let g:clipboard = { 'name': 'win32yank-wsl', 'copy': { '+': 'win32yank.exe -i --crlf', '*': 'win32yank.exe -i --crlf', }, 'paste': { '+': 'win32yank.exe -o --lf', '*': 'win32yank.exe -o --lf', }, 'cache_enabled': 0, }
 """""""""""""""""""""""""""""""""""""""""""""
 " maps
 """""""""""""""""""""""""""""""""""""""""""""
