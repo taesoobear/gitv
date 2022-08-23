@@ -144,7 +144,8 @@ end
 local file_search = function(opts)
 	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
 	require("mylib52")
-	--
+	g_vimSrc={"%.cfg$", "%.cmake$", "%.vim$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+
 	if os.isFileExist(git_top()..'/.gitvconfig') then
 		dofile(git_top()..'/.gitvconfig')
 	end
@@ -162,7 +163,23 @@ local file_search = function(opts)
 			array.concat(files, files2)
 		end
 	end
-
+	local _files=files
+	local files={}
+	for ifile, file in ipairs(_files) do
+		if string.isMatched(file,g_vimSrc)  then
+			if opts and opts.key then	
+				if select(1,string.find(string.lower(file), string.lower(opts.key))) then
+					table.insert(files, file)
+				end
+			else
+				table.insert(files, file)
+			end
+		end
+	end
+	if #files==1 then
+		vim.cmd("edit "..files[1])
+		return 
+	end
   pickers.new(opts, {
     prompt_title = "gitv vi",
     finder = finders.new_table {

@@ -1,5 +1,9 @@
 # to use vim to open a file. e.g. v luna.c
 alias v='gitv vi'
+# to use nvim to open a file. e.g. vv luna.c 
+# this requires gitv.nvim 
+# see taesoo_vimrc/init.vim
+alias vv='gitv nvim'
 alias b='gitv gvim'
 # tag search. e.g. t main$
 alias t='gitv ts'

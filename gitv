@@ -1620,6 +1620,14 @@ function main(...)
 		if chosen then
 			os.execute(g_vimpath..' "'..chosen[1]..'"')
 		end
+	elseif arg[1]=="nvim" then
+		local key=arg[2]
+		if key then
+			os.execute("nvim \"+:lua require('telescope').extensions.gitv.gitv_files{key='"..key.."'}\"")
+		else
+			os.execute("nvim \"+:lua require('telescope').extensions.gitv.gitv_files()\"")
+		end
+
 	elseif arg[1]=="convutf8" then
 		printTable(arg)
 		for i=2,#arg do
