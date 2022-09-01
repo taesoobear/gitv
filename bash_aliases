@@ -1,5 +1,9 @@
 # to use vim to open a file. e.g. v luna.c
 alias v='gitv vi'
+# to use nvim to open a file. e.g. vv luna.c 
+# this requires gitv.nvim 
+# see taesoo_vimrc/init.vim
+alias vv='gitv nvim'
 alias b='gitv gvim'
 # tag search. e.g. t main$
 alias t='gitv ts'
@@ -47,6 +51,7 @@ export PATH=$PATH:~/bin
 
 # C-d in vim saves the current session. vis restores it.
 alias vs='vim -c ":source .__vimsession"'
+#alias vs='nvim -c ":source .__vimsession"'
 # because I change .bash_aliases very often, I make an alias
 alias va='vi ~/.bash_aliases;source ~/.bash_aliases'
 
