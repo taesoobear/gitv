@@ -33,7 +33,9 @@ function lsFiles(option, path)
 		if os.isApple() then
 			cpt={}
 		else
-			cpt=os.glob('*',true,true)
+			--cpt=os.glob('*',true,true) -- too slow
+			cpt=string.lines(os.capture('ls -1',true))
+			cpt[#cpt]=nil
 		end
 		--printTable(cpt)
 	elseif option=='-l' then	
@@ -133,7 +135,7 @@ local function getTagList(filename, searchKey, sep)
 			--if select(1,string.find(string.lower(pattern),string.lower(searchKey))) or
 			--	  select(1,string.find(string.lower(pattern),string.gsub(string.lower(searchKey), "%^","[:%.]"))) then
 
-			local spaceLen=math.max(0, 40-string.len(oo[1]))
+			local spaceLen=math.max(0, 60-string.len(oo[1]))
 			table.insert(tags, oo[1].. string.rep(' ', spaceLen).." |-"..sep..currFile.. ":"..tonumber(string.tokenize(oo2[2],',')[1]))
 			-- end
 		end
@@ -144,7 +146,8 @@ end
 local file_search = function(opts)
 	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
 	require("mylib52")
-	--
+	g_vimSrc={"%.cfg$", "%.cmake$", "%.vim$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+
 	if os.isFileExist(git_top()..'/.gitvconfig') then
 		dofile(git_top()..'/.gitvconfig')
 	end
@@ -157,33 +160,76 @@ local file_search = function(opts)
 		local fallbackPath=g_tagFallbackPath [i]
 		local path=os.relativeToAbsolutePath(fallbackPath, git_top())
 		if os.isFileExist(path) then
-			print('file searching '..g_tagFallbackPath[i])
+			--print('file searching '..g_tagFallbackPath[i])
 			local files2=lsFiles('-g', path)
 			array.concat(files, files2)
 		end
 	end
+	local _files=files
+	local files={}
 
-  pickers.new(opts, {
-    prompt_title = "gitv vi",
-    finder = finders.new_table {
-      results = files
-    },
-    sorter = conf.generic_sorter(opts),
-	attach_mappings = function(prompt_bufnr, map)
-		actions.select_default:replace(function()
-			actions.close(prompt_bufnr)
-			local selection = action_state.get_selected_entry()
-			if not selection then
-				return 
-			end
+	-- 
+	home=os.home_path()
+	local function displayText(file)
+		local fn, path=os.processFileName(file)
+		local spaceLen=math.max(0, 40-string.len(fn))
 
-			if selection[1] then
-				vim.cmd("edit "..selection[1])
+		if path:sub(1,1)=='/' and path:sub(1, home:len())==home then
+			path='~'..path:sub(home:len()+1)
+		end
+
+		return fn..string.rep(' ', spaceLen)..' | '..path
+	end
+	local function fullPathFromDisplayText(text)
+		local s,e =string.find(text, ' | ')
+		if s then
+			local filename=string.trimSpaces(text:sub(1, s-2))
+			local path=text:sub(s+3)
+			if path:sub(1,1)=='~' then
+				path=home..path:sub(2)
+			elseif path=='' then
+				return filename
 			end
-		end)
-		return true
-	end,
-  }):find()
+			return path..'/'..filename
+		end
+		return text
+	end
+	for ifile, file in ipairs(_files) do
+		if string.isMatched(file,g_vimSrc)  then
+			if opts and opts.key then	
+				if select(1,string.find(string.lower(file), string.lower(opts.key))) then
+					table.insert(files, file)
+				end
+			else
+				table.insert(files, displayText(file))
+			end
+		end
+	end
+	if #files==1 then
+		vim.cmd("edit "..fullPathFromDisplayText(files[1]))
+		return 
+	end
+	pickers.new(opts, {
+		prompt_title = "gitv vi",
+		finder = finders.new_table {
+			results = files
+		},
+		sorter = conf.generic_sorter(opts),
+		attach_mappings = function(prompt_bufnr, map)
+			actions.select_default:replace(function()
+				actions.close(prompt_bufnr)
+				local selection = action_state.get_selected_entry()
+				if not selection then
+					return 
+				end
+
+				if selection[1] then
+					vim.cmd("edit "..fullPathFromDisplayText(selection[1]))
+				end
+			end)
+			return true
+		end,
+	}):find()
 end
 local tag_search = function(opts)
 	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 

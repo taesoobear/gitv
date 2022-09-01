@@ -32,11 +32,15 @@ function filter(fzy, needle, lines)
   return results
 end
 
+function lsFiles(wildcard)
+	local files=string.lines(os.capture('ls -1 *.lua', true))
+	files[#files]=nil
+	return files
+end
 
 function main()
 
-	local files= string.lines(os.capture('ls -1 *.lua', true))
-	files[#files]=nil
+	local files= lsFiles('*.lua')
 
 	local pattern
 	if arg[1] and arg[1]~='-p' then
@@ -50,15 +54,42 @@ function main()
 	end
 
 	local res=filter(original, arg[1], files)
+
+	local succeeded=false
 	if #res==1 then
-		local currDir=os.currentDirectory()
-		print(scriptPrefix..'"'..currDir..'/'..res[1][1]..'"')
-		os.execute2(scriptPrefix..'"'..currDir..'/'..res[1][1]..'"')
+		succeeded=true
 	elseif #res==0 then
 		print('no matches found')
 	else
 		print('multiple matches:')
 		printTable(res)
+
+		-- still ok.
+		-- search for the best one
+		local MIN_DIST=100000
+		local argmin=1
+
+		for i, v in ipairs(res) do
+			--local editDist=v[2][1]-1
+			local editDist=0 -- ignore prefix distance
+			for j=2, #v[2] do
+				editDist=editDist+v[2][j]-v[2][j-1]-1
+			end
+			editDist=editDist+(v[1]:len()-v[2][#v[2]] )*0.001 -- postfix distance uses a low-weight
+			
+			if editDist<MIN_DIST then
+				argmin=i
+				MIN_DIST=editDist
+			end
+		end
+		res[1]=res[argmin]
+
+		succeeded=true
+	end
+	if succeeded then
+		local currDir=os.currentDirectory()
+		print(scriptPrefix..'"'..currDir..'/'..res[1][1]..'"')
+		os.execute2(scriptPrefix..'"'..currDir..'/'..res[1][1]..'"')
 	end
 end
 
