@@ -17,7 +17,7 @@ g_etagsSrc={"%.cs$", "%.f$", "%.cc$", "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$
 g_customEtagsSrc={"%.lua$"}
 g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
-g_vimSrc={"%.cfg$", "%.cmake$", "%.vim$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={"%.cfg$","%.sh$", "%.cmake$", "%.vim$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 --g_grepSrc=array.concatMulti(g_vimSrc, {"%.tex$", "%.txt$"})
 g_grepSrc=g_vimSrc
 --g_cache_folder='/tmp/'
@@ -54,9 +54,6 @@ function execute2(...)
 		print(v)
 	end
 	os.execute2(unpack(tbl))
-end
-if os.isApple() then
-	g_ctags='/usr/local/bin/ctags' -- install exuberant ctags using brew : brew install ctags-exuberant
 end
 -- uncomment
 function macro(fn, key)
@@ -193,7 +190,9 @@ The most commonly used gitv commands are:
                $ gitv diff
                $ gitv diff HEAD~10
   vimdiff    Show differences between files.
-			   $ gitv diff keyword1 keyword2
+               $ gitv diff keyword1 keyword2
+  diffd      Show differences between folders.
+               $ gitv diff folder1 folder2
   undo-commit Revert the last commit (while retaining the local copy). 
               Do not undo-commit if you pushed your last commit!
   other experimental features: type gitv "command name" to see usage.
@@ -1068,11 +1067,7 @@ function lsFiles(option, path)
 	if cache_git_top=='.' then
 		print('Not a git repository. Searching the current folder...')
 		--cpt=os.capture(git()..' ls-files .', true)
-		if os.isApple() then
-			cpt={}
-		else
-			cpt=os.glob('*',true,true)
-		end
+		cpt=os.glob('*',true,true)
 		--printTable(cpt)
 	elseif option=='-l' then	
 		cpt=os.capture(git()..' ls-files .', true)
@@ -1136,7 +1131,7 @@ function lsFolders(option, lsFiles_fcn)
 	return tbl
 end
 function chooseFolder(keys)
-	local folders=lsFolders()
+	local folders=lsFolders('-g')
 
 	local fn={}
 	for ifolder, folder in ipairs(folders) do
@@ -1502,15 +1497,6 @@ function os.vi_remote(filename, line)
 			cmd='/opt/sublime_text/sublime_text "'..filename..'"'
 		end
 		os.execute(cmd..'&')
-		return
-	end
-	if os.isApple() then
-		local vimpath=g_vimpath
-		if line then
-			os.execute(vimpath..' +'..line..' "'..filename..'"')
-		else
-			os.execute(vimpath..' "'..filename..'"')
-		end
 		return
 	end
 	local servername=serverLaunched()
@@ -2212,8 +2198,12 @@ function main(...)
 			--local files2=string.lines(os.capture('ls -1 "'..folder2..'"', true))
 			--files1[#files1]=nil
 			--files2[#files2]=nil
+			local backup_param=os.globParam.acceptedExt
+			os.globParam.acceptedExt=nil
 			local files1=os.glob(folder1..'/*', true,true)
 			local files2=os.glob(folder2..'/*', true,true)
+			os.globParam.acceptedExt= backup_param
+
 			for i, v in ipairs(files1) do files1[i]=v:sub(#folder1+2) end
 			for i, v in ipairs(files2) do files2[i]=v:sub(#folder2+2) end
 			if #files1==0 and #files2==0 then
@@ -2240,7 +2230,7 @@ function main(...)
 						donotCompare[v]=true
 					end
 				end
-				print('press Enter to compare files:')
+				print('press Enter to compare different files:')
 				getLine()
 
 				local difftool='vimdiff'
@@ -2248,18 +2238,28 @@ function main(...)
 					difftool='nvim -d'
 				end
 
-				for i, v in ipairs(files1) do
-					if not donotCompare[v] then
+				local files=table.ijoin(files1, files2)
+				local alreadyCompared={}
+				for i, v in ipairs(files) do
+					if not donotCompare[v] and not alreadyCompared[v] then
 						if string.isMatched(v,g_vimSrc)  then
-							if os.execute('diff "'..folder1..'/'..v..'" "'..folder2..'/'..v..'">/dev/null')~=0 then
+							if os.execute('diff --strip-trailing-cr --ignore-blank-lines "'..folder1..'/'..v..'" "'..folder2..'/'..v..'">/dev/null')~=0 then
 								os.execute(difftool..' "'..folder1..'/'..v..'" "'..folder2..'/'..v..'"') 
 								print('vimdiff finished :', v)
 							else
-								print('identical : ',v)
+								--print('identical : ',v)
 							end
 						else
-							print('skipping '..v)
+							if os.execute('diff "'..folder1..'/'..v..'" "'..folder2..'/'..v..'">/dev/null')~=0 then
+								print('different : '..v ..' (unknown extension)')
+								print("Launch '"..difftool.."' [y/N]?")
+								if getLine()=="y" then
+									os.execute(difftool..' "'..folder1..'/'..v..'" "'..folder2..'/'..v..'"') 
+									print('vimdiff finished :', v)
+								end
+							end
 						end
+						alreadyCompared[v]=true
 					end
 				end
 			end

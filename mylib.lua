@@ -849,17 +849,9 @@ function string.trimSpaces(s)
   end
 function os.capture(cmd, raw)
 	local s
-	if os.isApple() then
-		-- macport's lua51 package does not support io.popen -.-; 
-		os.execute(cmd ..">/tmp/capture.txt")
-		local f = assert(io.open('/tmp/capture.txt', 'r'))
-		s = assert(f:read('*a'))
-		f:close()
-	else
-		local f = assert(io.popen(cmd, 'r'))
-		s = assert(f:read('*a'))
-		f:close()
-	end
+	local f = assert(io.popen(cmd, 'r'))
+	s = assert(f:read('*a'))
+	f:close()
   if raw then return s end
   s = string.gsub(string.trimSpaces(s), '[\n\r]+', ' ') 
   return s
@@ -956,9 +948,6 @@ function os.isWindows()
 	return isWin 
 end
 
-function os.isApple()
-	return false -- deprecated
-end
 
 
 -- LUAclass method is for avoiding so many bugs in luabind's "class" method (especially garbage collection).
@@ -2233,17 +2222,20 @@ function os.find(mask, bRecurse, nomessage, printFunc)
 		local lenfolder=string.len(folder)
 		--print(cmd,mask,#tbl,lenfolder)
 		if lenfolder==0 then lenfolder=-1 end
-		local acceptedExt=deepCopyTable(os.globParam.acceptedExt)
+		local acceptedExt
+		if os.globParam.acceptedExt then
+			acceptedExt=deepCopyTable(os.globParam.acceptedExt)
 
-		if string.find(mask,"%*%.") then
-			local idx=string.find(mask,"%*%.")+2
-			acceptedExt[#acceptedExt+1]="%."..string.sub(mask,idx)..'$'
-			--print(acceptedExt[#acceptedExt])
+			if string.find(mask,"%*%.") then
+				local idx=string.find(mask,"%*%.")+2
+				acceptedExt[#acceptedExt+1]="%."..string.sub(mask,idx)..'$'
+				--print(acceptedExt[#acceptedExt])
+			end
 		end
 
 		for i=1, table.getn(tbl)-1 do
 			local v=tbl[i]
-			if string.sub(v,-1)~="/" and string.isMatched(v, acceptedExt) then
+			if string.sub(v,-1)~="/" and (not acceptedExt or string.isMatched(v, acceptedExt)) then
 				if containsRelPath then
 					printFunc:iterate(v)
 				else
@@ -2398,7 +2390,7 @@ end
 
 -- escape so that it can be used in double quotes
 function os.shellEscape(str)
-	if os.isUnix() or os.isApple() then
+	if os.isUnix() then
 		str=string.gsub(str, '\\', '\\\\')
 		str=string.gsub(str, '"', '\\"')
 		str=string.gsub(str, '%%', '\\%%')

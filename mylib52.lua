@@ -2216,17 +2216,20 @@ function os.find(mask, bRecurse, nomessage, printFunc)
 		local lenfolder=string.len(folder)
 		--print(cmd,mask,#tbl,lenfolder)
 		if lenfolder==0 then lenfolder=-1 end
-		local acceptedExt=deepCopyTable(os.globParam.acceptedExt)
+		local acceptedExt
+		if os.globParam.acceptedExt then
+			acceptedExt=deepCopyTable(os.globParam.acceptedExt)
 
-		if string.find(mask,"%*%.") then
-			local idx=string.find(mask,"%*%.")+2
-			acceptedExt[#acceptedExt+1]="%."..string.sub(mask,idx)..'$'
-			--print(acceptedExt[#acceptedExt])
+			if string.find(mask,"%*%.") then
+				local idx=string.find(mask,"%*%.")+2
+				acceptedExt[#acceptedExt+1]="%."..string.sub(mask,idx)..'$'
+				--print(acceptedExt[#acceptedExt])
+			end
 		end
 
 		for i=1, table.getn(tbl)-1 do
 			local v=tbl[i]
-			if string.sub(v,-1)~="/" and string.isMatched(v, acceptedExt) then
+			if string.sub(v,-1)~="/" and (not acceptedExt or string.isMatched(v, acceptedExt)) then
 				if containsRelPath then
 					printFunc:iterate(v)
 				else
