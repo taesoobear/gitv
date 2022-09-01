@@ -198,7 +198,7 @@ local file_search = function(opts)
 		if string.isMatched(file,g_vimSrc)  then
 			if opts and opts.key then	
 				if select(1,string.find(string.lower(file), string.lower(opts.key))) then
-					table.insert(files, file)
+					table.insert(files, displayText(file))
 				end
 			else
 				table.insert(files, displayText(file))
