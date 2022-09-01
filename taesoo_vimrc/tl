@@ -65,6 +65,25 @@ function main()
 		printTable(res)
 
 		-- still ok.
+		-- search for the best one
+		local MIN_DIST=100000
+		local argmin=1
+
+		for i, v in ipairs(res) do
+			--local editDist=v[2][1]-1
+			local editDist=0 -- ignore prefix distance
+			for j=2, #v[2] do
+				editDist=editDist+v[2][j]-v[2][j-1]-1
+			end
+			editDist=editDist+(v[1]:len()-v[2][#v[2]] )*0.001 -- postfix distance uses a low-weight
+			
+			if editDist<MIN_DIST then
+				argmin=i
+				MIN_DIST=editDist
+			end
+		end
+		res[1]=res[argmin]
+
 		succeeded=true
 	end
 	if succeeded then

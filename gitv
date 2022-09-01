@@ -375,6 +375,27 @@ function git_tools.pull(path, password)
 		print(path..'/.git/HEAD' .." doesn't exist")
 	end
 end
+function git_tools.pullall(path)
+	if os.isFileExist(path..'/.git/HEAD') then
+		local remotes=array.filter(function (a) return string.len(a)>1 end, string.lines(git_tools.capture('cd "'..path..'";git remote',true)))
+
+		if arg[2] and arg[2]~='-p' then
+			if string.sub(arg[2],1,1)==':' then
+				password=string.sub(arg[2],2)
+			else
+				remotes=array.filter(function (a) return select(1,string.find(a,arg[2])) end, remotes)
+			end
+		end
+		for k,v in ipairs(remotes) do
+			print(v)
+			local cmd='cd "'..path..'";git pull '..v
+			print('> '..cmd)
+			git_tools.execute(cmd, password)
+		end
+	else
+		print(path..'/.git/HEAD' .." doesn't exist")
+	end
+end
 function git_tools.fetch(path)
 	if os.isFileExist(path..'/.git/HEAD') then
 		local remotes=array.filter(function (a) return string.len(a)>1 end, string.lines(git_tools.capture('cd "'..path..'";git remote',true)))
@@ -1998,6 +2019,13 @@ function main(...)
 		git_tools.push(git_top(),password)
 	elseif arg[1]=='pull' then
 		git_tools.pull(git_top())
+	elseif arg[1]=='pullall' then
+		git_tools.pullall(git_top())
+		for i=1,#g_tagFallbackPath do
+			local path=os.relativeToAbsolutePath(g_tagFallbackPath [i], git_top())
+			git_tools.pull(path)
+		end
+
 	elseif arg[1]=='push' then
 		git_tools.push(git_top())
 		if hookAfterPush then
@@ -2173,6 +2201,63 @@ function main(...)
 		else
 			print('usage: git vimdiff keyword1 keyword2')
 		end
+	elseif arg[1]=='diffd' then
+		if arg[2] and arg[3] then
+
+			local folder1=arg[2]
+			local folder2=arg[3]
+			if folder1:sub(-1)=='/' then folder1=folder1:sub(1,-2) end
+			if folder2:sub(-1)=='/' then folder2=folder2:sub(1,-2) end
+			local files1=string.lines(os.capture('ls -1 "'..folder1..'"', true))
+			local files2=string.lines(os.capture('ls -1 "'..folder2..'"', true))
+			files1[#files1]=nil
+			files2[#files2]=nil
+			if #files1==0 and #files2==0 then
+				print('both folders are empty, or they are not folders')
+			else
+				local files1map={}
+				local files2map={}
+				local donotCompare={}
+				for i,v in ipairs(files1) do
+					files1map[v]=i
+				end
+				for i,v in ipairs(files2) do
+					files2map[v]=i
+				end
+				for i, v in ipairs(files2) do
+					if files1map[v]==nil then
+						print('only in '..folder2..':', v)
+						donotCompare[v]=true
+					end
+				end
+				for i, v in ipairs(files1) do
+					if files2map[v]==nil then
+						print('only in '..folder1..':', v)
+						donotCompare[v]=true
+					end
+				end
+				print('press Enter to compare files:')
+				getLine()
+
+				for i, v in ipairs(files1) do
+					if not donotCompare[v] then
+						if string.isMatched(v,g_vimSrc)  then
+							if os.execute('diff "'..folder1..'/'..v..'" "'..folder2..'/'..v..'">/dev/null')~=0 then
+								os.execute('vimdiff "'..folder1..'/'..v..'" "'..folder2..'/'..v..'"') 
+								print('vimdiff finished :', v)
+							else
+								print('identical : ',v)
+							end
+						else
+							print('skipping '..v)
+						end
+					end
+				end
+			end
+		else
+			print('usage: gitv diffd folder1 folder2')
+		end
+
 	elseif arg[1]=='diff' then
 		local added=''
 		if arg[2] then added=' '..arg[2] end

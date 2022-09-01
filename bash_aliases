@@ -51,6 +51,7 @@ export PATH=$PATH:~/bin
 
 # C-d in vim saves the current session. vis restores it.
 alias vs='vim -c ":source .__vimsession"'
+#alias vs='nvim -c ":source .__vimsession"'
 # because I change .bash_aliases very often, I make an alias
 alias va='vi ~/.bash_aliases;source ~/.bash_aliases'
 
