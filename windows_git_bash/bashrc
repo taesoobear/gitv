@@ -1,0 +1,95 @@
+# to use vim to open a file. e.g. v luna.c
+alias v='gitv-edit'
+# to use nvim to open a file. e.g. vv luna.c 
+# this requires gitv.nvim 
+# see taesoo_vimrc/init.vim
+alias vv='gitv nvim'
+alias b='gitv gvim'
+# tag search. e.g. t main$
+alias t='gitv ts'
+alias tc='gitv clear;gitv ts'
+
+# use gitv to change directory by file name. e.g. gg main.c
+function gitv-cd {
+  before="$(pwd)"
+  gitv chooseFolder "$@" 
+  after="$(cat ~/gitv_chosen)"
+  if [[ "$before" != "$after" ]]; then
+    cd "$after"
+  fi
+}
+# use gitv to open a file using your favorate editor. e.g. gitv-edit main.c
+function gitv-edit {
+  gitv choose "$@" 
+  FN="$(cat ~/gitv_script| cut -c 6-)"
+  vim "$FN"
+}
+
+# use gitv to change directory by directory name. e.g. gd home
+function gitv-cd2 {
+  before="$(pwd)"
+  gitv chooseFolder2 "$@" 
+  after="$(cat ~/gitv_chosen)"
+  if [[ "$before" != "$after" ]]; then
+    cd "$after"
+  fi
+}
+# use lf (a ranger-fm clone for windows) to change directory
+# https://github.com/gokcehan/lf
+function ranger-cd {
+  before="$(pwd)"
+  winpty /c/Users/taeso/go/bin/lf -last-dir-path "c:\Users\taeso\gitv_chosen" 
+  after="$(cat ~/gitv_chosen)"
+  if [[ "$before" != "$after" ]]; then
+    cd "$after"
+  fi
+}
+
+function cdw {
+	if test -d "../../../work"; then cd ../../../work; fi
+	if test -d "../../work"; then cd ../../work; fi
+	if test -d "../work"; then cd ../work; fi
+}
+function make {
+	if test -d "build_win"; then start build_win/*.sln; return;fi
+	if test -f "build_win.bat"; then start build_win.bat ;return;fi
+	if test -f "build.bat"; then start build.bat ;return;fi
+}
+function gc {
+	if git status . | grep -q 'Changes to be committed'; then
+		git commit
+	else
+		git commit -a
+	fi
+}
+# goto the folder containing a selected file. e.g. gg luna.c
+alias gg='gitv-cd'
+# goto any folder in the tree. e.g. gd mainlib
+alias gd='gitv-cd2'
+# use ranger to change directory. (sudo apt-get install ranger)
+alias rg=ranger-cd
+
+
+# to turn off flow control (C-s, C-q)
+stty -ixon
+
+# C-d in vim saves the current session. vis restores it.
+alias vs='vim -c ":source .__vimsession"'
+#alias vs='nvim -c ":source .__vimsession"'
+# because I change .bash_aliases very often, I make an alias
+export CA="ssh://students@calab.hanyang.ac.kr:8022/~"
+
+
+alias python3="winpty python3"
+alias winget="winpty winget"
+alias pip3="echo 'use powershell !!!'"
+alias nvim="winpty nvim"
+alias lua="winpty lua"
+alias gitv="winpty lua ~/bin/gitv"
+
+alias open="start"
+
+alias va="vi ~/.bashrc;source ~/.bashrc"
+# put the following line in .bashrc if ~/bin is not in the path
+export PATH=$PATH:~/bin
+

@@ -53,7 +53,7 @@ create GIT_TOP/.gitvconfig file containing
 
 Target platform
 =
-Windows (wsl), mac, and Linux (tested on Ubuntu and Fedora machines).
+Windows (powershell, git-bash, or wsl), mac, and Linux (tested on Ubuntu and Fedora machines).
 It is assumed that ~/bin is in the PATH environment variable.
 If there is no /tmp/ folder in your system, please search and replace /tmp/ in ~/bin/gitv and ~/.vim/plugin/gitvim.vim files appropriately.
 gitv is written fully in pure lua.
@@ -65,7 +65,8 @@ Install git and lua. For example, in Debian or Ubuntu,
 
        $ sudo apt-get install lua git 
 
-In windows, install wsl. 
+In windows, see windows_git_bash/README.txt or windows_powershell/README.txt. 
+
 Install exuberant-ctags to generate TAGS and use code-browsing in vim.
 
        $ sudo apt-get install exuberant-ctags
@@ -83,6 +84,7 @@ Optionally create bash aliases, for example, in ~/.bash_aliases. See more exampl
 If you want to install my .vimrc for vim and init.vim for neovim too... (Dangerous!)
 
        $ cd gitv/taesoo_vimrc;sh install_taesoo_only.sh
+On windows machines, use install_taesoo_only_windows_msysgit.sh.
 Usage in terminal
 
         $ gitv

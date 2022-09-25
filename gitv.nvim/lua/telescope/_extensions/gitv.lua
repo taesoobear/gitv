@@ -5,6 +5,16 @@ local actions = require "telescope.actions"
 local action_state = require "telescope.actions.state"
 local action_set = require "telescope.actions.set"
 local utils = require "telescope.utils"
+local isWin=string.find(string.lower(os.getenv('OS') or 'nil'),'windows')~=nil
+
+if isWin then
+	package.path =os.getenv('HOMEDRIVE')..os.getenv('HOMEPATH').."/bin/?.lua" .. ";"..package.path 
+	if os.getenv('HOME') then
+		package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
+	end
+else
+	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
+end
 local function git_top() -- git_root
 	if cache_git_top==nil then
 		local t
@@ -144,9 +154,8 @@ local function getTagList(filename, searchKey, sep)
 end
 
 local file_search = function(opts)
-	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
 	require("mylib52")
-	g_vimSrc={"%.cfg$", "%.cmake$", "%.vim$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+	g_vimSrc={"%.cfg$","%.sh$", "%.cmake$", "%.vim$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 
 	if os.isFileExist(git_top()..'/.gitvconfig') then
 		dofile(git_top()..'/.gitvconfig')
@@ -183,7 +192,7 @@ local file_search = function(opts)
 	local function fullPathFromDisplayText(text)
 		local s,e =string.find(text, ' | ')
 		if s then
-			local filename=string.trimSpaces(text:sub(1, s-2))
+			local filename=string.trimSpaces(text:sub(1, s-1))
 			local path=text:sub(s+3)
 			if path:sub(1,1)=='~' then
 				path=home..path:sub(2)
@@ -232,7 +241,6 @@ local file_search = function(opts)
 	}):find()
 end
 local tag_search = function(opts)
-	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
 	require("mylib52")
 	--
 	if not os.isFileExist(git_top()..'/TAGS') then

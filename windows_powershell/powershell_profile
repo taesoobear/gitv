@@ -1,0 +1,53 @@
+function vi($1) {
+	# using winrun, you can use linux filename such as ~/temp without having to press tab.
+	gitv winrun nvim $1
+}
+function v ($1, $2, $3, $4) {
+	gitv nvim $1 $2 $3 $4
+}
+
+function vs {
+	nvim -c ":source .__vimsession"
+}
+function t ($1, $2, $3, $4) {
+	gitv tsnvim $1 $2 $3 $4
+}
+function meld ($1, $2) {
+	# winget install Meld.Meld
+	$f1=gitv winrun echo $1
+	$f2=gitv winrun echo $2
+	cmd /c 'C:\Program Files (x86)\Meld\Meld.exe' "$f1" "$f2"
+}
+Set-Alias vimdiff meld
+
+function cdl{ cd $home\taesooLib\Samples\classification\ }
+function cdt{ cd $home\sample_torch\work\windows_batchfiles\ }
+function cdh{ cd $home }
+function gitv ($1, $2, $3, $4) {
+	lua $home\bin\gitv $1 $2 $3 $4
+}
+
+function tl ($1, $2, $3, $4) {
+	lua $home\bin\tl $1 $2 $3 $4
+}
+
+function rg {
+	lf -last-dir-path "$home\rg_chosen"
+	$text = Get-Content "$home\rg_chosen" -Raw 
+	cd "$text"
+}
+function gd ($1){
+	gitv chooseFolder2_powershell "$1" 
+	$after= Get-Content "$home\gitv_chosen" -Raw
+    cd "$after"
+}
+function gg ($1){
+	gitv chooseFolder_powershell "$1" 
+	$after= Get-Content "$home\gitv_chosen" -Raw
+    cd "$after"
+}
+function va {
+	vi $profile
+	echo '". $profile" your self.'
+}
+Set-PSReadlineKeyHandler -Key ctrl+d -Function ViExit

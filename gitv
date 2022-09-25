@@ -2,7 +2,9 @@
 local isWin=string.find(string.lower(os.getenv('OS') or 'nil'),'windows')~=nil
 if isWin then
 	package.path =os.getenv('HOMEDRIVE')..os.getenv('HOMEPATH').."/bin/?.lua" .. ";"..package.path 
-	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
+	if os.getenv('HOME') then
+		package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
+	end
 else
 	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
 end
@@ -42,11 +44,12 @@ function getLine()
 end
 if isWindows() then
 	-- on some systems, os.execute doesn't work perfectly. so  this is a workaround.
-	os.execute_original=os.execute
-	function os.execute(cmd)
-		local fn= os.createUnnamedBatchFile({cmd})
-		os.execute_original('"'..fn..'"')
-	end
+	--os.execute_original=os.execute
+	--function os.execute(cmd)
+	--	local fn= os.createUnnamedBatchFile({cmd})
+	--	os.execute_original('"'..fn..'"')
+	--end
+	g_tmp_folder=os.home_path()..'\\'
 end
 function execute2(...)
 	local tbl={...}
@@ -200,7 +203,8 @@ The most commonly used gitv commands are:
   ]])
 end
 
-g_gitpath=os.findGIT()
+--g_gitpath=os.findGIT()
+g_gitpath='git'
 
 if isWindows() then
 	g_cache_folder=os.home_path() ..'/'
@@ -435,7 +439,7 @@ function git_tools.execute(cmd, password)
 		local tokens=git_tools.tokenize_cmd(cmd)
 		local fn=os.createUnnamedBatchFile(tokens, true)
 		--os.execute('type _temp.bat')
-		return os.execute_original('"'..fn..'"')
+		return os.execute('"'..fn..'"')
 	else
 		if password then
 			local tt=string.tokenize(password,':')
@@ -452,22 +456,22 @@ child=pexpect.spawn("]]..cmd2[#cmd2]..[[")
 tbl=['password:', 'passphrase for key','Pull is not possible because you have unmerged files', 'up-to-date', 'Counting objects:','unexpectedly']
 try:
 	i=child.expect(tbl)
-	print child.before,
+	print(child.before,end='')
 	if i==0:
 		child.sendline(']]..password..[[')
-		print tbl[i]
-		print '****'
+		print(tbl[i])
+		print('****')
 		i=child.expect(tbl)
-		print child.before,
+		print(child.before, end='')
 	elif i==1:
 		child.sendline('put key password here')
-		print tbl[i]
-		print '****'
+		print(tbl[i])
+		print('****')
 		i=child.expect(tbl)
-		print child.before,
+		print(child.before, end='')
 	else:
-		print tbl[i],
-		print child.before,
+		print(tbl[i],end='')
+		print(child.before,end='')
 	index=child.expect([pexpect.EOF, pexpect.TIMEOUT])
 	while index==1:
 		print(child.before)
@@ -475,14 +479,14 @@ try:
 	print(child.before)
 except:
 	print('Pexpec Error after :')
-	print child.before,
-	print '::::'
+	print(child.before,end='')
+	print('::::')
 	print(str(child))
 ]]
 			util.writeFile('/tmp/temp.py', script)
 			--local fn= os.createUnnamedBatchFile({unpack(array.sub(cmd2,1,#cmd2-1)), 'python /tmp/temp.py'})
 			--os.execute('ssh localhost bash '..fn)
-			os.execute('python /tmp/temp.py')
+			os.execute('python3 /tmp/temp.py')
 			os.execute('rm /tmp/temp.py')
 			--return os.execute2()
 		else
@@ -511,7 +515,7 @@ function git_tools.getFilesToCommit(path)
 			local s,e,c=string.find(line, '#%s+modified:%s+(.+)')
 			if not c then
 				s,e,c=string.find(line, '%s+modified:%s+(.+)')
-				output='new file: '
+				output='modified: '
 			end
 			if not c then
 				s,e,c=string.find(line, '#%s+new file:%s+(.+)')
@@ -571,7 +575,7 @@ function git_tools.commit(path,force)
 			print('----------------------------------')
 			for i,v in ipairs(untracked) do print(v) end
 			print('----------------------------------')
-			print('Do you want to add these untracked files to git repository? Press enter if you are not sure. ([no]/ignore/EDIT!!!/YES!!!)')
+			print('Do you want to add these untracked files to git repository? Press enter to skip. ([no]/ignore/EDIT!!!/YES!!!)')
 			local cmd=''
 			for i, v in ipairs(untracked) do 
 				cmd=cmd.. git()..' add "'..v..'"\n'
@@ -703,6 +707,7 @@ build_*
 			end
 		end
 		if hookAfterCommit then
+			print('running .gitvconfig hookAfterCommit')
 			hookAfterCommit(arg)
 		end
 	end
@@ -1071,16 +1076,24 @@ function lsFiles(option, path)
 		--printTable(cpt)
 	elseif option=='-l' then	
 		cpt=os.capture(git()..' ls-files .', true)
-	elseif option=='-g' then
+	elseif option=='-g' and not os.isWindows() then
 		-- use absolute
 		cpt=os.capture('cd '..path..';git ls-files .', true)
 	else
-		cpt=os.capture(git()..' ls-files "'..git_top()..'" 2>&1', true)
-		if select(1, string.find(cpt, 'fatal:')) then
-			option='-g'
-			cpt=os.capture('cd '..git_top()..';git ls-files .', true)
+		if os.isWindows() then
+			cpt=os.capture(git()..' ls-files "'..git_top()..'"' , true)
+		else
+			cpt=os.capture(git()..' ls-files "'..git_top()..'" 2>&1', true)
+			if select(1, string.find(cpt, 'fatal:')) then
+				option='-g'
+				cpt=os.capture('cd '..git_top()..';git ls-files .', true)
+			end
 		end
 		cpt=string.lines(cpt)
+
+		if os.isWindows() and option=='-g' then
+			return _lsFiles(cpt, option, os.currentDirectory())
+		end
 	end
 	return _lsFiles(cpt, option, path)
 end
@@ -1419,7 +1432,7 @@ function gvimFile(servername, chosen)
 			local cmd=g_gvimpath..' --servername '..servername..' "'..chosenfile..'"'
 			-- launch gvim
 			local fn=os.createUnnamedBatchFile({cmd})
-			os.execute_original('start /b cmd /c "'..fn..'"')
+			os.execute('start /b cmd /c "'..fn..'"')
 		else
 			os.execute(g_gvimpath..' --servername '..servername..' --remote-silent "'..chosenfile..'"')
 		end
@@ -1731,7 +1744,24 @@ function main(...)
 	elseif arg[1]=="ts" then
 		local chosen=git_tools.tagChoose(arg[2], arg[3])
 		if chosen then
-			os.vi_remote(chosen[3],chosen[4])
+			if os.isWindows() then
+				local fn=chosen[3]
+				local line=chosen[4]
+				local VI=g_vimpath
+				local cmd=VI..' +'..line..' "'..fn..'"'
+				--print(cmd)
+				os.execute2(cmd)
+			else
+				os.vi_remote(chosen[3],chosen[4])
+			end
+		end
+	elseif arg[1]=="tsnvim" then
+		local chosen=git_tools.tagChoose(arg[2], arg[3])
+		if chosen then
+			local fn=chosen[3]
+			local line=chosen[4]
+			local cmd='nvim +'..line..' "'..fn..'"'
+			os.execute2(cmd)
 		end
 	elseif arg[1]=="tl" then
 		git_tools.tagList(array.sub(arg,2))
@@ -1809,12 +1839,30 @@ function main(...)
 		else
 			util.writeFile(g_tmp_folder..'gitv_chosen', '.')
 		end
+	elseif arg[1]=="chooseFolder_powershell" then
+		local keys=array.sub(arg,2)
+		local chosen=chooseFile(keys)
+		if chosen then
+			local fn, path=os.processFileName(chosen[1])
+			util.writeFile(g_tmp_folder..'gitv_chosen', os.toWindowsFileName(path))
+		else
+			util.writeFile(g_tmp_folder..'gitv_chosen', '.')
+		end
 	elseif arg[1]=="chooseFolder2" then
 		local keys=array.sub(arg,2)
 		local chosen=chooseFolder(keys)
 		if chosen then
 			local t=string.gsub(chosen,'~', os.home_path())
 			util.writeFile(g_tmp_folder..'gitv_chosen', t)
+		else
+			util.writeFile(g_tmp_folder..'gitv_chosen', '.')
+		end
+	elseif arg[1]=="chooseFolder2_powershell" then
+		local keys=array.sub(arg,2)
+		local chosen=chooseFolder(keys)
+		if chosen then
+			local t=string.gsub(chosen,'~', os.home_path())
+			util.writeFile(g_tmp_folder..'gitv_chosen', os.toWindowsFileName(t))
 		else
 			util.writeFile(g_tmp_folder..'gitv_chosen', '.')
 		end
@@ -2061,7 +2109,11 @@ function main(...)
 			files=array.filter(function (f) local s=string.find(f, '^%.%.') return not s end, files)
 		elseif arg[2] then
 			--printTable(files)
-			os.execute2('cd "'..arg[2]..'"', 'gitv etags')
+			if os.isWindows() then
+				os.execute2('cd "'..arg[2]..'"', 'lua "'.._G.arg[0]..'" etags')
+			else
+				os.execute2('cd "'..arg[2]..'"', 'gitv etags')
+			end
 			return
 		end
 		table.sort(files, git_tools.compareFileName)
@@ -2348,14 +2400,14 @@ function main(...)
 			else
 				os.execute('ffmpeg -i "'..arg[2]..'" -acodec copy __test.wav')
 			end
-			print("Important! after applying noise reduction filter, save that into ~/Documents/__test.m4a")
+			print("Important! after applying noise reduction filter, save that into __test.m4a in the same folder")
 			os.execute('audacity __test.wav')
 			while true do
 				print("Did you finish exporting __test.m4a? (yes/no)")
 				local line=getLine()
 				if line=='yes' then
 					os.rename(arg[2], arg[2]..'.backup.mp4')
-					os.execute('ffmpeg -i "'..arg[2]..'.backup.mp4'..'" -i ~/Documents/__test.m4a -vcodec copy -acodec copy -map 0:0 -map 1:0 "'..arg[2]..'"')
+					os.execute('ffmpeg -i "'..arg[2]..'.backup.mp4'..'" -i __test.m4a -vcodec copy -acodec copy -map 0:0 -map 1:0 "'..arg[2]..'"')
 					break
 				elseif line=='no' then
 					print('canceled')
@@ -2447,7 +2499,7 @@ clone_to_server=function()
 		arg[2]=string.sub(arg[2], 1,-2)
 	end
 	local path=arg[2]
-	if arg[2]==nil or not os.isFileExist(path) then
+	if arg[2]==nil or not os.isFileExist(path..'/.git/HEAD') then
 		print('usage: gitv clone_to_server path [server address]')
 		print('for example you can use one of the following forms: ')
 		print('	gitv clone_to_server taesooLib')
@@ -2475,16 +2527,20 @@ clone_to_server=function()
 		end
 	end
 
-	if path=='.' or select(1,string.find(path, '/')) then
+	if path=='.' or select(1,string.find(path:sub(1,-2), '/')) then
 		print('usage: git clone_to_server path')
-		print('Warning! path should be a simple name such as "gitv" where gitv is the name of a git repository in the current directory.')
+		print('Warning! path should be a simple name such as "somefolder" which is the name of a local git repository in the current directory.')
 		return
 	end
 	if string.sub(path, -1,-1)=='/' then
 		path=string.sub(path,1,-2)
 	end
 	local function upload(origin)
-		os.execute('cd '..path..'&& git clone --bare . ../'..path..'.git')
+		if os.isWindows() then
+			execute2('cd '..path, git()..' clone --bare . ..\\'..path..'.git')
+		else
+			execute2('cd '..path, git()..' clone --bare . ../'..path..'.git')
+		end
 
 		if not port then
 			print("Enter port number (press enter to skip)")
@@ -2550,6 +2606,26 @@ if arg[1] then
    elseif arg[1]=='--sublime' then
 	   g_useSublime=true
 		main(unpack(array.sub(arg,2)))
+	elseif arg[1]=='winrun' then
+		if #arg>=2 then
+			for i=3, #arg do
+				if arg[i]:sub(1,1)=='~' then
+					arg[i]=os.home_path()..arg[i]:sub(2)
+				end
+			end
+			if arg[2]=='echo' then
+				print(os.toWindowsFileName(arg[3]))
+			elseif #arg==2 then
+				os.executeVerbose(arg[2])
+			elseif #arg==3 then
+				os.executeVerbose(arg[2]..' "'..os.toWindowsFileName(arg[3])..'"')
+			elseif #arg==4 then
+				os.executeVerbose(arg[2]..' "'..os.toWindowsFileName(arg[3])..'" "'..os.toWindowsFileName(arg[4])..'"')
+			else
+				print('too many arguments for gitv winrun')
+			end
+		end
+		return
 	else
 		main(unpack(arg))
 	end

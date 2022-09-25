@@ -1,6 +1,13 @@
 #!/usr/bin/env lua
-package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
-
+local isWin=string.find(string.lower(os.getenv('OS') or 'nil'),'windows')~=nil
+if isWin then
+	package.path =os.getenv('HOMEDRIVE')..os.getenv('HOMEPATH').."/bin/?.lua" .. ";"..package.path 
+	if os.getenv('HOME') then
+		package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
+	end
+else
+	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
+end
 if _VERSION=='Lua 5.2' then
 	require("mylib52")
 else
@@ -33,9 +40,18 @@ function filter(fzy, needle, lines)
 end
 
 function lsFiles(wildcard)
-	local files=string.lines(os.capture('ls -1 *.lua', true))
-	files[#files]=nil
-	return files
+	if os.isWindows() then
+		local i, t, popen = 0, {}, io.popen
+		for filename in popen('dir "'..wildcard..'" /b'):lines() do
+			i = i + 1
+			t[i] = filename
+		end
+		return t
+	else
+		local files=string.lines(os.capture('ls -1 *.lua', true))
+		files[#files]=nil
+		return files
+	end
 end
 
 function main()
@@ -89,7 +105,28 @@ function main()
 	if succeeded then
 		local currDir=os.currentDirectory()
 		print(scriptPrefix..'"'..currDir..'/'..res[1][1]..'"')
-		os.execute2(scriptPrefix..'"'..currDir..'/'..res[1][1]..'"')
+		if os.isWindows() then
+			os.execute2(scriptPrefix..'"'..os.toWindowsFileName(currDir..'/'..res[1][1])..'"')
+		else
+			os.execute2(scriptPrefix..'"'..currDir..'/'..res[1][1]..'"')
+		end
+	else
+		print('searching using "git ls-files"...')
+		dofile(os.getenv('HOME')..'/bin/gitv')
+
+		local fn=nonInteractiveChoose({arg[1]})
+		if #fn==1 then
+			local currDir=os.currentDirectory()
+			print(scriptPrefix..'"'..currDir..'/'..fn[1][1]..'"')
+			if os.isWindows() then
+				os.execute2(scriptPrefix..'"'..os.toWindowsFileName(currDir..'/'..fn[1][1])..'"')
+			else
+				os.execute2(scriptPrefix..'"'..currDir..'/'..fn[1][1]..'"')
+			end
+		else
+			printTable(fn)
+			print('Error! cannot find '..arg[1].. ' in both "ls" and "git ls-files"!')
+		end
 	end
 end
 

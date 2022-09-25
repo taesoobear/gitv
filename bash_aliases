@@ -7,6 +7,7 @@ alias vv='gitv nvim'
 alias b='gitv gvim'
 # tag search. e.g. t main$
 alias t='gitv ts'
+alias tc='gitv clear;gitv ts'
 
 # use gitv to change directory by file name. e.g. gg main.c
 function gitv-cd {
