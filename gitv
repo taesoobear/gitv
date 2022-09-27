@@ -49,7 +49,7 @@ if isWindows() then
 	--	local fn= os.createUnnamedBatchFile({cmd})
 	--	os.execute_original('"'..fn..'"')
 	--end
-	g_tmp_folder=os.home_path()..'\\'
+	g_tmp_folder=os.home_path()..'\\tmp\\'
 end
 function execute2(...)
 	local tbl={...}

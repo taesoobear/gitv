@@ -1,4 +1,4 @@
-After intalling windows-native lua as follows, copy a script "./lua" to "~/bin/"
+After intalling lua as follows, copy "./lua" to "~/bin/"
 {{{
 winget install "windows for lua"
 }}}

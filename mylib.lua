@@ -2349,7 +2349,7 @@ function os.createUnnamedBatchFile(list, echoOff)
 	end
 	local tmppath
 	if os.isWindows() and not os.isCygwin() then
-		tmppath=os.home_path() 
+		tmppath=os.home_path()..'/tmp'
 	else
 		tmppath='/tmp'
 	end

@@ -22,11 +22,22 @@ local original = require'fzy_lua'
 -- to use taesooLib with PhysX simulator and without python3 dependency
 --local scriptPrefix= 'cd ~/sample_physX/work;./nopython '
 
+-- to use windows-native taesooLib without python3 dependency
+--local scriptPrefix= 'cd '..os.home_path()..'\\sample_torch\\work;.\\release\\nopython '
+
 -- to use taesooLib with PhysX simulator and with python3 dependency
 --local scriptPrefix= 'cd ~/sample_physX/work;python3 test_sample_python.py '
 
 -- to use taesooLib with python3 dependency
 local scriptPrefix= 'cd ~/sample_python/work;python3 test_sample_python.py '
+
+if os.isWindows() then
+	local execute2_original=os.execute2
+	function os.execute2(cmd)
+		local cmdsep=string.tokenize(cmd,';')
+		execute2_original(unpack(cmdsep))
+	end
+end
 
 function filter(fzy, needle, lines)
   results = {}

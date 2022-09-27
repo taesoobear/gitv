@@ -38,12 +38,12 @@ function rg {
 }
 function gd ($1){
 	gitv chooseFolder2_powershell "$1" 
-	$after= Get-Content "$home\gitv_chosen" -Raw
+	$after= Get-Content "$home\tmp\gitv_chosen" -Raw
     cd "$after"
 }
 function gg ($1){
 	gitv chooseFolder_powershell "$1" 
-	$after= Get-Content "$home\gitv_chosen" -Raw
+	$after= Get-Content "$home\tmp\gitv_chosen" -Raw
     cd "$after"
 }
 function va {
