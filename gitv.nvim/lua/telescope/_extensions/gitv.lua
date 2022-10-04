@@ -203,11 +203,22 @@ local file_search = function(opts)
 		end
 		return text
 	end
+	local fzy = require'fzy_lua'
 	for ifile, file in ipairs(_files) do
 		if string.isMatched(file,g_vimSrc)  then
 			if opts and opts.key then	
-				if select(1,string.find(string.lower(file), string.lower(opts.key))) then
-					table.insert(files, displayText(file))
+				--if select(1,string.find(string.lower(file), string.lower(opts.key))) then
+				--	table.insert(files, displayText(file))
+				if fzy.has_match(string.lower(opts.key), string.lower(file)) then
+					local a=opts.key:lower()
+					local b=displayText(file)
+					local positions = fzy.positions(a,b:lower())
+					if #positions==0 or positions[#positions] >=40 then
+					else
+				--if select(1,string.find(string.lower(file), string.lower(opts.key))) then
+					--table.insert(files, table.tostring(positions)..displayText(file))
+						table.insert(files, displayText(file))
+					end
 				end
 			else
 				table.insert(files, displayText(file))
