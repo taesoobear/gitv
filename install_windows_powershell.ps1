@@ -12,6 +12,7 @@ if(!(Test-Path -Path $HOME\bin)) { md $HOME\bin }
 copy gitv $HOME\bin\
 copy mylib.lua $HOME\bin\
 copy mylib52.lua $HOME\bin\
+copy taesoo_vimrc\fzy_lua.lua $HOME\bin\
 
 
 if(!(Test-Path -Path $HOME\tmp)) { md $HOME\tmp }

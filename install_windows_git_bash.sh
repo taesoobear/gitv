@@ -2,6 +2,7 @@ mkdir -p ~/bin
 cp gitv ~/bin/
 cp mylib.lua ~/bin/
 cp mylib52.lua ~/bin/
+cp taesoo_vimrc/fzy_lua.lua ~/bin/
 mkdir -p ~/.vim
 mkdir -p ~/.vim/plugin
 cp gitvim.vim ~/.vim/plugin
