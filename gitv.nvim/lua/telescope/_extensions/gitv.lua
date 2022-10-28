@@ -15,6 +15,11 @@ if isWin then
 else
 	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
 end
+require("mylib52")
+g_cache_folder=os.home_path()..'/.config/'
+if isWin then
+	g_cache_folder=os.home_path() ..'/'
+end
 local function git_top() -- git_root
 	if cache_git_top==nil then
 		local t
@@ -153,25 +158,105 @@ local function getTagList(filename, searchKey, sep)
 	return tags
 end
 
+function getHashTbl(list, conversionFcn)
+	if conversionFcn==nil then
+		conversionFcn=function (v) return v end
+	end
+
+	local hcache={}
+	if not list then
+		list={}
+	end
+	for i,v in ipairs(list) do
+		hcache[conversionFcn(v)]=true
+	end
+	return hcache
+end
+local function loadHistory(currDir)
+	local hcache={_list={}}
+	local history={}
+	if os.isFileExist(g_cache_folder..'cache_hist.txt') then
+		history= table.fromstring(util.readFile(g_cache_folder..'cache_hist.txt'))
+		hcache=getHashTbl(history, 
+		function (v) 
+			v[1]=os.absoluteToRelativePath(v[1], currDir)
+			return v[1]
+		end
+		)
+		--local fncache=getHashTbl(fn, 
+		--function (v)
+		--	return v[1]
+		--end
+		--)
+
+		hcache._list={}
+		for i,v in ipairs(history) do
+			if hcache[v[1]] then
+				hcache._list[#hcache._list+1]=v
+			end
+		end
+	end
+	return history, hcache
+end
+
+local function updateHistory(history, chosenFile)
+	if not history then history=loadHistory() end
+
+	do
+		-- remove duplicated
+		local keys={}
+		local newHistory={}
+		for i, v in ipairs(history) do
+			if not keys[v[1]] then
+				keys[v[1]]=true
+				table.insert(newHistory,v)
+			end
+		end
+		history=newHistory
+	end
+
+	for i =1, #history do
+		history[i]={os.relativeToAbsolutePath(history[i][1], currDir)}
+	end
+
+	chosenFile=os.relativeToAbsolutePath(chosenFile, currDir)
+
+	local max_num_hist=20
+	history=array.filter(function (x) return x[1]~=chosenFile end, history)
+	history={{chosenFile}, unpack(history)}
+	history[max_num_hist+1]=nil
+	util.writeFile(g_cache_folder..'cache_hist.txt', table.tostring(history))
+	return history
+end
+
 local file_search = function(opts)
-	require("mylib52")
 	g_vimSrc={"%.cfg$","%.sh$", "%.cmake$", "%.vim$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 
 	if os.isFileExist(git_top()..'/.gitvconfig') then
 		dofile(git_top()..'/.gitvconfig')
 	end
-	local files=lsFiles()
-	if not g_tagFallbackPath then
-		g_tagFallbackPath={}
-	end
+	local files
+	if opts and opts.key=='' then 
+		local hist=loadHistory(os.currentDirectory())
+		files={}
+		for i, v in ipairs(hist) do
+			table.insert(files, v[1])
+		end
+		opts.key=nil
+	else
+		files=lsFiles()
+		if not g_tagFallbackPath then
+			g_tagFallbackPath={}
+		end
 
-	for i=1,#g_tagFallbackPath do
-		local fallbackPath=g_tagFallbackPath [i]
-		local path=os.relativeToAbsolutePath(fallbackPath, git_top())
-		if os.isFileExist(path) then
-			--print('file searching '..g_tagFallbackPath[i])
-			local files2=lsFiles('-g', path)
-			array.concat(files, files2)
+		for i=1,#g_tagFallbackPath do
+			local fallbackPath=g_tagFallbackPath [i]
+			local path=os.relativeToAbsolutePath(fallbackPath, git_top())
+			if os.isFileExist(path) then
+				--print('file searching '..g_tagFallbackPath[i])
+				local files2=lsFiles('-g', path)
+				array.concat(files, files2)
+			end
 		end
 	end
 	local _files=files
@@ -207,8 +292,6 @@ local file_search = function(opts)
 	for ifile, file in ipairs(_files) do
 		if string.isMatched(file,g_vimSrc)  then
 			if opts and opts.key then	
-				--if select(1,string.find(string.lower(file), string.lower(opts.key))) then
-				--	table.insert(files, displayText(file))
 				if fzy.has_match(string.lower(opts.key), string.lower(file)) then
 					local a=opts.key:lower()
 					local b=displayText(file)
@@ -226,7 +309,9 @@ local file_search = function(opts)
 		end
 	end
 	if #files==1 then
-		vim.cmd("edit "..fullPathFromDisplayText(files[1]))
+		local filename=fullPathFromDisplayText(files[1])
+		updateHistory(nil, filename)
+		vim.cmd("edit "..filename)
 		return 
 	end
 	pickers.new(opts, {
@@ -244,7 +329,9 @@ local file_search = function(opts)
 				end
 
 				if selection[1] then
-					vim.cmd("edit "..fullPathFromDisplayText(selection[1]))
+					local filename=fullPathFromDisplayText(selection[1])
+					updateHistory(nil, filename)
+					vim.cmd("edit "..filename)
 				end
 			end)
 			return true

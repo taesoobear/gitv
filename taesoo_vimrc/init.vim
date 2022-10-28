@@ -134,60 +134,7 @@ nmap <c-b> :Telescope buffers<CR>
 nmap <c-h> mZ:lua require('telescope').extensions.gitv.gitv{key="^<C-r><C-w>$"}<CR>
 nmap <S-F5> 'Z
 
-"some other keybindings are defined in .vim/plugins/gitvim.vim
-
-"""""""""""""""""""""""""""""""""""""""""""""
-" commands
-" Ranger file manager
-"""""""""""""""""""""""""""""""""""""""""""""
-"command! -nargs=0 -complete=buffer Ranger :call Ranger()
-" open a file explorer selecting the current file or directory.
-"command! -nargs=0 -complete=buffer F :call ExplorerFile("go")
-"command! -nargs=0 -complete=buffer E :Explore
-"command! -nargs=0 -complete=buffer Ev :Explore c:\program files\vim
-
-set diffexpr=MyDiff()
-	set diffexpr=MyDiff()
-	function MyDiff()
-	   let opt = ""
-	   if &diffopt =~ "icase"
-	     let opt = opt . "-i "
-	   endif
-	   if &diffopt =~ "iwhite"
-	     let opt = opt . "-b "
-	   endif
-	   silent execute "!diff -a --binary " . opt . v:fname_in . " " . v:fname_new .
-		\  " > " . v:fname_out
-	endfunction
-
-function! ExplorerFile_Remove(filename, c)
-	if strpart(a:filename, strlen(a:filename)-1)==a:c
-		return strpart(a:filename, 0, strlen(a:filename)-1)
-	endif
-	return a:filename
-endfunction
-
-" open an explorer selecting the current file or directory
-function! ExplorerFile(cmd)
-	if strpart(getline(2), 2, 23)=="Netrw Directory Listing"
-		execute "normal c"
-		let filename=getline('.')
-		let filename=ExplorerFile_Remove(filename, "/")
-		let filename=ExplorerFile_Remove(filename, "*")
-		execute "!gitv cmd ".a:cmd." \"".filename."\"&"
-	else
-		let file=expand("%:p")
-		let line=line('.')
-		execute "!gitv cmd ".a:cmd." \"".file ."\" ".line."&"
-	endif
-	redraw!
-endfunction
-
 command! -nargs=0 ZR :normal zR
-command! -nargs=0 Sh :ConqueTerm bash
-"command! -nargs=0 -complete=buffer M :simalt ~x "maximize window
-command! -nargs=1 RunL :!l <args>
-
 
 "highlight Folded guifg=#606060 guibg=#d9d9d9
 
@@ -209,14 +156,6 @@ fun! ToggleFold()
 	echo
 endfun
 
-fun Ranger()
-  silent !ranger --choosefile=/tmp/chosen
-  if filereadable('/tmp/chosen')
-    exec 'edit ' . system('cat /tmp/chosen')
-    call system('rm /tmp/chosen')
-  endif
-  redraw!
-endfun
 
 set backupdir=./.backup,.,/tmp
 set directory=.,./.backup,/tmp

@@ -75,7 +75,8 @@ function main()
 
 	end
 	if not pattern then
-		print('usage: tl wrlv')
+		local tl=os.processFileName(arg[0])
+		print('usage: '..tl..' wrlv')
 		print('current setting: '..scriptPrefix..' path_to_wrlv.lua')
 		return
 	end

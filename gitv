@@ -747,11 +747,12 @@ function getHashTbl(list, conversionFcn)
 	return hcache
 end
 
-local function loadHistory(currDir)
+local function loadHistory(currDir, cache_file)
+	cache_file=cache_file or 'cache_hist.txt'
 	local hcache={_list={}}
 	local history={}
-	if os.isFileExist(g_cache_folder..'cache_hist.txt') then
-		history= table.fromstring(util.readFile(g_cache_folder..'cache_hist.txt'))
+	if os.isFileExist(g_cache_folder..cache_file) then
+		history= table.fromstring(util.readFile(g_cache_folder..cache_file))
 		hcache=getHashTbl(history, 
 		function (v) 
 			v[1]=os.absoluteToRelativePath(v[1], currDir)
@@ -772,6 +773,101 @@ local function loadHistory(currDir)
 		end
 	end
 	return history, hcache
+end
+local function updateHistory(history, chosenFile, cache_file, max_num_hist)
+	cache_file=cache_file or 'cache_hist.txt'
+	max_num_hist=max_num_hist or 10
+	if not history then history=loadHistory(nil,cache_file) end
+
+	do
+		-- remove duplicated
+		local keys={}
+		local newHistory={}
+		for i, v in ipairs(history) do
+			if not keys[v[1]] then
+				keys[v[1]]=true
+				table.insert(newHistory,v)
+			end
+		end
+		history=newHistory
+	end
+
+	for i =1, #history do
+		history[i]={os.relativeToAbsolutePath(history[i][1], currDir)}
+	end
+
+	chosenFile=os.relativeToAbsolutePath(chosenFile, currDir)
+
+	history=array.filter(function (x) return x[1]~=chosenFile end, history)
+	history={{chosenFile}, unpack(history)}
+	history[max_num_hist+1]=nil
+	util.writeFile(g_cache_folder..cache_file, table.tostring(history))
+	return history
+end
+-- simpler version (only the first parameter is necessary)
+function interactiveChooseFromList(fn, nhist, printFallbackMessage)
+	local index=1
+	while #fn>1 do
+		-- start file choose interface
+		print('--------------------------------------------------------------')
+		local c=1
+		for i,v in ipairs(fn) do
+			if c==1 then --and c<=nhist then
+				print(v[1], "("..tostring(c).." - default)") 
+			else
+				print(v[1], "("..tostring(c)..")") 
+			end
+			if c==nhist then
+				print('--------------------------------------------------------------')
+			end
+			c=c+1
+			if c>20 then
+				print('... not displaying more candidates') 
+				break
+			end
+		end
+		if printFallbackMessage then
+			print('   - To see other files in fallback folders', "(0)")
+		end
+
+		print('\nEnter a shortcut (number) or a keyword to further refine the search:')
+		local cmd=getLine()
+		-- skip strange special characters 
+		while string.byte(cmd)==27 or string.byte(cmd)==91 do
+			if string.byte(cmd)==91 then
+				cmd=cmd:sub(3)
+			else
+				cmd=cmd:sub(2)
+			end
+		end
+		index=tonumber(cmd) 
+
+		if cmd=="" then 
+			--if fromHistory or nhist~=0 then
+				index=1
+				break
+			--else
+			--	return nil 
+			--end
+		elseif index==0 then
+			break
+		elseif index==nil then 
+			-- refine search
+			local refinedFn={}
+			for i,v in ipairs(fn) do
+				local idx=string.findLastOf(string.lower(v[1]), string.lower(cmd))
+				if idx~=nil then
+					array.pushBack(refinedFn, v)
+				end
+			end
+			fn=refinedFn
+			index=1
+			if #fn==0 then return nil end
+		else
+			break
+		end
+	end
+	return index
 end
 function interactiveChoose(fn, keys, fromFallbackPath)
 	local index=1
@@ -815,98 +911,18 @@ function interactiveChoose(fn, keys, fromFallbackPath)
 		fn=fn2
 	end
 
-	while #fn>1 do
-		-- start file choose interface
-		print('--------------------------------------------------------------')
-		local c=1
-		for i,v in ipairs(fn) do
-			if c==1 then --and c<=nhist then
-				print(v[1], "("..tostring(c).." - default)") 
-			else
-				print(v[1], "("..tostring(c)..")") 
-			end
-			if c==nhist then
-				print('--------------------------------------------------------------')
-			end
-			c=c+1
-			if c>20 then
-				print('... not displaying more candidates') 
-				break
-			end
-		end
-		if #g_tagFallbackPath>0 and not fromFallbackPath and not listFromHistory then
-			print('   - To see other files in fallback folders', "(0)")
-		end
-
-
-		print('\nEnter a shortcut (number) or a keyword to further refine the search:')
-		local cmd=getLine()
-		-- skip strange special characters 
-		while string.byte(cmd)==27 or string.byte(cmd)==91 do
-			if string.byte(cmd)==91 then
-				cmd=cmd:sub(3)
-			else
-				cmd=cmd:sub(2)
-			end
-		end
-		index=tonumber(cmd) 
-
-		if cmd=="" then 
-			--if fromHistory or nhist~=0 then
-				index=1
-				break
-			--else
-			--	return nil 
-			--end
-		elseif index==0 then
-			local fn=listFileFromTagFallbackPath(keys)
-			return interactiveChoose(fn, keys, true)
-		elseif index==nil then 
-			-- refine search
-			local refinedFn={}
-			for i,v in ipairs(fn) do
-				local idx=string.findLastOf(string.lower(v[1]), string.lower(cmd))
-				if idx~=nil then
-					array.pushBack(refinedFn, v)
-				end
-			end
-			fn=refinedFn
-			index=1
-			if #fn==0 then return nil end
-		else
-			break
-		end
+	index=interactiveChooseFromList(fn, nhist, #g_tagFallbackPath>0 and not fromFallbackPath and not listFromHistory )
+	if index==0 then
+		local fn=listFileFromTagFallbackPath(keys)
+		return interactiveChoose(fn, keys, true)
+	elseif index==nil then
+		return nil
 	end
 	do -- add to history
 		if #fn==0 then return nil end
 		if fn[index]==nil then return nil end
 		local chosenFile=fn[index][1]
-		if not history then history=loadHistory() end
-
-		do
-			-- remove duplicated
-			local keys={}
-			local newHistory={}
-			for i, v in ipairs(history) do
-				if not keys[v[1]] then
-					keys[v[1]]=true
-					table.insert(newHistory,v)
-				end
-			end
-			history=newHistory
-		end
-
-		for i =1, #history do
-			history[i]={os.relativeToAbsolutePath(history[i][1], currDir)}
-		end
-
-		chosenFile=os.relativeToAbsolutePath(chosenFile, currDir)
-
-		local max_num_hist=10
-		history=array.filter(function (x) return x[1]~=chosenFile end, history)
-		history={{chosenFile}, unpack(history)}
-		history[max_num_hist+1]=nil
-		util.writeFile(g_cache_folder..'cache_hist.txt', table.tostring(history))
+		history=updateHistory(history, chosenFile)
 	end
 
 	return fn[index]
@@ -1645,7 +1661,7 @@ function main(...)
 		if key then
 			os.execute("nvim \"+:lua require('telescope').extensions.gitv.gitv_files{key='"..key.."'}\"")
 		else
-			os.execute("nvim \"+:lua require('telescope').extensions.gitv.gitv_files()\"")
+			os.execute("nvim \"+:lua require('telescope').extensions.gitv.gitv_files{key=''}\"")
 		end
 
 	elseif arg[1]=="convutf8" then
@@ -1852,10 +1868,21 @@ function main(...)
 		local keys=array.sub(arg,2)
 		local chosen=chooseFolder(keys)
 		if chosen then
+			updateHistory(nil, chosen, 'dir_cache_hist.txt', 20)
 			local t=string.gsub(chosen,'~', os.home_path())
 			util.writeFile(g_tmp_folder..'gitv_chosen', t)
 		else
-			util.writeFile(g_tmp_folder..'gitv_chosen', '.')
+			local currDir=os.currentDirectory()
+			local dirhist=loadHistory(currDir, 'dir_cache_hist.txt')
+			local index=interactiveChooseFromList(dirhist)
+			if index and dirhist and #dirhist>=2 then
+				local chosen=dirhist[index][1]
+				updateHistory(nil, chosen, 'dir_cache_hist.txt', 20)
+				util.writeFile(g_tmp_folder..'gitv_chosen', chosen)
+			else
+				updateHistory(nil, os.currentDirectory(), 'dir_cache_hist.txt', 20)
+				util.writeFile(g_tmp_folder..'gitv_chosen', '.')
+			end
 		end
 	elseif arg[1]=="chooseFolder2_powershell" then
 		local keys=array.sub(arg,2)
