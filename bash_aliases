@@ -57,7 +57,7 @@ alias vs='vim -c ":source .__vimsession"'
 alias va='vi ~/.bash_aliases;source ~/.bash_aliases'
 
 ################################################
-# experimental features below (not well tested)#
+# experimental features below (not tested)#
 ################################################
 # to use gvim 
 #alias b='gitv gvim'
