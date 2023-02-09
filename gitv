@@ -681,7 +681,10 @@ build_*
 					end
 					git_tools.execute('cd "'..path..'";git status . -s')
 				elseif string.sub(ioread,1,7)=="EDIT!!!" then
-					os.createBatchFile("gitscript.bat", { 'remove or edit all the unnecessary lines!!!', '# use "git reset HEAD <file>..." to unstage', '# Warning!!! simply exiting the editor WILL executes this script!!!', 'cd "'..path..'"',unpack(modified)})
+					os.createBatchFile("gitscript.bat", { '# remove or edit all the unnecessary lines in the following shell script!!!', 
+					'# use "git add <file>..." to stage', 
+					'# use "git reset HEAD <file>..." to unstage', 
+					'# Warning!!! simply exiting the editor WILL executes this script!!!', 'cd "'..path..'"',unpack(modified),'git commit'})
 					os.execute2('vim gitscript.bat')
 					if os.isUnix() then
 						os.execute2('sh gitscript.bat')
