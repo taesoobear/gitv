@@ -397,8 +397,16 @@ local tag_search = function(opts)
 					if s then
 						local file=os.relativeToAbsolutePath(filename:sub(1,s-1), git_top())
 						--vim.cmd("edit "..git_top()..'/'..filename:sub(1,s-1))
-						vim.cmd("edit "..file)
-						vim.api.nvim_win_set_cursor(0, { tonumber(filename:sub(s+1)), 0 })
+						local res,msg=pcall(vim.cmd,"edit "..file)
+						if not res then
+							os.execute2('cd "'..git_top()..'"', 'gitv etags')
+							error(msg ..'. TAGS recreated so you can try again!')
+						end
+						local res,msg=pcall(vim.api.nvim_win_set_cursor, 0, { tonumber(filename:sub(s+1)), 0 } )
+						if not res then
+							os.execute2('cd "'..git_top()..'"', 'gitv etags')
+							error(msg ..'. TAGS recreated so you can try again!')
+						end
 					end
 				end
 			end
