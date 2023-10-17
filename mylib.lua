@@ -2250,15 +2250,20 @@ function os.find(mask, bRecurse, nomessage, printFunc)
 	else
 		local folder, lmask=os._processMask(mask)
 		local out=os._globWin32("-d", folder..lmask)
-		local acceptedExt=deepCopyTable(os.globParam.acceptedExt)
 
-		if string.find(mask,"%*%.") then
-			local idx=string.find(mask,"%*%.")+2
-			acceptedExt[#acceptedExt+1]="%."..string.sub(mask,idx)..'$'
-			--print(acceptedExt[#acceptedExt])
+		local acceptedExt
+
+		if os.globParam.acceptedExt then
+			acceptedExt=deepCopyTable(os.globParam.acceptedExt)
+
+			if string.find(mask,"%*%.") then
+				local idx=string.find(mask,"%*%.")+2
+				acceptedExt[#acceptedExt+1]="%."..string.sub(mask,idx)..'$'
+				--print(acceptedExt[#acceptedExt])
+			end
 		end
 		for i=1, table.getn(out) do
-			if string.isMatched(out[i], acceptedExt) then
+			if not acceptedExt or string.isMatched(out[i], acceptedExt) then
 				printFunc:iterate(folder..out[i])
 			end
 		end

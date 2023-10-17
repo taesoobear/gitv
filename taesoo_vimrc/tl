@@ -81,13 +81,17 @@ function main()
 		return
 	end
 
+	if pattern:sub(1,1)=='/' then
+		execute(scriptPrefix, pattern)
+		return
+	end
 	local res=filter(original, arg[1], files)
 
 	local succeeded=false
 	if #res==1 then
 		succeeded=true
 	elseif #res==0 then
-		print('no matches found')
+		print('no matches found in "ls"')
 	else
 		print('multiple matches:')
 		printTable(res)
@@ -117,11 +121,7 @@ function main()
 	if succeeded then
 		local currDir=os.currentDirectory()
 		print(scriptPrefix..'"'..currDir..'/'..res[1][1]..'"')
-		if os.isWindows() then
-			os.execute2(scriptPrefix..'"'..os.toWindowsFileName(currDir..'/'..res[1][1])..'"')
-		else
-			os.execute2(scriptPrefix..'"'..currDir..'/'..res[1][1]..'"')
-		end
+		execute(scriptPrefix,currDir..'/'..res[1][1])
 	else
 		print('searching using "git ls-files"...')
 		dofile(os.getenv('HOME')..'/bin/gitv')
@@ -130,11 +130,7 @@ function main()
 		if #fn==1 then
 			local currDir=os.currentDirectory()
 			print(scriptPrefix..'"'..currDir..'/'..fn[1][1]..'"')
-			if os.isWindows() then
-				os.execute2(scriptPrefix..'"'..os.toWindowsFileName(currDir..'/'..fn[1][1])..'"')
-			else
-				os.execute2(scriptPrefix..'"'..currDir..'/'..fn[1][1]..'"')
-			end
+			execute(scriptPrefix,currDir..'/'..fn[1][1])
 		else
 			printTable(fn)
 			print('Error! cannot find '..arg[1].. ' in both "ls" and "git ls-files"!')
@@ -142,4 +138,20 @@ function main()
 	end
 end
 
+function execute(scriptPrefix, fn)
+	if arg[2] then
+		local currDir=os.currentDirectory()
+		if os.isWindows() then
+			os.execute2(scriptPrefix..'--dostring:arg=\\"'.. currDir..':'..arg[2]..'\\" "' ..os.toWindowsFileName(fn)..'"')
+		else
+			os.execute2(scriptPrefix..'--dostring:arg=\\"'..currDir..':'..arg[2]..'\\" "' ..fn..'"')
+		end
+	else
+		if os.isWindows() then
+			os.execute2(scriptPrefix..'"'..os.toWindowsFileName(fn)..'"')
+		else
+			os.execute2(scriptPrefix ..'"'..fn..'"')
+		end
+	end
+end
 main()

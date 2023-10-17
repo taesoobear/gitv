@@ -11,9 +11,10 @@ Plug 'gabrielelana/vim-markdown'
 Plug 'chipsenkbeil/vimwiki-server.nvim', { 'tag': 'v0.1.0-alpha.4' }
 Plug 'nanotech/jellybeans.vim'
 Plug 'nvim-lua/plenary.nvim'
-Plug 'nvim-telescope/telescope.nvim', { 'tag': '0.1.0' }
+Plug 'nvim-telescope/telescope.nvim', { 'tag': '0.1.4' }
 Plug 'nvim-telescope/telescope-file-browser.nvim'
 Plug '~/gitv/gitv.nvim'
+Plug 'dcampos/nvim-snippy'
 call plug#end()
 lua << EOF
 require('telescope').setup{
@@ -162,3 +163,5 @@ set directory=.,./.backup,/tmp
 "set tags=./.tags;/,.tags;/
 "
 set grepprg=gitv\ grep
+
+imap <expr> <Tab> snippy#can_expand_or_advance() ? '<Plug>(snippy-expand-or-advance)' : '<Tab>'

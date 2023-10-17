@@ -575,7 +575,7 @@ function git_tools.commit(path,force)
 			print('----------------------------------')
 			for i,v in ipairs(untracked) do print(v) end
 			print('----------------------------------')
-			print('Do you want to add these untracked files to git repository? Press enter to skip. ([no]/ignore/EDIT!!!/YES!!!)')
+			print('Do you want to add these untracked files to git repository? Press enter to skip. ([no]/ignore/EDIT/YES)')
 			local cmd=''
 			for i, v in ipairs(untracked) do 
 				cmd=cmd.. git()..' add "'..v..'"\n'
@@ -586,10 +586,10 @@ function git_tools.commit(path,force)
 			else
 				ioread=getLine()
 			end
-			if string.sub(ioread,1,6)=="YES!!!" then
+			if string.sub(ioread,1,6)=="YES" then
 				os.execute2('cd "'..path..'"', cmd)
 				print('\n Added '..#untracked..' files')
-			elseif string.sub(ioread,1,7)=="EDIT!!!" then
+			elseif string.sub(ioread,1,7)=="EDIT" then
 				os.createBatchFile("gitscript.bat", {'# remove all the unnecessary lines!!!', '# Warning!!! simply exiting the editor WILL executes this script!!!', 'cd "'..path..'"',cmd})
 				os.execute2('vim gitscript.bat')
 				if os.isUnix() then
@@ -642,7 +642,7 @@ build_*
 			local bDone
 			repeat
 				bDone=true
-				print('Do you want to commit these files to git repository? (yes/[no]/diff/EDIT!!!)')
+				print('Do you want to commit these files to git repository? (yes/[no]/diff/EDIT)')
 				local ioread
 				if force then
 					ioread='yes'
@@ -682,7 +682,7 @@ build_*
 						print('"'..m..'" added')
 					end
 					git_tools.execute('cd "'..path..'";git status . -s')
-				elseif string.sub(ioread,1,7)=="EDIT!!!" then
+				elseif string.sub(ioread,1,7)=="EDIT" then
 
 					local cmds={ '# remove or edit all the unnecessary lines in the following shell script!!!', 
 					'# use "git add <file>..." to stage', 
@@ -1928,6 +1928,9 @@ function main(...)
 	elseif arg[1]=='find' then
 		local keys=array.sub(arg,2)
 		findFile(keys, print)
+	elseif arg[1]=='findall' then
+		local keys=array.sub(arg,2)
+		findAllFile(keys, print)
 	elseif arg[1]=='diffrepo' or arg[1]=='cprepo' or arg[1]=='cprepo2' then
 		local filen=arg[2]
 		local statOnly=false
@@ -2508,6 +2511,25 @@ function main(...)
 end
 function findFile(keys, filefunc)
 		local files=lsFiles()
+		local fn={}
+		for ifile, file in ipairs(files) do
+			local passed=true
+			for j=1,#keys do
+				if not select(1,string.find(string.lower(file), string.lower(keys[j]))) then
+					passed=false
+				end
+			end
+			if passed then
+				filefunc(file)
+			end
+		end
+end
+function findAllFile(keys, filefunc)
+	local backup_param=os.globParam.acceptedExt
+	os.globParam.acceptedExt=nil
+	local cpt=os.glob('*', true, true)
+	os.globParam.acceptedExt= backup_param
+		local files=_lsFiles(cpt)
 		local fn={}
 		for ifile, file in ipairs(files) do
 			local passed=true
