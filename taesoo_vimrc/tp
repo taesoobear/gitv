@@ -18,25 +18,53 @@ local original = require'fzy_lua'
 
 local scriptPrefix
 if true then
-	-- manual setting
+	-- modify the scriptPrefix as you want.
+	-- to use taesooLib without python3 dependency
+	if os.isWindows() then
+		-- autodetect using the current directory name
+		local curDir=os.currentDirectory()
+		curDir=os.toWindowsFileName(curDir)
+		if select(1, string.find(curDir,'sample_python')) then
+			local s,e=string.find(curDir,'sample_python')
+			scriptPrefix= 'cd '..curDir:sub(1,e)..'/work;./nopython '
+		elseif select(1, string.find(curDir,'sample_physX')) then
+			local s,e=string.find(curDir,'sample_physX')
+			scriptPrefix= 'cd '..curDir:sub(1,e)..'/work;./nopython '
+		elseif select(1, string.find(curDir, 'taesooLib')) then
+			local s,e=string.find(curDir,'taesooLib')
+			scriptPrefix= 'cd '..curDir:sub(1,e)..'/work;./classification '
+			--scriptPrefix= 'cd '..curDir:sub(1,e)..'/work;python runLua.py '
+		else
+			-- if failed to use the home_path directory name, fallback 
+			scriptPrefix= 'cd '..curDir..'/sample_python/work;./nopython '
+		end
+	else
+		-- autodetect using the current directory name
+		if select(1, string.find(os.currentDirectory(),'sample_python')) then
+			local s,e=string.find(os.currentDirectory(),'sample_python')
+			scriptPrefix= 'cd '..os.currentDirectory():sub(1,e)..'/work;./nopython '
+		elseif select(1, string.find(os.currentDirectory(),'sample_physX')) then
+			local s,e=string.find(os.currentDirectory(),'sample_physX')
+			scriptPrefix= 'cd '..os.currentDirectory():sub(1,e)..'/work;./nopython '
+		elseif select(1, string.find(os.currentDirectory(), 'taesooLib')) then
+			local s,e=string.find(os.currentDirectory(),'taesooLib')
+			scriptPrefix= 'cd '..os.currentDirectory():sub(1,e)..'/work;./classification '
+			--scriptPrefix= 'cd '..os.currentDirectory():sub(1,e)..'/work;python runLua.py '
+		else
+			-- if failed to use the current directory name, fallback 
+			scriptPrefix= 'cd '..os.home_path()..'/sample_python/work;./nopython '
+		end
+	end
 
-	-- use taesooLib with python3 dependency (the current default setting)
-	scriptPrefix= 'cd ~/sample_python/work;python3 test_sample_python.py '
-
-	-- to use taesooLib without python3 dependency. good for debugging a lua script.
-	--scriptPrefix= 'cd ~/taesooLib/work;./classification '
-	--scriptPrefix= 'cd ~/taesooLib/work;lldb -- ./classification_d '
-
-	-- to use taesooLib with PhysX simulator and with python3 dependency
-	--scriptPrefix= 'cd ~/sample_physX/work;python3 test_sample_python.py '
+	-- scriptPrefix examples:
+	-- for wsl users having openGL-related problems.
+	--scriptPrefix= 'cd ~/sample_physX/work;GALLIUM_DRIVER=llvmpipe ./nopython '
 
 	-- to use taesooLib with PhysX simulator and without python3 dependency
 	--scriptPrefix= 'cd ~/sample_physX/work;./nopython '
 
-	-- to use windows WSL with opengl and without python3 dependency 
-	--scriptPrefix='cd ~/sample_physX/work;GALLIUM_DRIVER=llvmpipe ./nopython '
-
-	-- to use windows-native taesooLib without python3 dependency
+	-- to use taesooLib with PhysX simulator and with python3 dependency
+	--scriptPrefix= 'cd ~/sample_physX/work;python3 test_sample_python.py '
 	--scriptPrefix= 'cd '..os.home_path()..'\\sample_torch\\work;.\\release\\nopython '
 
 	-- to use cgdb. you first need to "make debugexe" and "make debug"
@@ -45,15 +73,6 @@ if true then
 	
 	-- to use lldb (mac). you first need to "make debugexe"
 	--scriptPrefix= 'cd ~/sample_python/work;lldb -- ./nopython_d '
-	
-else 
-	-- automatic search
-	priority={
-		{'cd ~/sample_physX/work;python3 test_sample_python.py ', '~/sample_physX/work/libmainlib*'},
-		{'cd ~/sample_physX/work;./nopython ', '~/sample_physX/work/nopython'},
-		{'cd ~/sample_python/work;python3 test_sample_python.py ', '~/sample_python/work/libmainlib*'},
-		{'cd ~/sample_python/work;./nopython ', '~/sample_python/work/nopython'},
-	}
 end
 
 

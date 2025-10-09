@@ -2037,7 +2037,10 @@ end
 
 function os.currentDirectory()
 	if os.isUnix() then
-		return os.capture('pwd -P')
+		if not _g_cache_current then
+			_g_cache_current= os.capture('pwd -P')
+		end
+		return _g_cache_current
 	else
 		return os.fromWindowsFileName(os.capture('cd'))
 	end

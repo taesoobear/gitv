@@ -1,0 +1,4 @@
+before="$(pwd)"
+#cd ~/sample_python/work;lldb -- ./nopython_d $before/$1
+#cd ~/sample_physX/work;lldb -- ./nopython_d $before/$1
+cd ~/taesooLib/work;lldb -- ./Debug/classification $before/$1

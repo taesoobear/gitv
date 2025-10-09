@@ -18,17 +18,38 @@ function meld ($1, $2) {
 	$f2=gitv winrun echo $2
 	cmd /c 'C:\Program Files (x86)\Meld\Meld.exe' "$f1" "$f2"
 }
-Set-Alias vimdiff meld
 
 function cdl{ cd $home\taesooLib\Samples\classification\ }
-function cdt{ cd $home\sample_torch\work\windows_batchfiles\ }
+function cdp{ cd $home\sample_python\work\ }
 function cdh{ cd $home }
 function gitv ($1, $2, $3, $4) {
 	lua $home\bin\gitv $1 $2 $3 $4
 }
+function vimdiff ($1, $2) {
+	nvim -d $1 $2 
+}
 
+function wikp
+{
+	cd $home\wiki
+	vi index.wiki
+}
 function tl ($1, $2, $3, $4) {
 	lua $home\bin\tl $1 $2 $3 $4
+}
+function tp ($1, $2, $3, $4) {
+	lua $home\bin\tp $1 $2 $3 $4
+}
+function nop ($1, $2, $3, $4) {
+	.\release\nopython $1 $2 $3 $4
+}
+function wikp{
+	cd $home\wiki_public
+	nvim index.wiki
+}
+function wik{
+	cd $home\wiki
+	nvim taesoo.wiki
 }
 
 function rg {
@@ -48,6 +69,16 @@ function gg ($1){
 }
 function va {
 	vi $profile
-	echo '". $profile" your self.'
+	echo '". $profile" yourself.'
+}
+function gca {
+	git commit -a 
 }
 Set-PSReadlineKeyHandler -Key ctrl+d -Function ViExit
+Set-Alias go start
+function find ($1) {
+	get-childitem -recurse "$1"
+}
+Set-Alias make ./build.bat
+
+$env:VSLANG=1033

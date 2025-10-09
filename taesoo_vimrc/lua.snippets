@@ -1,0 +1,45 @@
+# Comments are possible
+snippet fun
+	function ${1:name}(${2:params})
+		${0:$VISUAL}
+	end
+snippet upcase
+	local ${1:var} = '${1/.*/\U\0/g}'
+snippet choices
+	print('My favorite language is: ${1|JavaScript,Lua,Rust|}')
+snippet date
+	Current date is `strftime('%c')`
+# Custom tabstop order
+snippet repeat
+	repeat
+		${2:what}
+	while ${1:condition}
+snippet dbg
+	dbg.${1|draw,erase('Sphere'\,name),eraseAllDrawn(),drawBillboard,updateBillboards(fElapsedTime),console()|}
+snippet dbg.draw
+	dbg.draw${1|('Axes'\,tf\,nameid\,position_scale),('Sphere'\,pos\,nameid\,mat\,r),('SphereM'\,pos\,nameid\,mat\,r),Billboard,('Line'\,startpos\,endpos\,nameid\,color\,thickness)|}
+snippet dbg.drawBillboard
+	dbg.drawBillboard${1|(mat3\,nameid\,'redCircle'\,thickness_cm\,'QuadListV'),(mat3\,nameid\,'solidred'\,thickness_cm\,'BillboardLineList'),(mat8_color_width_tu\,nameid\,'solidred'\,thickness_cm\,'BillboardChain')|}
+snippet fori
+	for ${1:var} in ipairs(${2:table}) do
+		${3:what}
+	end
+snippet fork
+	for ${1:key}, ${2:val} in pairs(${3:table}) do
+		${4:what}
+	end
+snippet table
+	table${1|.filter(fcn\,,.filterByKey(pattern\,,.find(,.keys,.ijoin(,.insert(,.isubset(array\,,.concat(|})
+snippet loader
+	loader${1|.dofInfo,:bone(treeIndex),:numBone(),:getBoneByName(name),:getTreeIndexByName(name),:getRotJointIndexByName(name),:getTransJointIndexByName(Name)|}
+snippet loaderToTree
+	loaderToTree${1|:nDOF(),:nJoints(),:getPoseDOF(dofInfo\,pose),:setPoseDOF(dofInfo\,pose),:getQ(q),:setQ(q),:numJoint(),:numBone(),:globalFrame(ibone),:calcJacobianTransposeAt(JT,ibone,lpos)|}
+snippet MotionDOF
+	MotionDOF${1|(dofinfo),(dofInfo,mot),.setRootTransformation,.rootTransformation|}(
+snippet this
+	this${1|:addButton(title),:updateLayout(),:addCheckButton(title\,initialvalue),:addText(title),:addFloatSlider(title\,val\,vmin\,vmax)|}
+snippet timeline
+	require('subRoutines/Timeline')
+	mEventReceiver=EVR() 
+	mTimeline=Timeline("Timeline", 10000, 1/30)
+	--  function EVR:onFrameChanged(win, iframe) end

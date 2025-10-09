@@ -55,6 +55,9 @@ alias vs='vim -c ":source .__vimsession"'
 #alias vs='nvim -c ":source .__vimsession"'
 # because I change .bash_aliases very often, I make an alias
 alias va='vi ~/.bash_aliases;source ~/.bash_aliases'
+function findname {
+	find . -iname "$1" -not -path "./Library/*" 2>/dev/null 
+}
 
 ################################################
 # experimental features below (not tested)#

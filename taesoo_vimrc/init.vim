@@ -8,10 +8,10 @@ Plug 'flazz/vim-colorschemes'
 Plug 'altercation/vim-colors-solarized'
 Plug 'vimwiki/vimwiki'
 Plug 'gabrielelana/vim-markdown'
-Plug 'chipsenkbeil/vimwiki-server.nvim', { 'tag': 'v0.1.0-alpha.4' }
+Plug 'chipsenkbeil/vimwiki-server.nvim'
 Plug 'nanotech/jellybeans.vim'
 Plug 'nvim-lua/plenary.nvim'
-Plug 'nvim-telescope/telescope.nvim', { 'tag': '0.1.4' }
+Plug 'nvim-telescope/telescope.nvim'
 Plug 'nvim-telescope/telescope-file-browser.nvim'
 Plug '~/gitv/gitv.nvim'
 Plug 'dcampos/nvim-snippy'

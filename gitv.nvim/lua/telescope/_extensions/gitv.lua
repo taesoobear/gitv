@@ -39,6 +39,20 @@ local function git()
 	return 'git'
 end
 
+function lsFiles_nongit()
+	if os.isWindows() then
+		local i, t, popen = 0, {}, io.popen
+		for filename in popen('dir "*" /b'):lines() do
+			i = i + 1
+			t[i] = filename
+		end
+		return t
+	else
+		local files=string.lines(os.capture('ls -1 *.* 2>/dev/null', true))
+		files[#files]=nil
+		return files
+	end
+end
 function lsFiles(option, path)
 	path=path or git_top()
 	local cpt
@@ -59,12 +73,27 @@ function lsFiles(option, path)
 		-- use absolute
 		cpt=os.capture('cd '..path..';git ls-files .', true)
 	else
+
 		cpt=os.capture(git()..' ls-files "'..git_top()..'" 2>&1', true)
 		if select(1, string.find(cpt, 'fatal:')) then
 			option='-g'
 			cpt=os.capture('cd '..git_top()..';git ls-files .', true)
 		end
 		cpt=string.lines(cpt)
+		
+		-- add non-git local files to the list.
+		local lcpt=os.capture(git()..' ls-files .', true)
+		lcpt=string.lines(lcpt)
+		local lfiles=lsFiles_nongit()
+		local hash={}
+		for i, f in ipairs(lcpt) do
+			hash[f]=true
+		end
+		for i, f in ipairs(lfiles) do
+			if not hash[f] then
+				table.insert(cpt,1,f)
+			end
+		end
 	end
 	return _lsFiles(cpt, option, path)
 end
@@ -230,7 +259,7 @@ local function updateHistory(history, chosenFile)
 end
 
 local file_search = function(opts)
-	g_vimSrc={"%.cfg$","%.sh$", "%.cmake$", "%.vim$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+	g_vimSrc={'%.urdf$', "%.json$", "%.css$","%.H$", "%.inc$", "%.csv$", "%.luamscl$", "%.cfg$","%.sh$", "%.cmake$", "%.vim$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 
 	if os.isFileExist(git_top()..'/.gitvconfig') then
 		dofile(git_top()..'/.gitvconfig')
@@ -296,7 +325,12 @@ local file_search = function(opts)
 					local a=opts.key:lower()
 					local b=displayText(file)
 					local positions = fzy.positions(a,b:lower())
-					if #positions==0 or positions[#positions] >=40 then
+					if #positions==0 then
+					elseif positions[#positions]>=40 then
+						local index=string.find(b,'|')
+						if positions[#positions]<index then
+							table.insert(files, displayText(file))
+						end
 					else
 				--if select(1,string.find(string.lower(file), string.lower(opts.key))) then
 					--table.insert(files, table.tostring(positions)..displayText(file))

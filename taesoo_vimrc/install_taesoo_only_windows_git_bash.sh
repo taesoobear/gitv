@@ -1,7 +1,7 @@
 if ! test -d ~/.vim/bundle/vundle; then git clone https://github.com/gmarik/vundle.git ~/.vim/bundle/vundle; fi
 cd ..
 # install gitv
-sh install_windows_git_bash.sh
+bash install_windows_git_bash.sh
 cd taesoo_vimrc
 winpty winget install "lua for windows"
 cp ../windows_git_bash/lua ~/bin/
@@ -33,6 +33,7 @@ cd ~/.vim/plugin
 # now install configurations for neovim
 cd "$currdir"
 mkdir -p ~/AppData/Local/nvim
+mkdir -p ~/tmp
 cp init.vim ~/AppData/Local/nvim/
 sh -c 'curl -fLo "${XDG_DATA_HOME:-$HOME}"/AppData/Local/nvim/autoload/plug.vim --create-dirs \
        https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'

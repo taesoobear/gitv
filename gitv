@@ -13,22 +13,52 @@ if _VERSION=='Lua 5.2' then
 else
 	require("mylib")
 end
+function diffFile(a, b)
+	if not os.isWindows() then
+		return os.execute('diff "'..a..'" "'..b..'">/dev/null')~=0
+	end
+	local a=util.readFile(a)
+	local b=util.readFile(b)
+	if a~=b then
+		return true
+	end
+	return false
+end
+function fzy_filter( needle, lines)
+	local fzy = require'fzy_lua'
+  results = {}
+  for i, line in ipairs(lines) do
+    if fzy.has_match(needle, line) then
+      local positions = fzy.positions(needle, line)
+      table.insert(results, {line, positions})
+    end
+  end
+  return results
+end
+
  
 -- order doesn't matter
-g_etagsSrc={"%.cs$", "%.f$", "%.cc$", "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.cxx", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
+-- these settings are also in ~/gitv/gitv.nvim/lua/telescope/_extensions/gitv.lua
+-- so if you use nvim, also modify gitv.lua (the file shown above).
+g_etagsSrc={'%.mm$', "%.cs$", "%.f$", "%.cc$", "%.bvh$", "%.rb$", "%.m$", "%.c$", "%.cpp$", "%.cxx", "%.H$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$", "%.java$"}
 g_customEtagsSrc={"%.lua$"}
 g_customEtagsPattern=
 	 '-Re --langdef=luna --langmap=luna:.lua --regex-luna="/[ \\t]*([a-zA-Z0-9_\\-]+)[ \\t]*=[ \\t]*LUAclass\\(/\\1/s,struct/"'
-g_vimSrc={"%.cfg$","%.sh$", "%.cmake$", "%.vim$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_vimSrc={'%.urdf$', "%.H$", "%.yaml$", "%.json","%.css$", "%.inc$", "%.csv$", "%.luamscl$", "%.cfg$","%.sh$", "%.cmake$", "%.vim$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 --g_grepSrc=array.concatMulti(g_vimSrc, {"%.tex$", "%.txt$"})
 g_grepSrc=g_vimSrc
 --g_cache_folder='/tmp/'
 g_cache_folder=os.home_path()..'/.config/'
 g_tmp_folder='/tmp/'
-g_vimpath, g_gvimpath=os.findVIM() -- find vim prefers nvim if it is installed.
---g_vimpath='nvim' g_gvimpath='gvim'
---g_vimpath='/Applications/MacVim.app/Contents/bin/vim'
-g_ctags='ctags'
+if os.isWindows() then
+	g_vimpath='nvim' g_gvimpath='gvim'
+	g_ctags=os.home_path()..'/bin/ctags' -- use universal ctags
+else
+	g_vimpath, g_gvimpath=os.findVIM() -- find vim prefers nvim if it is installed.
+	--g_vimpath='nvim' g_gvimpath='gvim'
+	--g_vimpath='/Applications/MacVim.app/Contents/bin/vim'
+	g_ctags='ctags' -- use universal or exuberant ctags
+end
 -- ignore files that match following patterns even if they are in the repository.
 g_ignorePattern={'^BaseLib/image/FreeImage/Dist/','^dependencies/'}
 g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plot%.', 'OgreFltkConsole.exe', 'console.xml', 'OgreFltkConsoleJIT.exe','optimizelog'}
@@ -36,6 +66,163 @@ g_tagFallbackPath={}
 g_debug=false
 g_useEmacs=false
 g_useSublime=false
+function compareDirectory(folder1, folder2, files1, files2)
+	if #files1==0 and #files2==0 then
+		print('both folders are empty, or they are not folders')
+	else
+		local files1map={}
+		local files2map={}
+		local donotCompare={}
+		for i,v in ipairs(files1) do
+			files1map[v]=i
+		end
+		for i,v in ipairs(files2) do
+			files2map[v]=i
+		end
+		for i, v in ipairs(files2) do
+			if files1map[v]==nil then
+				print('only in '..folder2..':', v)
+				donotCompare[v]=true
+			end
+		end
+		for i, v in ipairs(files1) do
+			if files2map[v]==nil then
+				print('only in '..folder1..':', v)
+				donotCompare[v]=true
+			end
+		end
+		print('press Enter to compare different files:')
+		getLine()
+
+		local difftool='vimdiff'
+		if g_vimpath:sub(-4)=='nvim' or g_vimpath:sub(-5)=='nvim"' then
+			difftool='nvim -d'
+		end
+
+		local files=table.ijoin(files1, files2)
+		local alreadyCompared={}
+		for i, v in ipairs(files) do
+			if not donotCompare[v] and not alreadyCompared[v] then
+				local a,b=string.find(v,'build_Debug')
+				local a2,b=string.find(v,'build_Release')
+				local a3,b=string.find(v,'build_linux')
+				if a or a2 or a3 then
+					print('ignoring '..v)
+				elseif string.isMatched(v,g_vimSrc)  then
+					if os.isWindows() then
+						if diffFile(folder1..'/'..v,folder2..'/'..v) then
+							os.execute(difftool..' "'..folder1..'/'..v..'" "'..folder2..'/'..v..'"') 
+							print('vimdiff finished :', v)
+						end
+					else
+						if os.execute('diff --strip-trailing-cr --ignore-blank-lines "'..folder1..'/'..v..'" "'..folder2..'/'..v..'">/dev/null')~=0 then
+							os.execute(difftool..' "'..folder1..'/'..v..'" "'..folder2..'/'..v..'"') 
+							print('vimdiff finished :', v)
+						else
+							--print('identical : ',v)
+						end
+					end
+				else
+					if diffFile(folder1..'/'..v, folder2..'/'..v) then
+						print('different : '..v ..' (unknown extension)')
+						print("Launch '"..difftool.."' [y/N]?")
+						if getLine()=="y" then
+							os.execute(difftool..' "'..folder1..'/'..v..'" "'..folder2..'/'..v..'"') 
+							print('vimdiff finished :', v)
+						end
+					end
+				end
+				alreadyCompared[v]=true
+			end
+		end
+	end
+end
+function copyDirectory(folder1, folder2, files1, files2)
+	if #files1==0 and #files2==0 then
+		print('both folders are empty, or they are not folders')
+	else
+		local files1map={}
+		local files2map={}
+		local donotCompare={}
+		for i,v in ipairs(files1) do
+			files1map[v]=i
+		end
+		for i,v in ipairs(files2) do
+			files2map[v]=i
+		end
+		for i, v in ipairs(files2) do
+			if files1map[v]==nil then
+				print('only in '..folder2..':', v)
+				donotCompare[v]=true
+			end
+		end
+		for i, v in ipairs(files1) do
+			if files2map[v]==nil then
+				print('only in '..folder1..':', v)
+				--donotCompare[v]=true
+			end
+		end
+		print('press Enter to copy files:')
+		getLine()
+
+		local difftool='cp'
+
+		local files=table.ijoin(files1, files2)
+		local alreadyCompared={}
+		local modified_files={}
+		for i, v in ipairs(files) do
+			if not donotCompare[v] and not alreadyCompared[v] then
+				local copy= false
+				if string.isMatched(v,g_vimSrc)  then
+					if files2map[v] then
+						if os.execute('diff --strip-trailing-cr --ignore-blank-lines "'..folder1..'/'..v..'" "'..folder2..'/'..v..'">/dev/null')~=0 then
+							copy=true
+						end
+					else
+						copy=true
+					end
+				else
+					if files2map[v] then
+						if os.execute('diff "'..folder1..'/'..v..'" "'..folder2..'/'..v..'">/dev/null')~=0 then
+							copy=true
+						end
+					else
+						copy=true
+					end
+				end
+				alreadyCompared[v]=true
+				if copy then
+					local _, path=os.processFileName(folder2..'/'..v)
+
+					os.execute('mkdir -p "'..path..'"& cp  "'..folder1..'/'..v..'" "'..path..'/"') 
+					print('cp finished :', v)
+					table.insert(modified_files, folder2..'/'..v)
+				end
+			end
+		end
+
+		print('Do you want to add all the modified files to git repository? Press enter to skip. ([no]/EDIT/YES)')
+		local cmd=''
+		for i, v in ipairs(modified_files) do 
+			cmd=cmd.. git()..' add "'..v..'"\n'
+		end
+		local ioread=getLine()
+		if string.sub(ioread,1,6)=="YES" then
+			os.execute2('cd "'..path..'"', cmd)
+			print('\n Added '..#modified_files..' files')
+		elseif string.sub(ioread,1,7)=="EDIT" then
+			local path=folder2
+			os.createBatchFile("gitscript.bat", {'# remove all the unnecessary lines!!!', '# Warning!!! simply exiting the editor WILL executes this script!!!', 'cd "'..path..'"',cmd})
+			os.execute2('vim gitscript.bat')
+			if os.isUnix() then
+				os.execute2('sh gitscript.bat')
+			else
+				os.execute('gitscript')
+			end
+			os.deleteFiles('gitscript.bat')
+		end
+	end
+end
 function isWindows() 
 	return os.isWindows() and not os.isCygwin()
 end
@@ -156,7 +343,7 @@ The most commonly used gitv commands are:
              or
                $ gitv vi [option]
              option -l: search only subdirectories of the current directory.
-  vir        Same as "vi" except that an existing vim server is used when available.
+			 (similar options: gedit, nvim, gvim, vir (gitv vir SERVER_NAME filename), gvimr)
   ts         Search a keyword in $GIT_ROOT/TAGS, and open using vim. $GIT_ROOT is automatically detected,
              and TAGS is generated if not there. 
              To edit main() function:
@@ -164,10 +351,6 @@ The most commonly used gitv commands are:
   tl         List tags that match multiple patterns. The first pattern only matches the function name.
              You can skip the first keyword using "." pattern. To list all functions in class "motion":
                $ gitv tl . [^%a]motion::
-  gvim       Open a file using gvim
-  gvimr      Open a file using a gvim server. Supports multiple instances (experimental.)
-               $ gitv gvimr GVIM1 a.txt
-  gedit      Open a file using gedit
   choose     Write the name of a choosen file to ]]..g_cache_folder..[[chosen
                $ gitv choose keyword
   clear-hist Clear history. $GIT_ROOT/TAGS will be removed too.
@@ -195,9 +378,14 @@ The most commonly used gitv commands are:
   vimdiff    Show differences between files.
                $ gitv diff keyword1 keyword2
   diffd      Show differences between folders.
-               $ gitv diff folder1 folder2
+               $ gitv diffd folder1 folder2
+  diffr      Show differences between folders only using repository files.
+               $ gitv diffr folder1 folder2
+  copyr      Copy all managed files in folder1 (a repository) to folder2. 
+               $ gitv copy folder1 folder2
   undo-commit Revert the last commit (while retaining the local copy). 
               Do not undo-commit if you pushed your last commit!
+  link       Create symbolic links (ln -s, but works on windows too)
   other experimental features: type gitv "command name" to see usage.
 	  backup diffrepo  cprepo test_win_filename
   ]])
@@ -354,6 +542,13 @@ function git_tools.searchTag(filename, searchKey)
 	end)
 	return tags
 end
+
+function git_tools.curr_branch(path)
+	local curr_branch=array.filter(function (a) return string.sub(a,1,1)=='*' end ,  string.lines(git_tools.capture('cd "'..path..'";git branch',true)))[1]
+	curr_branch=string.sub(curr_branch,2)
+	return curr_branch
+end
+
 function git_tools.pull(path, password)
 	if os.isFileExist(path..'/.git/HEAD') then
 		local remotes=array.filter(function (a) return string.len(a)>1 end, string.lines(git_tools.capture('cd "'..path..'";git remote',true)))
@@ -365,8 +560,7 @@ function git_tools.pull(path, password)
 				remotes=array.filter(function (a) return select(1,string.find(a,arg[2])) end, remotes)
 			end
 		end
-		local curr_branch=array.filter(function (a) return string.sub(a,1,1)=='*' end ,  string.lines(git_tools.capture('cd "'..path..'";git branch',true)))[1]
-		curr_branch=string.sub(curr_branch,2)
+		local curr_branch=git_tools.curr_branch(path)
 		for k,v in ipairs(remotes) do
 
 			print(v)
@@ -405,8 +599,7 @@ function git_tools.fetch(path)
 		if arg[2] then
 			remotes=array.filter(function (a) return select(1,string.find(a,arg[2])) end, remotes)
 		end
-		local curr_branch=array.filter(function (a) return string.sub(a,1,1)=='*' end ,  string.lines(git_tools.capture('cd "'..path..'";git branch',true)))[1]
-		curr_branch=string.sub(curr_branch,2)
+		local curr_branch=git_tools.curr_branch(path)
 		for k,v in ipairs(remotes) do
 
 			print(v)
@@ -453,35 +646,49 @@ function git_tools.execute(cmd, password)
 import pexpect
 import sys
 child=pexpect.spawn("]]..cmd2[#cmd2]..[[")
-tbl=['password:', 'passphrase for key','Pull is not possible because you have unmerged files', 'up-to-date', 'Counting objects:','unexpectedly']
+tbl=['password:', 'Password:', 'passphrase for key','Merge branch', 'merge branch', 'Pull is not possible because you have unmerged files', 'up-to-date', 'Counting objects:','unexpectedly', pexpect.TIMEOUT]
 try:
-	i=child.expect(tbl)
-	print(child.before,end='')
-	if i==0:
+	i=child.expect(tbl, timeout=5)
+	print(child.before.decode('utf-8'), end='')
+	if i==0 or i==1:
 		child.sendline(']]..password..[[')
 		print(tbl[i])
 		print('****')
-		i=child.expect(tbl)
-		print(child.before, end='')
-	elif i==1:
+		i=child.expect(tbl, timeout=5)
+		print(child.before.decode('utf-8'), end='')
+		print(tbl[i])
+	elif i==2:
 		child.sendline('put key password here')
 		print(tbl[i])
 		print('****')
-		i=child.expect(tbl)
-		print(child.before, end='')
+		i=child.expect(tbl, timeout=5)
+		print(child.before.decode('utf-8'), end='')
+		print(tbl[i])
+	elif i==3 or i==4:
+		child.send('\004') # ctrl+d
+		child.sendline('') #  enter
+		print(tbl[i],end='')
+		print(child.before.decode('utf-8'), end='')
+		i=child.expect(tbl, timeout=5)
+		print(child.before.decode('utf-8'), end='')
+		print(tbl[i])
 	else:
 		print(tbl[i],end='')
-		print(child.before,end='')
+		print(child.before.decode('utf-8'), end='')
 	index=child.expect([pexpect.EOF, pexpect.TIMEOUT])
-	while index==1:
-		print(child.before)
+	while index==2:
+		print(child.before.decode('utf-8'),end='')
 		index=child.expect([pexpect.EOF, pexpect.TIMEOUT])
-	print(child.before)
-except:
-	print('Pexpec Error after :')
-	print(child.before,end='')
-	print('::::')
-	print(str(child))
+	print(child.before.decode('utf-8'),end='')
+except Exception as e: 
+	if isinstance(e,pexpect.exceptions.EOF):
+		print(child.before.decode('utf-8'),end='')
+		print('---')
+	else:
+		index=child.expect([pexpect.EOF, pexpect.TIMEOUT])
+		print(child.before.decode('utf-8'),end='')
+		print('.')
+		#print(str(child))
 ]]
 			util.writeFile('/tmp/temp.py', script)
 			--local fn= os.createUnnamedBatchFile({unpack(array.sub(cmd2,1,#cmd2-1)), 'python /tmp/temp.py'})
@@ -508,7 +715,7 @@ function git_tools.getUntracked(path)
 	return untracked
 end
 function git_tools.getFilesToCommit(path)
-		status= string.lines( git_tools.capture('cd "'..path..'";git status .', true))
+		local status= string.lines( git_tools.capture('cd "'..path..'";git status .', true))
 		local modified={}
 		for il, line in ipairs(status) do
 			local output='modified: '
@@ -518,7 +725,15 @@ function git_tools.getFilesToCommit(path)
 				output='modified: '
 			end
 			if not c then
+				s,e,c=string.find(line, '%s+수정함:%s+(.+)')
+				output='modified: '
+			end
+			if not c then
 				s,e,c=string.find(line, '#%s+new file:%s+(.+)')
+				output='new file: '
+			end
+			if not c then
+				s,e,c=string.find(line, '#%s+새파일:%s+(.+)')
 				output='new file: '
 			end
 			if not c then
@@ -563,6 +778,32 @@ function git_tools.getFilesToCommit(path)
 			end
 		end
 		return modified
+end
+function git_tools.getListOfModifiedFiles(commit)
+	status= string.lines( git_tools.capture('cd "'..git_top()..'";git diff --stat '..(commit or ''), true))
+	local modified={}
+	local allFiles=nil
+	for il, line in ipairs(status) do
+		local s,e,c=string.find(line, '%s+.*\|')
+		if s then
+			local fn=string.trimSpaces(line:sub(s+1,e-1))
+			if fn:sub(1,3)=='...' then
+				if not allFiles then
+					allFiles=lsFiles('-g', git_top())
+				end
+				fn=fn:sub(4)
+				local len_fn=string.len(fn)
+				local out=array.filter(function (x) return fn==x:sub(-len_fn) end,allFiles)
+
+				assert(#out==1)
+				table.insert(modified, out[1])
+			else
+				table.insert(modified, git_top()..'/'..fn)
+			end
+
+		end
+	end
+	return modified
 end
 function git_tools.commit(path,force)
 	if os.isFileExist(git_top()..'/.git/HEAD') then
@@ -734,8 +975,7 @@ function git_tools.push(path, password)
 				remotes=array.filter(function (a) return select(1,string.find(a,arg[2])) end, remotes)
 			end
 		end
-		local curr_branch=array.filter(function (a) return string.sub(a,1,1)=='*' end ,  string.lines(git_tools.capture('cd "'..path..'";git branch',true)))[1]
-		curr_branch=string.sub(curr_branch,2)
+		local curr_branch=git_tools.curr_branch(path)
 		for k,v in ipairs(remotes) do
 			local cmd='cd "'..path..'";git push '..v..curr_branch
 			print('> '..cmd)
@@ -1094,19 +1334,33 @@ function findFileFromGit(key, ...)
 	return interactiveChoose(fn, keys)
 end
 
+function lsFiles_nongit()
+	if os.isWindows() then
+		local i, t, popen = 0, {}, io.popen
+		for filename in popen('dir "*" /b'):lines() do
+			i = i + 1
+			t[i] = filename
+		end
+		return t
+	else
+		local files=string.lines(os.capture('ls -1 *.* 2>/dev/null', true))
+		files[#files]=nil
+		return files
+	end
+end
 function lsFiles(option, path)
 	path=path or git_top()
 	local cpt
-	if cache_git_top=='.' then
+	if option=='-g' and not os.isWindows() then
+		-- use absolute
+		cpt=os.capture('cd '..path..';git ls-files .', true)
+	elseif cache_git_top=='.' then
 		print('Not a git repository. Searching the current folder...')
 		--cpt=os.capture(git()..' ls-files .', true)
 		cpt=os.glob('*',true,true)
 		--printTable(cpt)
 	elseif option=='-l' then	
 		cpt=os.capture(git()..' ls-files .', true)
-	elseif option=='-g' and not os.isWindows() then
-		-- use absolute
-		cpt=os.capture('cd '..path..';git ls-files .', true)
 	else
 		if os.isWindows() then
 			cpt=os.capture(git()..' ls-files "'..git_top()..'"' , true)
@@ -1121,6 +1375,20 @@ function lsFiles(option, path)
 
 		if os.isWindows() and option=='-g' then
 			return _lsFiles(cpt, option, os.currentDirectory())
+		end
+		
+		-- add non-git local files to the list.
+		local lcpt=os.capture(git()..' ls-files .', true)
+		lcpt=string.lines(lcpt)
+		local lfiles=lsFiles_nongit('*')
+		local hash={}
+		for i, f in ipairs(lcpt) do
+			hash[f]=true
+		end
+		for i, f in ipairs(lfiles) do
+			if not hash[f] then
+				table.insert(cpt,1,f)
+			end
 		end
 	end
 	return _lsFiles(cpt, option, path)
@@ -1171,6 +1439,14 @@ function lsFolders(option, lsFiles_fcn)
 	table.sort(tbl, git_tools.compareFileName)
 	return tbl
 end
+
+function toPattern(key)
+	local p=''
+	for i=1, key:len() do
+		p=p..key:sub(i,i)..'.*'
+	end
+	return p
+end
 function chooseFolder(keys)
 	local folders=lsFolders('-g')
 
@@ -1185,12 +1461,25 @@ function chooseFolder(keys)
 		end
 	end
 	if #fn==0 then
-		for ifolder, folder in ipairs(folders) do
-			for ikey,key in ipairs(keys) do
-				local fname=folder
-				if select(1,string.find(string.lower(fname), string.lower(key))) then
+		if #keys==1 then
+			local pattern=toPattern(keys[1])
+			print('searching "'..pattern..'"...')
+			for ifolder, folder in ipairs(folders) do
+				local fname=os.filename(folder)
+				if select(1,string.find(string.lower(fname), string.lower(pattern))) then
 					fn[#fn+1]=folder
-					break
+				end
+			end
+		end
+
+		if #fn ==0 then
+			for ifolder, folder in ipairs(folders) do
+				for ikey,key in ipairs(keys) do
+					local fname=folder
+					if select(1,string.find(string.lower(fname), string.lower(key))) then
+						fn[#fn+1]=folder
+						break
+					end
 				end
 			end
 		end
@@ -1623,12 +1912,130 @@ function git_tools.tagList(keywords)
 end
 
 function main(...)
-	if os.isFileExist(git_top()..'/.gitvconfig') then
-		dofile(git_top()..'/.gitvconfig')
-	end
 	local arg={...}
 	if arg[1]=='clone_to_server' then
 		clone_to_server()
+	elseif arg[1]=='link' then
+		if #arg~=3 then
+			print("gitv link source_dir target_dir")
+			return
+		end
+		if os.isWindows() then
+			local tgt=arg[3]
+			if tgt:sub(2,2)~=':' then
+				tgt=os.toWindowsFileName(os.relativeToAbsolutePath(os.fromWindowsFileName(tgt)))
+			end
+			local src=arg[2]
+			if src:sub(2,2)~=':' then
+				os.toWindowsFileName(os.relativeToAbsolutePath(os.fromWindowsFileName(src)))
+			end
+			os.createBatchFile("gitscript.bat", {'mklink /d "'..tgt..'" "'..src..'"','set /p res=press Enter to continue.' })
+			os.execute2([[powershell -NoProfile -Command "Start-Process 'gitscript.bat' -Verb RunAs"]])
+		else
+			os.execute2('ln -s "'..arg[2]..'" "'..arg[3]..'"')
+		end
+	elseif arg[1]=='gdrive_backup' or arg[1]=='gdriveb' then
+		if not arg[2] then
+			print('usage: gitv gdrive_backup commit_id')
+			return
+		end
+		local list=git_tools.getListOfModifiedFiles(arg[2])
+		for i, v in ipairs(list) do
+			execute2('rsync "'..v..'" ~/Documents/gdrive')
+		end
+	elseif arg[1]=='gdrive_diff' or arg[1]=='gdrive' or arg[1]=='gdrived' then
+		if not arg[2] then
+			-- diff all files in the current folder.
+			local list=string.lines(os.capture('ls -1 '..os.home_path()..'/Documents/gdrive/*.* 2>/dev/null', true))
+			for i, v in ipairs(list) do
+				local vv=os.filename(v)
+				if os.isFileExist(vv) then
+					print('nvim -d "'..v..'" "'..vv..'"')
+					execute2('nvim -d "'..v..'" "'..vv..'"')
+				else
+					print('skipping '..vv)
+				end
+				return
+			end
+		end
+		local list=git_tools.getListOfModifiedFiles(arg[2])
+		for i, v in ipairs(list) do
+			local vv=os.filename(v)
+			execute2('nvim -d "'..v..'" "'..os.home_path()..'/Documents/gdrive/'..vv..'"')
+		end
+	elseif arg[1]=='gdrive_merge' or arg[1]=='gdrivem' then
+		local list=string.lines(os.capture('ls -1 '..os.home_path()..'/Documents/gdrive/*.* 2>/dev/null', true))
+		list[#list]=nil
+		local count=0
+		for i, v in ipairs(list) do
+			local vv, path=os.processFileName(v)
+			if vv:sub(1, 7)=="Copy of" then
+				local targetPath=os.home_path()..'/Documents/gdrive/'..vv:sub(9)
+				if os.isFileExist(targetPath) then
+					execute2('nvim -d "'..v..'" "'..targetPath..'"')
+					count=count+1
+				else
+					execute2('mv "'..v..'" "'..targetPath..'"')
+				end
+			else
+				print('skipping '..vv)
+			end
+		end
+		if count==0 then return end
+		print('delete all backup files (Copy of *)? (Y/n)')
+		local key = io.read(1)
+		if key=='Y' then
+			for i, v in ipairs(list) do
+				local vv, path=os.processFileName(v)
+				if vv:sub(1, 7)=="Copy of" then
+					execute2('rm "'..v..'"')
+				end
+			end
+		else
+			print('leaving copies...')
+		end
+
+
+	elseif arg[1]=='merge' then
+		local branch=arg[2]
+		_G.arg[2]=nil
+		if not branch then
+			print('gitv merge branch_name_to_merge')
+			return
+		end
+		local curr_branch=git_tools.curr_branch(git_top())
+		local modified=git_tools.getFilesToCommit(git_top())
+		if #modified>=1 then
+			print('backing up local modifications to stash...')
+			os.execute2('git stash save')
+			os.execute2('git stash list')
+		end
+		os.execute2('git checkout '..branch)
+		main('pull')
+		os.execute2('git checkout '..curr_branch)
+		os.execute2('git merge '..branch)
+		if #modified>=1 then
+			os.execute2('git difftool stash')
+			print('Now, use "git stash list", "git difftool stash", and "git stash clear" to merge your local modifications.')
+		end
+
+	elseif arg[1]=='merge_without_commit' then
+		local branch=arg[2]
+		_G.arg[2]=nil
+		if not branch then
+			print('gitv merge branch_name_to_merge')
+			return
+		end
+		local curr_branch=git_tools.curr_branch(git_top())
+		print('backing up local modifications to stash...')
+		os.execute2('git stash save')
+		os.execute2('git stash list')
+		os.execute2('git checkout '..branch)
+		main('pull')
+		os.execute2('git checkout '..curr_branch)
+		os.execute2('git merge --no-ff --no-commit '..branch)
+		print('Now, use "git stash list", "git difftool stash" and "git stash clear" if necessary.')
+
 	elseif arg[1]=='rsync_to_server' then
 		print('not implemented yet!')
 		--use something like: 
@@ -1667,6 +2074,12 @@ function main(...)
 		local chosen=chooseFile(keys)
 		if chosen then
 			os.execute(g_vimpath..' "'..chosen[1]..'"')
+		end
+	elseif arg[1]=="code" then
+		local keys=array.sub(arg,2)
+		local chosen=chooseFile(keys)
+		if chosen then
+			os.execute('code "'..chosen[1]..'"')
 		end
 	elseif arg[1]=="nvim" then
 		local key=arg[2]
@@ -1721,8 +2134,8 @@ function main(...)
 			return
 		end
 
-		if not os.isFileExist('/usr/bin/convmv') then
-			print('Error! install convmv using apt or cygwin setup.exe')
+		if not os.isFileExist('/usr/bin/convmv') and not os.isFileExist('/opt/homebrew/bin/convmv') then
+			print('Error! install convmv using apt, brew, or cygwin setup.exe')
 			return
 		end
 		local fn=arg[2]
@@ -2160,7 +2573,7 @@ function main(...)
 		end
 		table.sort(files, git_tools.compareFileName)
 		util.writeFile(g_cache_folder..'gitvsrclist', table.concat(files,'\n'))
-		local cmd='--extra=+f --langmap=c++:.inl.h.hpp.c.cpp.cc.cxx -L '..g_cache_folder..'gitvsrclist'
+		local cmd='--extras=+f --langmap=c++:.inl.h.hpp.c.cpp.cc.cxx -L '..g_cache_folder..'gitvsrclist'
 		print(cmd)
 		
 		if isWindows() then
@@ -2300,68 +2713,69 @@ function main(...)
 
 			for i, v in ipairs(files1) do files1[i]=v:sub(#folder1+2) end
 			for i, v in ipairs(files2) do files2[i]=v:sub(#folder2+2) end
-			if #files1==0 and #files2==0 then
-				print('both folders are empty, or they are not folders')
-			else
-				local files1map={}
-				local files2map={}
-				local donotCompare={}
-				for i,v in ipairs(files1) do
-					files1map[v]=i
-				end
-				for i,v in ipairs(files2) do
-					files2map[v]=i
-				end
-				for i, v in ipairs(files2) do
-					if files1map[v]==nil then
-						print('only in '..folder2..':', v)
-						donotCompare[v]=true
-					end
-				end
-				for i, v in ipairs(files1) do
-					if files2map[v]==nil then
-						print('only in '..folder1..':', v)
-						donotCompare[v]=true
-					end
-				end
-				print('press Enter to compare different files:')
-				getLine()
-
-				local difftool='vimdiff'
-				if g_vimpath:sub(-4)=='nvim' or g_vimpath:sub(-5)=='nvim"' then
-					difftool='nvim -d'
-				end
-
-				local files=table.ijoin(files1, files2)
-				local alreadyCompared={}
-				for i, v in ipairs(files) do
-					if not donotCompare[v] and not alreadyCompared[v] then
-						if string.isMatched(v,g_vimSrc)  then
-							if os.execute('diff --strip-trailing-cr --ignore-blank-lines "'..folder1..'/'..v..'" "'..folder2..'/'..v..'">/dev/null')~=0 then
-								os.execute(difftool..' "'..folder1..'/'..v..'" "'..folder2..'/'..v..'"') 
-								print('vimdiff finished :', v)
-							else
-								--print('identical : ',v)
-							end
-						else
-							if os.execute('diff "'..folder1..'/'..v..'" "'..folder2..'/'..v..'">/dev/null')~=0 then
-								print('different : '..v ..' (unknown extension)')
-								print("Launch '"..difftool.."' [y/N]?")
-								if getLine()=="y" then
-									os.execute(difftool..' "'..folder1..'/'..v..'" "'..folder2..'/'..v..'"') 
-									print('vimdiff finished :', v)
-								end
-							end
-						end
-						alreadyCompared[v]=true
-					end
-				end
-			end
+			compareDirectory(folder1, folder2, files1, files2)
 		else
 			print('usage: gitv diffd folder1 folder2')
 		end
+	elseif arg[1]=='diffr' then
+		if arg[2] and arg[3] then
+
+			local folder1=arg[2]
+			local folder2=arg[3]
+			if folder1:sub(-1)=='/' then folder1=folder1:sub(1,-2) end
+			if folder2:sub(-1)=='/' then folder2=folder2:sub(1,-2) end
+			local files1=lsFiles('-g',os.relativeToAbsolutePath(folder1))
+			local files2=lsFiles('-g', os.relativeToAbsolutePath(folder2))
+			local function mapFiles(files1, folder1)
+				for i, v in ipairs(files1) do
+					files1[i]=os.absoluteToRelativePath(v, os.relativeToAbsolutePath(folder1))
+				end
+			end
+			mapFiles(files1, folder1)
+			mapFiles(files2, folder2)
+			compareDirectory(folder1, folder2, files1, files2)
+		else
+			print('usage: gitv diffd folder1 folder2')
+		end
+	elseif arg[1]=='copyr' then
+		if arg[2] and arg[3] then
+
+			local folder1=arg[2]
+			local folder2=arg[3]
+			if folder1:sub(-1)=='/' then folder1=folder1:sub(1,-2) end
+			if folder2:sub(-1)=='/' then folder2=folder2:sub(1,-2) end
+			local files1=lsFiles('-g',os.relativeToAbsolutePath(folder1))
+			local files2=lsFiles('-g', os.relativeToAbsolutePath(folder2))
+			local function mapFiles(files1, folder1)
+				for i, v in ipairs(files1) do
+					files1[i]=os.absoluteToRelativePath(v, os.relativeToAbsolutePath(folder1))
+				end
+			end
+			mapFiles(files1, folder1)
+			mapFiles(files2, folder2)
+			copyDirectory(folder1, folder2, files1, files2)
+		else
+			print('usage: gitv copyr folder1 folder2')
+		end
 
 	elseif arg[1]=='diff' then
+		if arg[2] then
+			if not arg[3] then
+				arg[3]=arg[2]
+			end
+			local files=lsFiles('-l')
+			local files1=fzy_filter(arg[2], files)
+			local files2=fzy_filter(arg[3], files)
+			local f1=interactiveChoose(files1, arg[2])
+			local f2=interactiveChoose(files2, arg[2])
+			if type(f2)=='table' then f2=f2[1] end
+			if type(f1)=='table' then f1=f1[1] end
+			execute2('nvim -d "'..f1..'" "'..f2..'"') 
+		else
+			print('usage: gitv diff filesubstring1 filesubstring2')
+		end
+
+	elseif arg[1]=='diffstat' then
 		local added=''
 		if arg[2] then added=' '..arg[2] end
 		if arg[3] then added=' "'..arg[3]..'"' end
@@ -2611,7 +3025,8 @@ clone_to_server=function()
 			print("Enter server address (example: user1@calab.hanyang.ac.kr)")
 			addr=getLine()
 		end
-		print("Enter subdirectory name (press enter to use the home directory of "..addr..":"..port..")")
+		print("Now, the .git folder will be uploaded. You can put the .git folder to an EXISTING subdirectory.")
+		print("Enter a subdirectory name (press enter to use the home directory of "..addr..":"..port..")")
 		local subdir=getLine()
 
 		print('Uploading...')
@@ -2658,7 +3073,11 @@ clone_to_server=function()
 		upload('origin')
 	end
 end
+-- real main.
 if arg[1] then
+	if os.isFileExist(git_top()..'/.gitvconfig') then
+		dofile(git_top()..'/.gitvconfig')
+	end
 	if arg[1]=='--donothing' then
 	elseif arg[1]=='--emacs' then
 	   g_useEmacs=true

@@ -1,0 +1,19 @@
+# Comments are possible
+snippet RE
+	RE.${1|draw,erase('Sphere'\,name),eraseAllDrawn(),drawBillboard,updateBillboards(fElapsedTime),console()|}
+snippet RE.draw
+	RE.draw${1|('Axes'\,tf\,nameid\,position_scale),('Sphere'\,pos\,nameid\,'red'\,r),('SphereM'\,pos\,nameid\,'red'\,r),('Billboard'\,mat3\,nameid\,'redCircle'\,thickness\,'QuadListV'),('Billboard'\,mat3\,nameid\,mat\,thickness\,'BillboardLineList'),('Line'\,startpos\,endpos\,nameid\,color\,thickness),('Billboard'\,mat8_color_width_tu\,nameid\,'solidred'\,thickness\,'BillboardChain'),('Text'\,pos\,nameid\,vec3_color\,8\,text),('ArrowM'\,startpos\,endpos\,nameid\,0.1\,'red')|}
+snippet RE.drawBillboard
+	RE.drawBillboard${1|(mat3\,nameid\,'redCircle'\,thickness\,'QuadListV'),(mat3\,nameid\,'solidred'\,thickness\,'BillboardLineList'),(mat8_color_width_tu\,nameid\,'solidred'\,thickness\,'BillboardChain')|}
+
+snippet loader
+	loader${1|.dofInfo,.bone(treeIndex),.numBone(),.getBoneByName(name),.getTreeIndexByName(name),.getRotJointIndexByName(name),.getTransJointIndexByName(Name)|}
+snippet loaderToTree
+	loaderToTree${1|.nDOF(),.nJoints(),.getPoseDOF(dofInfo\,pose),.setPoseDOF(dofInfo\,pose),.getQ(q),.setQ(q),.numJoint(),.numBone(),.globalFrame(ibone),.calcJacobianTransposeAt(JT,ibone,lpos)|}
+snippet MotionDOF
+	MotionDOF${1|(dofinfo),(dofInfo,mot),.setRootTransformation,.rootTransformation|}(
+snippet this
+	this${1|.addButton(title),.updateLayout(),.addCheckButton(title\,initialvalue),.addText(title),.addFloatSlider(title\,val\,vmin\,vmax)|}
+snippet timeline
+	mTimeline=RE.Timeline("Timeline", 10000, 1/30)
+	#  def onFrameChanged(iframe):
