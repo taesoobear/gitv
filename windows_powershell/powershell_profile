@@ -19,11 +19,32 @@ function meld ($1, $2) {
 	cmd /c 'C:\Program Files (x86)\Meld\Meld.exe' "$f1" "$f2"
 }
 
+function unzip ($1){
+    Expand-Archive -Path "$1"
+}
+function zipr ($1, $2){
+	Compress-Archive -Path "$2" -DestinationPath "$1"
+}
+function zip {
+   param(
+        [Parameter(ValueFromRemainingArguments=$true)]
+        [string[]]$ArgsList
+    )
+
+    switch ($ArgsList.Count) {
+        0 { Write-Host "usage: zip a.zip file1, file2, ..." }
+        1 { Write-Host "usage: zip a.zip file1, file2, ..." }
+        default { 
+		  $sources = $ArgsList[1..($ArgsList.Count - 1)]
+			Compress-Archive -Path $sources -DestinationPath "$($ArgsList[0])"
+		}
+    }
+}
 function cdl{ cd $home\taesooLib\Samples\classification\ }
 function cdp{ cd $home\sample_python\work\ }
 function cdh{ cd $home }
-function gitv ($1, $2, $3, $4) {
-	lua $home\bin\gitv $1 $2 $3 $4
+function gitv {
+    lua "$home\bin\gitv" @args
 }
 function vimdiff ($1, $2) {
 	nvim -d $1 $2 

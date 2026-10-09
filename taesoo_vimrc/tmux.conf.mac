@@ -25,9 +25,6 @@ bind-key R source-file ~/.tmux.conf
 bind-key b set prefix C-b
 bind-key a set prefix C-a
 
-#set -g default-terminal "tmux-256color"
-set-option -sa terminal-overrides ",xterm*:Tc"
-
 # vi-like pane split
 bind-key s split-window
 bind-key v split-window -h
@@ -57,3 +54,6 @@ set -g status-left '(#S) #[default]'
 #set -g status-right '#[fg=yellow]#(date)#[default]'
 set -g status-right '#[fg=yellow]#(date +%I:%M,%m-%d,%a)#[default]'
  
+# brew install reattach-to-user-namespace
+set-option -g default-command "reattach-to-user-namespace -l $SHELL"
+set -g default-shell /bin/zsh

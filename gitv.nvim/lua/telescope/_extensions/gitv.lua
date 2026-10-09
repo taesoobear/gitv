@@ -71,7 +71,13 @@ function lsFiles(option, path)
 		cpt=os.capture(git()..' ls-files .', true)
 	elseif option=='-g' then
 		-- use absolute
-		cpt=os.capture('cd '..path..';git ls-files .', true)
+		if os.isWindows() then
+			os.createBatchFile("gitscript_ls.bat", {'cd "'..os.toWindowsFileName(path)..'"',git()..' ls-files .' })
+			cpt=os.capture('gitscript_ls', true)
+			os.deleteFiles('gitscript_ls.bat')
+		else
+			cpt=os.capture('cd '..path..';git ls-files .', true)
+		end
 	else
 
 		cpt=os.capture(git()..' ls-files "'..git_top()..'" 2>&1', true)
@@ -212,6 +218,9 @@ local function loadHistory(currDir)
 			return v[1]
 		end
 		)
+		if history==nil then
+			history={}
+		end
 		--local fncache=getHashTbl(fn, 
 		--function (v)
 		--	return v[1]
@@ -259,7 +268,7 @@ local function updateHistory(history, chosenFile)
 end
 
 local file_search = function(opts)
-	g_vimSrc={'%.urdf$', "%.json$", "%.css$","%.H$", "%.inc$", "%.csv$", "%.luamscl$", "%.cfg$","%.sh$", "%.cmake$", "%.vim$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+	g_vimSrc={'%.yaml$', '%.urdf$', "%.json$", "%.css$","%.H$", "%.inc$", "%.csv$", "%.luamscl$", "%.cfg$","%.sh$", "%.cmake$", "%.vim$", "%.hpp$", "%.cs$", "%.xml$", "%.cc$", "%.bvh$", "%.glsl$", "%.f$", "%.java$", "%.mm$","%.material$", "%.rb$", "%.m$", "Makefile$","%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
 
 	if os.isFileExist(git_top()..'/.gitvconfig') then
 		dofile(git_top()..'/.gitvconfig')
@@ -281,7 +290,11 @@ local file_search = function(opts)
 		for i=1,#g_tagFallbackPath do
 			local fallbackPath=g_tagFallbackPath [i]
 			local path=os.relativeToAbsolutePath(fallbackPath, git_top())
-			if os.isFileExist(path) then
+			local testPath=path
+			if os.isWindows() then
+				testPath=os.toWindowsFileName(path..'/.git/config')
+			end
+			if os.isFileExist(testPath) then
 				--print('file searching '..g_tagFallbackPath[i])
 				local files2=lsFiles('-g', path)
 				array.concat(files, files2)
@@ -345,7 +358,11 @@ local file_search = function(opts)
 	if #files==1 then
 		local filename=fullPathFromDisplayText(files[1])
 		updateHistory(nil, filename)
-		vim.cmd("edit "..filename)
+		if os.isWindows() then
+			vim.cmd("edit "..os.toWindowsFileName(filename))
+		else
+			vim.cmd("edit "..filename)
+		end
 		return 
 	end
 	pickers.new(opts, {
@@ -365,7 +382,11 @@ local file_search = function(opts)
 				if selection[1] then
 					local filename=fullPathFromDisplayText(selection[1])
 					updateHistory(nil, filename)
-					vim.cmd("edit "..filename)
+					if os.isWindows() then
+						vim.cmd("edit "..os.toWindowsFileName(filename))
+					else
+						vim.cmd("edit "..filename)
+					end
 				end
 			end)
 			return true
@@ -405,7 +426,15 @@ local tag_search = function(opts)
 	  	array.concat(tags, tags2)
 		end
 	end
-
+	if opts.key and opts.key ~= "" and #tags == 0 then
+	--if #tags == 0 then
+		vim.notify(
+			"No matching tags found for '" .. opts.key
+				.. "'. Run ':!gitv clear' and try again.",
+			vim.log.levels.WARN
+		)
+		return
+	end
   pickers.new(opts, {
     prompt_title = "gitv ts",
     finder = finders.new_table {

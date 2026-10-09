@@ -35,7 +35,7 @@ cd ~/.vim/plugin
 # now install configurations for neovim
 cd "$currdir"
 mkdir -p ~/.config/nvim
-cp init.vim ~/.config/nvim/
+cp init.lua ~/.config/nvim/
 mkdir -p ~/.config/nvim/snippets
 cp *.snippets ~/.config/nvim/snippets
 sh -c 'curl -fLo "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim --create-dirs \
@@ -58,9 +58,9 @@ if grep microsoft /proc/version 2>/dev/null; then
 	echo "3. edit ~/bin/gitv"
 	echo " g_vimpath, g_gvimpath=os.findVIM() "
 	echo " g_vimpath=\"nvim\""
-	echo "4. edit ~/.config/nvim/init.vim"
+	echo "4. edit ~/.config/nvim/init.lua"
 	#echo "     set clipboard+=unnamed --> unnamedplus"
-	echo "     uncomment the \"g:clipboard=...\" line"
+	echo "     uncomment the \"clipboard:append(...\" line"
 else
 	echo "________________________________________________"
 	echo "If you use neovim, following manual configurations are necesasry!!!"
@@ -69,6 +69,6 @@ else
 	echo "2. edit ~/.local/share/nvim/plugged/vimwiki-server.nvim/lua/vimwiki_server.lua"
 	echo "   : if a.version.is_valid(bridge) then --> if true then "
 	echo "3. on linux, you need to install xclip if you are using X11, otherwise install wl-copy and wl-paste if Wayland is in use."
-	echo "4. on mac, edit ~/.config/nvim/init.vim as follows "
-	echo "             set clipboard+=unnamedplus --> set clipboard+=unnamed"
+	echo "4. on mac, edit ~/.config/nvim/init.lua as follows "
+	echo "             set clipboard:append('unnamedplus' --> change to unnamed"
 fi

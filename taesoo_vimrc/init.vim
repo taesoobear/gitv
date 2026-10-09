@@ -8,7 +8,7 @@ Plug 'flazz/vim-colorschemes'
 Plug 'altercation/vim-colors-solarized'
 Plug 'vimwiki/vimwiki'
 Plug 'gabrielelana/vim-markdown'
-Plug 'chipsenkbeil/vimwiki-server.nvim'
+Plug 'chipsenkbeil/vimwiki-server.nvim', { 'tag': 'v0.1.0-alpha.4' }
 Plug 'nanotech/jellybeans.vim'
 Plug 'nvim-lua/plenary.nvim'
 Plug 'nvim-telescope/telescope.nvim'
@@ -57,13 +57,8 @@ set noexpandtab
 set notagbsearch
 set nowrap
 " code folding using indentation
-" Fold 상태 자동 기억
-set foldenable        " 접기 기능 활성화
-set foldlevel=99      " 기본 펼친 상태
-set foldlevelstart=99
-set foldmethod=indent " indent 기준 접기
-let g:vimwiki_folding = 'expr'
-
+set fdm=indent
+set foldlevel=1
 " use system clipboard. use unnamed instead of unnamedplus on mac
 set clipboard+=unnamedplus
 " g:clipboard setting below is only for windows wsl
