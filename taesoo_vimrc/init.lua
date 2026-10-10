@@ -467,3 +467,10 @@ set_diff_highlights()
 vim.api.nvim_create_autocmd("ColorScheme", {
     callback = set_diff_highlights,
 })
+vim.api.nvim_create_autocmd({ "BufWinEnter", "FileType" }, {
+    callback = function()
+        if vim.bo.buftype ~= "" then
+            vim.wo.foldenable = false
+        end
+    end,
+})
